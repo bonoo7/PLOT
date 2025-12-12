@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+npm-debug.log
+package-lock.json
+yarn.lock
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Build files
+dist/
+build/
+.expo/
+.expo-shared/
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+
+# IDE
+*.swp
+*.swo
+*~
+.sublime-project
+.sublime-workspace
+
+# Project specific
+.env.example
+config.local.js

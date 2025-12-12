@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الحبكة - العميل</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="stamp">سري</div>
+        <h1>تسجيل الدخول</h1>
+        
+        <div id="login-screen">
+            <input type="text" id="player-name" placeholder="الاسم الحركي" maxlength="12" autocomplete="off">
+            <input type="text" id="room-code" placeholder="رمز الغرفة" maxlength="4" style="text-transform: uppercase;" autocomplete="off">
+            <button id="join-btn">انضمام للمهمة</button>
+            <div id="error-msg" class="error"></div>
+        </div>
+
+        <div id="waiting-screen" class="hidden">
+            <h2>تم قبول التصريح</h2>
+            <p>أهلاً بالعميل <span id="display-name" style="font-weight: bold;"></span></p>
+            <p>الحالة: <span style="color: var(--accent-red);">وضع الاستعداد</span></p>
+            <div class="stamp" style="margin-top: 30px; transform: rotate(10deg);">بانتظار القيادة</div>
+        </div>
+
+        <div id="role-screen" class="hidden">
+            <h2 id="role-name" style="color: var(--accent-red); font-size: 2rem;"></h2>
+            <p id="role-desc" style="font-style: italic;"></p>
+            <div style="background: rgba(0,0,0,0.05); padding: 15px; margin: 20px 0; border: 1px dashed var(--text-color);">
+                <p style="font-weight: bold;">معلومات سرية:</p>
+                <p id="role-info" style="font-size: 1.2rem;"></p>
+            </div>
+            <p id="wait-msg" style="margin-top: 20px; color: #666;">استعد للكتابة...</p>
+        </div>
+
+        <div id="drafting-screen" class="hidden">
+            <div id="timer" style="font-size: 3rem; font-weight: bold; color: var(--accent-red);">90</div>
+            <h2>اكتب تبريرك</h2>
+            <textarea id="answer-input" rows="4" maxlength="140" placeholder="اكتب قصتك هنا..." style="width: 100%; font-size: 1.2rem; padding: 10px; font-family: 'Courier New';"></textarea>
+            <div style="text-align: left; margin-bottom: 10px;"><span id="char-count">0</span>/140</div>
+            <button id="submit-btn">إرسال</button>
+        </div>
+
+        <div id="submitted-screen" class="hidden">
+            <div class="stamp">تم الإرسال</div>
+            <p>بانتظار بقية العملاء...</p>
+        </div>
+
+        <div id="presentation-screen" class="hidden">
+            <h2>وقت المواجهة</h2>
+            <p>انظر للشاشة الرئيسية</p>
+        </div>
+
+        <div id="voting-screen" class="hidden">
+            <h2>التصويت</h2>
+            
+            <h3>1. أفضل إجابة</h3>
+            <div id="quality-votes" style="display: flex; flex-direction: column; gap: 10px;"></div>
+
+            <h3>2. من هو الشاهد؟</h3>
+            <div id="identity-votes" style="display: flex; flex-wrap: wrap; gap: 10px; justify-content: center;"></div>
+
+            <button id="vote-btn" style="margin-top: 20px;">إرسال التصويت</button>
+        </div>
+
+        <div id="results-screen" class="hidden">
+            <h2>النتائج</h2>
+            <p>انظر للشاشة الرئيسية</p>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        
+        const loginScreen = document.getElementById('login-screen');
+        const waitingScreen = document.getElementById('waiting-screen');
+        const roleScreen = document.getElementById('role-screen');
+        const draftingScreen = document.getElementById('drafting-screen');
+        const submittedScreen = document.getElementById('submitted-screen');
+        const presentationScreen = document.getElementById('presentation-screen');
+        const votingScreen = document.getElementById('voting-screen');
+        const resultsScreen = document.getElementById('results-screen');
+        
+        const joinBtn = document.getElementById('join-btn');
+        const submitBtn = document.getElementById('submit-btn');
+        const voteBtn = document.getElementById('vote-btn');
+        
+        const nameInput = document.getElementById('player-name');
+        const codeInput = document.getElementById('room-code');
+        const answerInput = document.getElementById('answer-input');
+        const charCount = document.getElementById('char-count');
+        const errorMsg = document.getElementById('error-msg');
+        const displayName = document.getElementById('display-name');
+        const timerDisplay = document.getElementById('timer');
+        
+        const roleName = document.getElementById('role-name');
+        const roleDesc = document.getElementById('role-desc');
+        const roleInfo = document.getElementById('role-info');
+        
+        const qualityVotesContainer = document.getElementById('quality-votes');
+        const identityVotesContainer = document.getElementById('identity-votes');
+
+        let currentRoomCode = '';
+        let selectedQuality = null;
+        let selectedIdentity = null;
+
+        joinBtn.addEventListener('click', () => {
+            const name = nameInput.value.trim();
+            const code = codeInput.value.trim().toUpperCase();
+
+            if (!name || !code) {
+                errorMsg.textContent = "بيانات ناقصة";
+                return;
+            }
+            currentRoomCode = code;
+            socket.emit('joinRoom', { roomCode: code, playerName: name });
+        });
+
+        submitBtn.addEventListener('click', () => {
+            const answer = answerInput.value.trim();
+            if (!answer) return;
+            
+            socket.emit('submitAnswer', { roomCode: currentRoomCode, answer });
+            draftingScreen.classList.add('hidden');
+            submittedScreen.classList.remove('hidden');
+        });
+
+        voteBtn.addEventListener('click', () => {
+            if (!selectedQuality || !selectedIdentity) {
+                alert('يجب اختيار أفضل إجابة وتخمين الشاهد');
+                return;
+            }
+            socket.emit('submitVote', { 
+                roomCode: currentRoomCode, 
+                qualityVote: selectedQuality, 
+                identityVote: selectedIdentity 
+            });
+            votingScreen.classList.add('hidden');
+            submittedScreen.classList.remove('hidden'); // Reuse submitted screen
+        });
+
+        answerInput.addEventListener('input', () => {
+            charCount.textContent = answerInput.value.length;
+        });
+
+        socket.on('joinedRoom', (data) => {
+            loginScreen.classList.add('hidden');
+            waitingScreen.classList.remove('hidden');
+            displayName.textContent = nameInput.value;
+            errorMsg.textContent = "";
+        });
+
+        socket.on('roleAssigned', (data) => {
+            waitingScreen.classList.add('hidden');
+            roleScreen.classList.remove('hidden');
+            
+            roleName.textContent = data.roleName;
+            roleDesc.textContent = data.description;
+            roleInfo.textContent = data.info;
+        });
+
+        socket.on('startDrafting', ({ duration }) => {
+            roleScreen.classList.add('hidden');
+            draftingScreen.classList.remove('hidden');
+            timerDisplay.textContent = duration;
+            answerInput.value = '';
+        });
+
+        socket.on('timerUpdate', (time) => {
+            timerDisplay.textContent = time;
+        });
+
+        socket.on('startPresentation', () => {
+            draftingScreen.classList.add('hidden');
+            submittedScreen.classList.add('hidden');
+            presentationScreen.classList.remove('hidden');
+        });
+
+        socket.on('startVoting', (data) => {
+            presentationScreen.classList.add('hidden');
+            votingScreen.classList.remove('hidden');
+            
+            // Render Quality Votes
+            qualityVotesContainer.innerHTML = '';
+            data.answers.forEach(item => {
+                const btn = document.createElement('button');
+                btn.textContent = item.answer;
+                btn.className = 'vote-btn'; // Add style later
+                btn.style.width = '100%';
+                btn.style.marginBottom = '10px';
+                btn.style.backgroundColor = '#fff';
+                btn.style.color = '#000';
+                btn.style.border = '1px solid #000';
+                
+                btn.onclick = () => {
+                    // Reset styles
+                    Array.from(qualityVotesContainer.children).forEach(c => c.style.backgroundColor = '#fff');
+                    btn.style.backgroundColor = '#E1AD01'; // Selected
+                    selectedQuality = item.id;
+                };
+                qualityVotesContainer.appendChild(btn);
+            });
+
+            // Render Identity Votes
+            identityVotesContainer.innerHTML = '';
+            data.players.forEach(player => {
+                const btn = document.createElement('button');
+                btn.textContent = player.name;
+                btn.style.padding = '10px';
+                btn.style.backgroundColor = '#fff';
+                btn.style.color = '#000';
+                btn.style.border = '1px solid #000';
+                
+                btn.onclick = () => {
+                    Array.from(identityVotesContainer.children).forEach(c => c.style.backgroundColor = '#fff');
+                    btn.style.backgroundColor = '#E1AD01';
+                    selectedIdentity = player.id;
+                };
+                identityVotesContainer.appendChild(btn);
+            });
+        });
+
+        socket.on('roundResults', () => {
+            votingScreen.classList.add('hidden');
+            submittedScreen.classList.add('hidden');
+            resultsScreen.classList.remove('hidden');
+        });
+
+        socket.on('error', (msg) => {
+            errorMsg.textContent = msg;
+        });
+    </script>
+</body>
+</html>

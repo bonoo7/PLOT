@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الحبكة - الشاشة الرئيسية</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="/socket.io/socket.io.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="stamp">سري للغاية</div>
+        <h1>الحبكة</h1>
+        
+        <div id="start-screen">
+            <p>بدء العملية</p>
+            <button id="create-btn">إنشاء غرفة</button>
+        </div>
+
+        <div id="lobby-screen" class="hidden">
+            <p>رمز الدخول</p>
+            <div id="room-code-display" class="room-code">----</div>
+            
+            <p>العملاء المتصلون:</p>
+            <ul id="player-list" class="player-list">
+                <!-- Players will appear here -->
+            </ul>
+            
+            <div style="margin-top: 40px;">
+                <button id="start-game-btn" disabled>بانتظار العملاء...</button>
+            </div>
+        </div>
+
+        <div id="game-screen" class="hidden">
+            <p>ملف القضية رقم #849</p>
+            <h1 id="scenario-title" style="font-size: 3rem; color: var(--accent-red);"></h1>
+            <div class="stamp" style="transform: rotate(5deg); margin-top: 50px;">جاري جمع الأدلة...</div>
+        </div>
+
+        <div id="drafting-screen" class="hidden">
+            <div id="timer" style="font-size: 5rem; font-weight: bold; color: var(--accent-red);">90</div>
+            <h2>جاري كتابة التقارير...</h2>
+            <ul id="submitted-list" class="player-list"></ul>
+        </div>
+
+        <div id="presentation-screen" class="hidden">
+            <h1>التقارير الواردة</h1>
+            <div id="answers-container" style="display: flex; flex-wrap: wrap; gap: 20px; justify-content: center;"></div>
+        </div>
+
+        <div id="voting-screen" class="hidden">
+            <h1>مرحلة التصويت</h1>
+            <div class="stamp" style="transform: rotate(-5deg);">اختر بحكمة</div>
+            <p style="font-size: 1.5rem; margin-top: 30px;">العملاء يقومون بالتصويت الآن...</p>
+        </div>
+
+        <div id="results-screen" class="hidden">
+            <h1>نتائج الجولة</h1>
+            <ul id="results-list" class="player-list" style="flex-direction: column;"></ul>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        
+        const startScreen = document.getElementById('start-screen');
+        const lobbyScreen = document.getElementById('lobby-screen');
+        const gameScreen = document.getElementById('game-screen');
+        const draftingScreen = document.getElementById('drafting-screen');
+        const presentationScreen = document.getElementById('presentation-screen');
+        const votingScreen = document.getElementById('voting-screen');
+        const resultsScreen = document.getElementById('results-screen');
+        
+        const roomCodeDisplay = document.getElementById('room-code-display');
+        const playerList = document.getElementById('player-list');
+        const submittedList = document.getElementById('submitted-list');
+        const answersContainer = document.getElementById('answers-container');
+        const resultsList = document.getElementById('results-list');
+        const timerDisplay = document.getElementById('timer');
+        
+        const createBtn = document.getElementById('create-btn');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const scenarioTitle = document.getElementById('scenario-title');
+
+        createBtn.addEventListener('click', () => {
+            socket.emit('createRoom');
+        });
+
+        startGameBtn.addEventListener('click', () => {
+            console.log('Start Game button clicked');
+            socket.emit('startGame');
+        });
+
+        socket.on('roomCreated', (code) => {
+            startScreen.classList.add('hidden');
+            lobbyScreen.classList.remove('hidden');
+            roomCodeDisplay.textContent = code;
+        });
+
+        socket.on('gameStarted', (data) => {
+            lobbyScreen.classList.add('hidden');
+            gameScreen.classList.remove('hidden');
+            scenarioTitle.textContent = data.title;
+        });
+
+        socket.on('startDrafting', ({ duration }) => {
+            gameScreen.classList.add('hidden');
+            draftingScreen.classList.remove('hidden');
+            timerDisplay.textContent = duration;
+            submittedList.innerHTML = ''; // Clear previous
+        });
+
+        socket.on('timerUpdate', (time) => {
+            timerDisplay.textContent = time;
+        });
+
+        socket.on('playerSubmitted', ({ playerName }) => {
+            const li = document.createElement('li');
+            li.className = 'player-card';
+            li.style.backgroundColor = '#e0ffe0'; // Greenish
+            li.textContent = `${playerName} ✅`;
+            submittedList.appendChild(li);
+        });
+
+        socket.on('startPresentation', () => {
+            draftingScreen.classList.add('hidden');
+            presentationScreen.classList.remove('hidden');
+        });
+
+        socket.on('receiveAnswers', (answers) => {
+            answersContainer.innerHTML = '';
+            answers.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'container'; // Reuse container style
+                div.style.width = '300px';
+                div.style.minHeight = '200px';
+                div.innerHTML = `
+                    <div class="stamp" style="font-size: 1rem;">تقرير</div>
+                    <p style="font-size: 1.2rem;">"${item.answer}"</p>
+                    <p style="margin-top: 20px; font-weight: bold; color: #666;">- ${item.playerName}</p>
+                `;
+                answersContainer.appendChild(div);
+            });
+        });
+
+        socket.on('startVoting', () => {
+            presentationScreen.classList.add('hidden');
+            votingScreen.classList.remove('hidden');
+        });
+
+        socket.on('roundResults', ({ results }) => {
+            votingScreen.classList.add('hidden');
+            resultsScreen.classList.remove('hidden');
+            
+            resultsList.innerHTML = '';
+            results.forEach((p, index) => {
+                const li = document.createElement('li');
+                li.className = 'player-card';
+                li.style.width = '80%';
+                li.style.display = 'flex';
+                li.style.justifyContent = 'space-between';
+                li.style.fontSize = '1.5rem';
+                
+                li.innerHTML = `
+                    <span>#${index + 1} ${p.name} <small>(${p.role})</small></span>
+                    <span>+${p.roundScore} (Total: ${p.totalScore})</span>
+                `;
+                resultsList.appendChild(li);
+            });
+        });
+
+        socket.on('playerJoined', (players) => {
+            playerList.innerHTML = '';
+            players.forEach(player => {
+                const li = document.createElement('li');
+                li.className = 'player-card';
+                li.textContent = player.name;
+                playerList.appendChild(li);
+            });
+
+            if (players.length >= 3) {
+                startGameBtn.disabled = false;
+                startGameBtn.textContent = "بدء المهمة";
+            } else {
+                startGameBtn.disabled = true;
+                startGameBtn.textContent = `بانتظار العملاء... (${players.length}/3)`;
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "plot-game",
+  "version": "1.0.0",
+  "description": "The Plot - Party Deduction Game",
+  "main": "server/index.js",
+  "scripts": {
+    "start": "node start.js",
+    "start:dev": "concurrently \"npm run server\" \"npm run client\"",
+    "server": "cd server && npm start",
+    "client": "cd plot-mobile && npm start"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "private": true
+}
