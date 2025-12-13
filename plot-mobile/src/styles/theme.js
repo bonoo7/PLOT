@@ -2,12 +2,15 @@ import { Platform } from 'react-native';
 
 export const theme = {
   colors: {
-    background: '#FDF5E6', // OldLace - warmer/brighter than Beige
-    text: '#1A1A1A', // Darker text for better contrast
-    accentRed: '#D32F2F', // Brighter/Stronger Red
-    accentYellow: '#FFC107', // Amber
+    background: '#F5F5DC', // Beige - classic bureaucratic theme
+    text: '#2F4F4F', // Dark slate gray for professional look
+    accentRed: '#B22222', // Fire brick - muted red for stamps
+    accentYellow: '#E1AD01', // Khaki - vintage note color
+    accentGreen: '#6B8E23', // Olive green - authority documents
     white: '#FFFFFF',
-    error: '#D32F2F',
+    lightBg: '#FFFAF0', // Floral white for cards
+    darkOverlay: 'rgba(0, 0, 0, 0.08)', // Subtle dark overlay
+    error: '#B22222',
   },
   fonts: {
     main: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
@@ -18,5 +21,26 @@ export const theme = {
     m: 16,
     l: 24,
     xl: 32,
-  }
+  },
+  shadows: {
+    card: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 3 },
+      shadowOpacity: 0.12,
+      shadowRadius: 4,
+      elevation: 5,
+    },
+    light: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+  },
+  borderRadius: {
+    small: 4,
+    medium: 8,
+    large: 12,
+  },
 };
