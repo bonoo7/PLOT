@@ -46,21 +46,6 @@
             
             <div style="margin-top: 40px;">
                 <button id="start-game-btn" disabled>بانتظار العملاء...</button>
-                <div style="margin-top: 10px;">
-                    <select id="tutorial-role-select" style="padding: 10px; font-size: 1rem; margin-bottom: 10px;">
-                        <option value="">اختر دورك (عشوائي)</option>
-                        <option value="WITNESS">الشاهد</option>
-                        <option value="ARCHITECT">المهندس</option>
-                        <option value="DETECTIVE">المحقق</option>
-                        <option value="SPY">الجاسوس</option>
-                        <option value="ACCOMPLICE">المتواطئ</option>
-                        <option value="LAWYER">المحامي</option>
-                        <option value="TRICKSTER">المخادع</option>
-                        <option value="CITIZEN">مواطن</option>
-                    </select>
-                    <br>
-                    <button id="start-tutorial-btn" disabled style="background-color: #666; font-size: 1rem;">بدء تدريب (Tutorial)</button>
-                </div>
             </div>
         </div>
 
@@ -149,12 +134,8 @@
         
         const createBtn = document.getElementById('create-btn');
         const startGameBtn = document.getElementById('start-game-btn');
-        const startTutorialBtn = document.getElementById('start-tutorial-btn');
-        const tutorialRoleSelect = document.getElementById('tutorial-role-select');
         const nextRoundBtn = document.getElementById('next-round-btn');
         const restartBtn = document.getElementById('restart-btn');
-        const endStartTutorialBtn = document.getElementById('end-start-tutorial-btn');
-        const endTutorialRoleSelect = document.getElementById('end-tutorial-role-select');
         const scenarioTitle = document.getElementById('scenario-title');
 
         // Settings Elements
@@ -185,21 +166,12 @@
             socket.emit('startGame');
         });
 
-        startTutorialBtn.addEventListener('click', () => {
-            const role = tutorialRoleSelect.value;
-            socket.emit('startTutorial', role || null);
-        });
-
         nextRoundBtn.addEventListener('click', () => {
             socket.emit('nextRound');
         });
 
         restartBtn.addEventListener('click', () => {
             socket.emit('startGame'); // Restart game directly
-        });
-
-        endStartTutorialBtn.addEventListener('click', () => {
-            socket.emit('startTutorial');
         });
 
         socket.on('roomCreated', (code) => {
@@ -345,11 +317,9 @@
             if (connectedCount >= 3) {
                 startGameBtn.disabled = false;
                 startGameBtn.textContent = "بدء المهمة";
-                startTutorialBtn.disabled = false;
             } else {
                 startGameBtn.disabled = true;
                 startGameBtn.textContent = `بانتظار العملاء... (${connectedCount}/3)`;
-                startTutorialBtn.disabled = true;
             }
         });
     </script>

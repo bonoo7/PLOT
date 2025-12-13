@@ -38,11 +38,14 @@ plot/
 │   ├── App.js                     # المكون الرئيسي
 │   ├── app.json                   # إعدادات Expo
 │   ├── package.json
+│   ├── /assets
+│   │   └── /roles                 # صور الشخصيات والأدوار
+│   ├── /components
+│   │   ├── RoleAvatar.js          # مكون عرض صورة الدور
+│   │   └── BackgroundWatermark.js # خلفية الهوية البصرية
 │   └── /src
 │       └── /styles
 │           └── theme.js           # متغيرات الألوان والتصميم
-│
-├── client-mobile/                 # نسخة أولية (للمرجعية)
 │
 ├── start.js                       # سكريبت التشغيل الموحد
 ├── package.json                   # التبعيات الرئيسية

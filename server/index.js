@@ -389,7 +389,8 @@ io.on('connection', (socket) => {
                             description: getRoleDescription(existingPlayer.role),
                             info: null,
                             round: room.currentRound,
-                            totalRounds: room.totalRounds
+                            totalRounds: room.totalRounds,
+                            isTutorial: room.isTutorial
                         };
 
                         const scenario = room.currentScenario;
@@ -477,7 +478,8 @@ io.on('connection', (socket) => {
                     description: getRoleDescription('CITIZEN'),
                     info: "لقد انضممت متأخراً. حاول المساعدة في التصويت.",
                     round: room.currentRound,
-                    totalRounds: room.totalRounds
+                    totalRounds: room.totalRounds,
+                    isTutorial: room.isTutorial
                 });
             }
 
@@ -621,6 +623,9 @@ io.on('connection', (socket) => {
             roles.push('CITIZEN');
         }
 
+        // Define shuffledRoles variable outside to be accessible later
+        let shuffledRoles = [];
+
         // Handle Tutorial Forced Role
         if (room.isTutorial && room.tutorialData) {
             const { userId, role } = room.tutorialData;
@@ -639,20 +644,11 @@ io.on('connection', (socket) => {
                 if (roleIndex !== -1) {
                     roles.splice(roleIndex, 1);
                 } else {
-                    // If role wasn't in the list (e.g. CITIZEN when not enough players), just replace a random role or add it?
-                    // For simplicity, if it's a special role not in list, we swap it with something.
-                    // But since we added bots to ensure 4 players, basic roles should be there.
-                    // If user chose CITIZEN, we just remove one CITIZEN or random role.
-                    // Let's just remove the first element to keep count correct.
                     roles.shift();
                 }
 
-                // Put target player back at the beginning (or separate list)
-                // We will handle them separately or just push back and skip in loop?
-                // Better: Assign to others then add target back.
-                
                 // Shuffle remaining roles
-                const shuffledRoles = roles.sort(() => 0.5 - Math.random());
+                shuffledRoles = roles.sort(() => 0.5 - Math.random());
                 
                 // Assign roles to others
                 shuffledPlayers.forEach((player, index) => {
@@ -663,22 +659,23 @@ io.on('connection', (socket) => {
                 shuffledPlayers.push(targetPlayer);
             } else {
                 // Fallback if player not found
-                const shuffledRoles = roles.sort(() => 0.5 - Math.random());
+                shuffledRoles = roles.sort(() => 0.5 - Math.random());
                 shuffledPlayers.forEach((player, index) => {
                     player.role = shuffledRoles[index];
                 });
             }
         } else {
             // Standard Shuffle
-            const shuffledRoles = roles.sort(() => 0.5 - Math.random());
+            shuffledRoles = roles.sort(() => 0.5 - Math.random());
             shuffledPlayers.forEach((player, index) => {
                 player.role = shuffledRoles[index];
             });
         }
 
         // Find Witness for Accomplice logic
-        const witnessIndex = shuffledRoles.indexOf('WITNESS');
-        const witnessPlayer = witnessIndex !== -1 ? shuffledPlayers[witnessIndex] : null;
+        // Note: shuffledRoles might not contain the forced role if it was removed from the list
+        // So we should look at the players list instead to find the witness
+        const witnessPlayer = shuffledPlayers.find(p => p.role === 'WITNESS');
 
         // Assign and send data
         shuffledPlayers.forEach((player) => {
@@ -699,7 +696,8 @@ io.on('connection', (socket) => {
                 description: getRoleDescription(role),
                 info: null,
                 round: room.currentRound,
-                totalRounds: room.totalRounds
+                totalRounds: room.totalRounds,
+                isTutorial: room.isTutorial
             };
 
             if (role === 'WITNESS') {

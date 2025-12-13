@@ -11,35 +11,37 @@
     },
     "Bot 1 🤖": {
       "name": "Bot 1 🤖",
-      "gamesPlayed": 6,
-      "wins": 0,
-      "totalScore": 4000,
+      "gamesPlayed": 14,
+      "wins": 2,
+      "totalScore": 14500,
       "rolesPlayed": {
         "SPY": 2,
-        "WITNESS": 2,
-        "DETECTIVE": 2
+        "WITNESS": 5,
+        "DETECTIVE": 5,
+        "ARCHITECT": 2
       }
     },
     "Bot 2 🤖": {
       "name": "Bot 2 🤖",
-      "gamesPlayed": 6,
-      "wins": 1,
-      "totalScore": 8500,
+      "gamesPlayed": 14,
+      "wins": 5,
+      "totalScore": 28500,
       "rolesPlayed": {
-        "DETECTIVE": 1,
-        "ARCHITECT": 3,
-        "SPY": 2
+        "DETECTIVE": 5,
+        "ARCHITECT": 4,
+        "SPY": 2,
+        "WITNESS": 3
       }
     },
     "Bot 3 🤖": {
       "name": "Bot 3 🤖",
-      "gamesPlayed": 6,
-      "wins": 1,
-      "totalScore": 4000,
+      "gamesPlayed": 14,
+      "wins": 2,
+      "totalScore": 14500,
       "rolesPlayed": {
-        "ARCHITECT": 2,
-        "SPY": 2,
-        "DETECTIVE": 1,
+        "ARCHITECT": 7,
+        "SPY": 4,
+        "DETECTIVE": 2,
         "WITNESS": 1
       }
     },
@@ -68,6 +70,105 @@
       "totalScore": 1000,
       "rolesPlayed": {
         "ARCHITECT": 1
+      }
+    },
+    "مايكفيالمتدرب": {
+      "name": "مايكفيالمتدرب",
+      "gamesPlayed": 1,
+      "wins": 0,
+      "totalScore": 1500,
+      "rolesPlayed": {
+        "SPY": 1
+      }
+    },
+    "Judgingالمتدرب": {
+      "name": "Judgingالمتدرب",
+      "gamesPlayed": 1,
+      "wins": 0,
+      "totalScore": 500,
+      "rolesPlayed": {
+        "SPY": 1
+      }
+    },
+    "Hzjzo": {
+      "name": "Hzjzo",
+      "gamesPlayed": 1,
+      "wins": 0,
+      "totalScore": 1000,
+      "rolesPlayed": {
+        "SPY": 1
+      }
+    },
+    "Ukjw": {
+      "name": "Ukjw",
+      "gamesPlayed": 1,
+      "wins": 1,
+      "totalScore": 7500,
+      "rolesPlayed": {
+        "WITNESS": 1
+      }
+    },
+    "Hunk": {
+      "name": "Hunk",
+      "gamesPlayed": 1,
+      "wins": 0,
+      "totalScore": 4500,
+      "rolesPlayed": {
+        "DETECTIVE": 1
+      }
+    },
+    "ماراح": {
+      "name": "ماراح",
+      "gamesPlayed": 1,
+      "wins": 0,
+      "totalScore": 4000,
+      "rolesPlayed": {
+        "ARCHITECT": 1
+      }
+    },
+    "المتدرب": {
+      "name": "المتدرب",
+      "gamesPlayed": 1,
+      "wins": 1,
+      "totalScore": 3500,
+      "rolesPlayed": {
+        "LAWYER": 1
+      }
+    },
+    "sdfsd": {
+      "name": "sdfsd",
+      "gamesPlayed": 1,
+      "wins": 0,
+      "totalScore": 2000,
+      "rolesPlayed": {
+        "WITNESS": 1
+      }
+    },
+    "She": {
+      "name": "She",
+      "gamesPlayed": 1,
+      "wins": 0,
+      "totalScore": 1500,
+      "rolesPlayed": {
+        "SPY": 1
+      }
+    },
+    "Avbr": {
+      "name": "Avbr",
+      "gamesPlayed": 1,
+      "wins": 0,
+      "totalScore": 0,
+      "rolesPlayed": {
+        "SPY": 1
+      }
+    },
+    "Muck": {
+      "name": "Muck",
+      "gamesPlayed": 1,
+      "wins": 0,
+      "totalScore": 1500,
+      "rolesPlayed": {
+        "SPY": 1
       }
     }
   },
@@ -227,6 +328,235 @@
         }
       ],
       "timestamp": "2025-12-13T02:21:56.306Z"
+    },
+    {
+      "roomCode": "IMEL",
+      "players": [
+        {
+          "name": "مايكفيالمتدرب",
+          "score": 1500,
+          "role": "SPY"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 1000,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 3500,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 1000,
+          "role": "ARCHITECT"
+        }
+      ],
+      "timestamp": "2025-12-13T11:55:29.923Z"
+    },
+    {
+      "roomCode": "FVLX",
+      "players": [
+        {
+          "name": "Judgingالمتدرب",
+          "score": 500,
+          "role": "SPY"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 2500,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 2000,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 2000,
+          "role": "ARCHITECT"
+        }
+      ],
+      "timestamp": "2025-12-13T12:04:18.900Z"
+    },
+    {
+      "roomCode": "WIVH",
+      "players": [
+        {
+          "name": "Hzjzo",
+          "score": 1000,
+          "role": "SPY"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 0,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 3000,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 3500,
+          "role": "ARCHITECT"
+        }
+      ],
+      "timestamp": "2025-12-13T12:15:24.831Z"
+    },
+    {
+      "roomCode": "UHJO",
+      "players": [
+        {
+          "name": "Ukjw",
+          "score": 7500,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Hunk",
+          "score": 4500,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "ماراح",
+          "score": 4000,
+          "role": "ARCHITECT"
+        }
+      ],
+      "timestamp": "2025-12-13T12:21:48.606Z"
+    },
+    {
+      "roomCode": "XDTE",
+      "players": [
+        {
+          "name": "المتدرب",
+          "score": 3500,
+          "role": "LAWYER"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 1000,
+          "role": "ARCHITECT"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 1000,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 0,
+          "role": "SPY"
+        }
+      ],
+      "timestamp": "2025-12-13T12:25:33.927Z"
+    },
+    {
+      "roomCode": "EPNX",
+      "players": [
+        {
+          "name": "sdfsd",
+          "score": 2000,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 0,
+          "role": "ARCHITECT"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 3000,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 1500,
+          "role": "SPY"
+        }
+      ],
+      "timestamp": "2025-12-13T12:34:17.987Z"
+    },
+    {
+      "roomCode": "DSJO",
+      "players": [
+        {
+          "name": "She",
+          "score": 1500,
+          "role": "SPY"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 2000,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 3500,
+          "role": "ARCHITECT"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 1000,
+          "role": "DETECTIVE"
+        }
+      ],
+      "timestamp": "2025-12-13T12:36:19.441Z"
+    },
+    {
+      "roomCode": "AVBR",
+      "players": [
+        {
+          "name": "Avbr",
+          "score": 0,
+          "role": "SPY"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 2000,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 3000,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 1000,
+          "role": "ARCHITECT"
+        }
+      ],
+      "timestamp": "2025-12-13T13:14:20.420Z"
+    },
+    {
+      "roomCode": "KABH",
+      "players": [
+        {
+          "name": "Muck",
+          "score": 1500,
+          "role": "SPY"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 2000,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 1000,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 500,
+          "role": "ARCHITECT"
+        }
+      ],
+      "timestamp": "2025-12-13T13:18:24.681Z"
     }
   ]
 }

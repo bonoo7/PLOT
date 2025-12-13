@@ -32,22 +32,22 @@
             <div id="leader-controls" class="hidden" style="margin-top: 30px; border-top: 1px dashed #000; padding-top: 20px;">
                 <p style="font-weight: bold;">أنت القائد</p>
                 <button id="start-game-btn" style="background-color: var(--accent-red); color: white; margin-bottom: 10px;">بدء المهمة</button>
-                
-                <div style="margin-top: 10px; border: 1px solid #ccc; padding: 10px;">
-                    <p style="margin: 0 0 5px 0;">إعدادات التدريب:</p>
-                    <select id="tutorial-role-select" style="width: 100%; padding: 5px; margin-bottom: 5px;">
-                        <option value="">اختر دورك (عشوائي)</option>
-                        <option value="WITNESS">الشاهد</option>
-                        <option value="ARCHITECT">المهندس</option>
-                        <option value="DETECTIVE">المحقق</option>
-                        <option value="SPY">الجاسوس</option>
-                        <option value="ACCOMPLICE">المتواطئ</option>
-                        <option value="LAWYER">المحامي</option>
-                        <option value="TRICKSTER">المخادع</option>
-                        <option value="CITIZEN">مواطن</option>
-                    </select>
-                    <button id="start-tutorial-btn" style="background-color: var(--text-color); color: white; font-size: 0.9rem; width: 100%;">بدء تدريب (Tutorial)</button>
-                </div>
+            </div>
+
+            <div style="margin-top: 30px; border-top: 1px dashed #000; padding-top: 20px;">
+                <p style="margin: 0 0 5px 0;">إعدادات التدريب:</p>
+                <select id="tutorial-role-select" style="width: 100%; padding: 5px; margin-bottom: 5px;">
+                    <option value="">اختر دورك (عشوائي)</option>
+                    <option value="WITNESS">الشاهد</option>
+                    <option value="ARCHITECT">المهندس</option>
+                    <option value="DETECTIVE">المحقق</option>
+                    <option value="SPY">الجاسوس</option>
+                    <option value="ACCOMPLICE">المتواطئ</option>
+                    <option value="LAWYER">المحامي</option>
+                    <option value="TRICKSTER">المخادع</option>
+                    <option value="CITIZEN">مواطن</option>
+                </select>
+                <button id="start-tutorial-btn" style="background-color: var(--text-color); color: white; font-size: 0.9rem; width: 100%;">بدء تدريب (Tutorial)</button>
             </div>
         </div>
 
@@ -114,22 +114,22 @@
             <div id="end-leader-controls" class="hidden" style="margin-top: 20px; border-top: 1px dashed #000; padding-top: 20px;">
                 <p style="font-weight: bold;">أنت القائد</p>
                 <button id="end-start-game-btn" style="background-color: var(--accent-red); color: white; margin-bottom: 10px;">لعبة جديدة</button>
-                
-                <div style="margin-top: 10px; border: 1px solid #ccc; padding: 10px;">
-                    <p style="margin: 0 0 5px 0;">إعدادات التدريب:</p>
-                    <select id="end-tutorial-role-select" style="width: 100%; padding: 5px; margin-bottom: 5px;">
-                        <option value="">اختر دورك (عشوائي)</option>
-                        <option value="WITNESS">الشاهد</option>
-                        <option value="ARCHITECT">المهندس</option>
-                        <option value="DETECTIVE">المحقق</option>
-                        <option value="SPY">الجاسوس</option>
-                        <option value="ACCOMPLICE">المتواطئ</option>
-                        <option value="LAWYER">المحامي</option>
-                        <option value="TRICKSTER">المخادع</option>
-                        <option value="CITIZEN">مواطن</option>
-                    </select>
-                    <button id="end-start-tutorial-btn" style="background-color: var(--text-color); color: white; font-size: 0.9rem; width: 100%;">بدء تدريب (Tutorial)</button>
-                </div>
+            </div>
+
+            <div style="margin-top: 10px; border: 1px solid #ccc; padding: 10px;">
+                <p style="margin: 0 0 5px 0;">إعدادات التدريب:</p>
+                <select id="end-tutorial-role-select" style="width: 100%; padding: 5px; margin-bottom: 5px;">
+                    <option value="">اختر دورك (عشوائي)</option>
+                    <option value="WITNESS">الشاهد</option>
+                    <option value="ARCHITECT">المهندس</option>
+                    <option value="DETECTIVE">المحقق</option>
+                    <option value="SPY">الجاسوس</option>
+                    <option value="ACCOMPLICE">المتواطئ</option>
+                    <option value="LAWYER">المحامي</option>
+                    <option value="TRICKSTER">المخادع</option>
+                    <option value="CITIZEN">مواطن</option>
+                </select>
+                <button id="end-start-tutorial-btn" style="background-color: var(--text-color); color: white; font-size: 0.9rem; width: 100%;">بدء تدريب (Tutorial)</button>
             </div>
 
             <button id="restart-btn" style="margin-top: 20px;">خروج</button>
@@ -162,6 +162,7 @@
         const leaderControls = document.getElementById('leader-controls');
         const startGameBtn = document.getElementById('start-game-btn');
         const startTutorialBtn = document.getElementById('start-tutorial-btn');
+        const tutorialRoleSelect = document.getElementById('tutorial-role-select');
         
         const endLeaderControls = document.getElementById('end-leader-controls');
         const endStartGameBtn = document.getElementById('end-start-game-btn');
