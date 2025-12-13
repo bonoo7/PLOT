@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, I18nManager, AppRegistry, ScrollView, Modal, Image, ImageBackground, Animated } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, I18nManager, AppRegistry, ScrollView, Modal, Image, ImageBackground, Animated, LayoutAnimation, UIManager, Platform } from 'react-native';
 import io from 'socket.io-client';
 import { theme } from './src/styles/theme';
 import RoleAvatar from './components/RoleAvatar';
@@ -14,6 +14,14 @@ I18nManager.allowRTL(true);
 const SOCKET_URL = __DEV__ ? 'http://192.168.8.19:3000' : 'http://localhost:3000';
 
 export default function App() {
+  useEffect(() => {
+    if (Platform.OS === 'android') {
+      if (UIManager.setLayoutAnimationEnabledExperimental) {
+        UIManager.setLayoutAnimationEnabledExperimental(true);
+      }
+    }
+  }, []);
+
   const [socket, setSocket] = useState(null);
   const [screen, setScreen] = useState('ROLE_SELECT'); // ROLE_SELECT, LOGIN, HOST_SETUP, LOBBY, GAME
   const [userRole, setUserRole] = useState(null); // 'HOST' or 'PLAYER'
@@ -41,6 +49,10 @@ export default function App() {
   const [isTutorialFlow, setIsTutorialFlow] = useState(false);
 
   // Ref to access current state inside socket callbacks
+  useEffect(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+  }, [screen]);
+
   const userRoleRef = React.useRef(userRole);
   const isTutorialFlowRef = React.useRef(isTutorialFlow);
 
@@ -249,7 +261,7 @@ export default function App() {
     setUserRole('PLAYER');
     setIsTutorialFlow(true);
     setPlayerName('المتدرب');
-    setScreen('LOGIN');
+    setTutorialModalVisible(true);
   };
 
   const handleStartTutorial = (role = null) => {
@@ -316,52 +328,51 @@ export default function App() {
     return (
       <View style={styles.container}>
         <BackgroundWatermark />
-        <View style={{flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 40}}>
-          <Text style={[styles.title, {marginBottom: 30}]}>اختر دورك</Text>
+        <View style={{flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 40, width: '100%'}}>
+          <Text style={[styles.title, {marginBottom: 30, color: '#f4e4bc'}]}>اختر دورك</Text>
           
-          <ScrollView style={{width: '100%'}} contentContainerStyle={{alignItems: 'center', paddingBottom: 20}}>
-            <TouchableOpacity activeOpacity={0.7} 
-              style={styles.fileButtonContainer} 
-              onPress={handleSelectHostRole}
-            >
-              <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="stretch">
-                <View style={styles.fileContent}>
-                  <Text style={styles.roleButtonIcon}>👑</Text>
-                  <Text style={styles.roleButtonTextBlack}>مدير اللعبة</Text>
-                  <Text style={styles.roleButtonSubtextBlack}>أنشئ غرفة وأدر اللعبة</Text>
-                </View>
-                <View style={styles.stampContainerSmall}>
-                   <Text style={styles.stampSmall}>سري للغاية</Text>
-                </View>
-              </ImageBackground>
-            </TouchableOpacity>
+          <View style={styles.menuContainer}>
+            <ScrollView style={{width: '100%'}} contentContainerStyle={{alignItems: 'center', paddingVertical: 20}}>
+              <TouchableOpacity activeOpacity={0.7} 
+                style={styles.fileButtonContainer} 
+                onPress={handleSelectHostRole}
+              >
+                <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="stretch">
+                  <View style={styles.fileContent}>
+                    <Text style={styles.roleButtonTextBlack}>مدير اللعبة</Text>
+                    <Text style={styles.roleButtonSubtextBlack}>أنشئ غرفة وأدر اللعبة</Text>
+                  </View>
+                  <View style={styles.stampContainerSmall}>
+                     <Text style={styles.stampSmall}>سري للغاية</Text>
+                  </View>
+                </ImageBackground>
+              </TouchableOpacity>
 
-            <TouchableOpacity activeOpacity={0.7} 
-              style={styles.fileButtonContainer} 
-              onPress={handleSelectPlayerRole}
-            >
-              <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="stretch">
-                <View style={styles.fileContent}>
-                  <Text style={styles.roleButtonIcon}>🎭</Text>
-                  <Text style={styles.roleButtonTextBlack}>لاعب</Text>
-                  <Text style={styles.roleButtonSubtextBlack}>انضم إلى غرفة موجودة</Text>
-                </View>
-              </ImageBackground>
-            </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.7} 
+                style={styles.fileButtonContainer} 
+                onPress={handleSelectPlayerRole}
+              >
+                <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="stretch">
+                  <View style={styles.fileContent}>
+                    <Text style={styles.roleButtonTextBlack}>لاعب</Text>
+                    <Text style={styles.roleButtonSubtextBlack}>انضم إلى غرفة موجودة</Text>
+                  </View>
+                </ImageBackground>
+              </TouchableOpacity>
 
-            <TouchableOpacity activeOpacity={0.7} 
-              style={styles.fileButtonContainer} 
-              onPress={handleSelectTraining}
-            >
-              <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="stretch">
-                <View style={styles.fileContent}>
-                  <Text style={styles.roleButtonIcon}>🤖</Text>
-                  <Text style={styles.roleButtonTextBlack}>تدريب فردي</Text>
-                  <Text style={styles.roleButtonSubtextBlack}>العب ضد الروبوتات</Text>
-                </View>
-              </ImageBackground>
-            </TouchableOpacity>
-          </ScrollView>
+              <TouchableOpacity activeOpacity={0.7} 
+                style={styles.fileButtonContainer} 
+                onPress={handleSelectTraining}
+              >
+                <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="stretch">
+                  <View style={styles.fileContent}>
+                    <Text style={styles.roleButtonTextBlack}>تدريب فردي</Text>
+                    <Text style={styles.roleButtonSubtextBlack}>العب ضد الروبوتات</Text>
+                  </View>
+                </ImageBackground>
+              </TouchableOpacity>
+            </ScrollView>
+          </View>
 
           <Modal visible={tutorialModalVisible} transparent animationType="slide">
             <View style={styles.modalOverlay}>
@@ -1322,18 +1333,32 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingTop: 20,
   },
+  menuContainer: {
+    width: '95%',
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    padding: 10,
+    maxHeight: '80%',
+  },
   roleButtonTextBlack: {
-    fontSize: 24,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 5,
     fontFamily: 'Courier New',
   },
   roleButtonSubtextBlack: {
-    fontSize: 14,
+    fontSize: 11,
     color: '#555',
     textAlign: 'center',
     fontWeight: 'bold',
+  },
+  redactedText: {
+    backgroundColor: 'black',
+    color: 'black',
+    paddingHorizontal: 5,
   },
   stampContainerSmall: {
     position: 'absolute',
@@ -1348,7 +1373,7 @@ const styles = StyleSheet.create({
   },
   stampSmall: {
     color: theme.colors.accentRed,
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '900',
     textTransform: 'uppercase',
   },
