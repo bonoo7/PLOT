@@ -11,37 +11,37 @@
     },
     "Bot 1 🤖": {
       "name": "Bot 1 🤖",
-      "gamesPlayed": 15,
+      "gamesPlayed": 17,
       "wins": 3,
-      "totalScore": 15500,
+      "totalScore": 16500,
       "rolesPlayed": {
-        "SPY": 2,
+        "SPY": 3,
         "WITNESS": 5,
-        "DETECTIVE": 6,
+        "DETECTIVE": 7,
         "ARCHITECT": 2
       }
     },
     "Bot 2 🤖": {
       "name": "Bot 2 🤖",
-      "gamesPlayed": 15,
-      "wins": 6,
-      "totalScore": 29500,
+      "gamesPlayed": 17,
+      "wins": 8,
+      "totalScore": 35500,
       "rolesPlayed": {
         "DETECTIVE": 5,
-        "ARCHITECT": 4,
+        "ARCHITECT": 5,
         "SPY": 3,
-        "WITNESS": 3
+        "WITNESS": 4
       }
     },
     "Bot 3 🤖": {
       "name": "Bot 3 🤖",
-      "gamesPlayed": 15,
+      "gamesPlayed": 17,
       "wins": 3,
-      "totalScore": 15500,
+      "totalScore": 18500,
       "rolesPlayed": {
-        "ARCHITECT": 8,
+        "ARCHITECT": 9,
         "SPY": 4,
-        "DETECTIVE": 2,
+        "DETECTIVE": 3,
         "WITNESS": 1
       }
     },
@@ -128,11 +128,13 @@
     },
     "المتدرب": {
       "name": "المتدرب",
-      "gamesPlayed": 1,
+      "gamesPlayed": 3,
       "wins": 1,
       "totalScore": 3500,
       "rolesPlayed": {
-        "LAWYER": 1
+        "LAWYER": 1,
+        "SPY": 1,
+        "ACCOMPLICE": 1
       }
     },
     "sdfsd": {
@@ -592,6 +594,58 @@
         }
       ],
       "timestamp": "2025-12-13T16:16:36.139Z"
+    },
+    {
+      "roomCode": "XDQS",
+      "players": [
+        {
+          "name": "المتدرب",
+          "score": 0,
+          "role": "SPY"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 0,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 4000,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 2000,
+          "role": "ARCHITECT"
+        }
+      ],
+      "timestamp": "2025-12-13T17:28:07.076Z"
+    },
+    {
+      "roomCode": "KTAN",
+      "players": [
+        {
+          "name": "المتدرب",
+          "score": 0,
+          "role": "ACCOMPLICE"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 1000,
+          "role": "SPY"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 2000,
+          "role": "ARCHITECT"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 1000,
+          "role": "DETECTIVE"
+        }
+      ],
+      "timestamp": "2025-12-13T17:33:02.192Z"
     }
   ]
 }
