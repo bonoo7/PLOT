@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "الحبكة - The Plot",
+    "slug": "plot-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "plotmobile",
+    "userInterfaceStyle": "light",
+    "platforms": [
+      "ios",
+      "android"
+    ],
+    "ios": {
+      "supportsTablet": false
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#F5F5DC"
+      }
+    }
+  }
+}
