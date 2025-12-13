@@ -42,7 +42,8 @@ plot/
 │   │   └── /roles                 # صور الشخصيات والأدوار
 │   ├── /components
 │   │   ├── RoleAvatar.js          # مكون عرض صورة الدور
-│   │   └── BackgroundWatermark.js # خلفية الهوية البصرية
+│   │   ├── BackgroundWatermark.js # خلفية الهوية البصرية
+│   │   └── RedactedText.js        # مكون النصوص المحجوبة (تفاعلي)
 │   └── /src
 │       └── /styles
 │           └── theme.js           # متغيرات الألوان والتصميم
