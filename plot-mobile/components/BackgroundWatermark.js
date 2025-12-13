@@ -25,7 +25,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: -1,
     overflow: 'hidden',
-    opacity: 0.05,
+    opacity: 0.08,
   },
   text: {
     position: 'absolute',

@@ -2,12 +2,12 @@ import { Platform } from 'react-native';
 
 export const theme = {
   colors: {
-    background: '#F5F5DC',
-    text: '#2F4F4F',
-    accentRed: '#B22222',
-    accentYellow: '#E1AD01',
+    background: '#FDF5E6', // OldLace - warmer/brighter than Beige
+    text: '#1A1A1A', // Darker text for better contrast
+    accentRed: '#D32F2F', // Brighter/Stronger Red
+    accentYellow: '#FFC107', // Amber
     white: '#FFFFFF',
-    error: '#FF0000',
+    error: '#D32F2F',
   },
   fonts: {
     main: Platform.OS === 'ios' ? 'Courier New' : 'monospace',

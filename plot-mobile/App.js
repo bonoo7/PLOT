@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, I18nManager, AppRegistry, ScrollView, Modal } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, I18nManager, AppRegistry, ScrollView, Modal, Image, ImageBackground } from 'react-native';
 import io from 'socket.io-client';
 import { theme } from './src/styles/theme';
 import RoleAvatar from './components/RoleAvatar';
@@ -315,44 +315,50 @@ export default function App() {
     return (
       <View style={styles.container}>
         <BackgroundWatermark />
-        <View style={styles.paperContainer}>
-          <View style={styles.paperClip} />
-            <View style={styles.tape} />
-          <View style={styles.stampContainer}>
-            <Text style={styles.stamp}>سري</Text>
-          </View>
-          <Text style={styles.title}>اختر دورك</Text>
+        <View style={{flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 40}}>
+          <Text style={[styles.title, {marginBottom: 30}]}>اختر دورك</Text>
           
           <ScrollView style={{width: '100%'}} contentContainerStyle={{alignItems: 'center', paddingBottom: 20}}>
             <TouchableOpacity 
-              style={[styles.roleButton, { backgroundColor: theme.colors.accentRed }]} 
+              style={styles.fileButtonContainer} 
               onPress={handleSelectHostRole}
             >
-              <Text style={styles.roleButtonIcon}>👑</Text>
-              <Text style={styles.roleButtonText}>مدير اللعبة</Text>
-              <Text style={styles.roleButtonSubtext}>أنشئ غرفة وأدر اللعبة</Text>
+              <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="stretch">
+                <View style={styles.fileContent}>
+                  <Text style={styles.roleButtonIcon}>👑</Text>
+                  <Text style={styles.roleButtonTextBlack}>مدير اللعبة</Text>
+                  <Text style={styles.roleButtonSubtextBlack}>أنشئ غرفة وأدر اللعبة</Text>
+                </View>
+                <View style={styles.stampContainerSmall}>
+                   <Text style={styles.stampSmall}>سري للغاية</Text>
+                </View>
+              </ImageBackground>
             </TouchableOpacity>
 
-            <Text style={{fontSize: 16, color: '#999', marginVertical: 10}}>أو</Text>
-
             <TouchableOpacity 
-              style={[styles.roleButton, { backgroundColor: theme.colors.text }]} 
+              style={styles.fileButtonContainer} 
               onPress={handleSelectPlayerRole}
             >
-              <Text style={styles.roleButtonIcon}>🎭</Text>
-              <Text style={styles.roleButtonText}>لاعب</Text>
-              <Text style={styles.roleButtonSubtext}>انضم إلى غرفة موجودة</Text>
+              <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="stretch">
+                <View style={styles.fileContent}>
+                  <Text style={styles.roleButtonIcon}>🎭</Text>
+                  <Text style={styles.roleButtonTextBlack}>لاعب</Text>
+                  <Text style={styles.roleButtonSubtextBlack}>انضم إلى غرفة موجودة</Text>
+                </View>
+              </ImageBackground>
             </TouchableOpacity>
 
-            <Text style={{fontSize: 16, color: '#999', marginVertical: 10}}>أو</Text>
-
             <TouchableOpacity 
-              style={[styles.roleButton, { backgroundColor: '#2F4F4F' }]} 
+              style={styles.fileButtonContainer} 
               onPress={handleSelectTraining}
             >
-              <Text style={styles.roleButtonIcon}>🤖</Text>
-              <Text style={styles.roleButtonText}>تدريب فردي</Text>
-              <Text style={styles.roleButtonSubtext}>العب ضد الروبوتات</Text>
+              <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="stretch">
+                <View style={styles.fileContent}>
+                  <Text style={styles.roleButtonIcon}>🤖</Text>
+                  <Text style={styles.roleButtonTextBlack}>تدريب فردي</Text>
+                  <Text style={styles.roleButtonSubtextBlack}>العب ضد الروبوتات</Text>
+                </View>
+              </ImageBackground>
             </TouchableOpacity>
           </ScrollView>
 
@@ -386,8 +392,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.paperClip} />
-            <View style={styles.tape} />
+          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
+            <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <Text style={styles.title}>إعدادات مدير اللعبة</Text>
           <TouchableOpacity style={styles.button} onPress={handleCreateRoom}>
             <Text style={styles.buttonText}>إنشاء الغرفة</Text>
@@ -408,8 +414,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.paperClip} />
-            <View style={styles.tape} />
+          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
+            <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <ScrollView contentContainerStyle={{alignItems: 'center', paddingBottom: 20}}>
             <Text style={styles.stamp}>غرفة العمليات</Text>
             <Text style={styles.screenLabel}>رمز الغرفة</Text>
@@ -472,8 +478,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.paperClip} />
-            <View style={styles.tape} />
+          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
+            <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <ScrollView contentContainerStyle={{alignItems: 'center', paddingBottom: 20}}>
             <Text style={styles.title}>{gameTitle}</Text>
             <Text style={styles.timer}>{timeLeft}</Text>
@@ -496,8 +502,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.paperClip} />
-            <View style={styles.tape} />
+          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
+            <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <ScrollView contentContainerStyle={{alignItems: 'center', paddingBottom: 20}}>
             <Text style={styles.title}>التقارير الواردة</Text>
             <View style={styles.answersList}>
@@ -519,8 +525,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.paperClip} />
-            <View style={styles.tape} />
+          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
+            <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <Text style={styles.title}>مرحلة التصويت</Text>
           <Text style={styles.subtitle}>العملاء يقومون بالتصويت الآن...</Text>
         </View>
@@ -533,8 +539,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.paperClip} />
-            <View style={styles.tape} />
+          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
+            <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <ScrollView contentContainerStyle={{alignItems: 'center', paddingBottom: 20}}>
             <Text style={styles.title}>نتائج الجولة</Text>
             <View style={styles.resultsList}>
@@ -559,8 +565,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.paperClip} />
-            <View style={styles.tape} />
+          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
+            <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <ScrollView contentContainerStyle={{alignItems: 'center', paddingBottom: 20}}>
             <Text style={styles.title}>النتائج النهائية</Text>
             <View style={styles.resultsList}>
@@ -587,10 +593,10 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.paperClip} />
-            <View style={styles.tape} />
+          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
+            <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <View style={styles.stampContainer}>
-            <Text style={styles.stamp}>سري</Text>
+            <Text style={styles.stamp}>سري للغاية</Text>
           </View>
           <Text style={styles.title}>تسجيل الدخول</Text>
           
@@ -633,8 +639,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.paperClip} />
-            <View style={styles.tape} />
+          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
+            <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <Text style={styles.title}>تم قبول التصريح</Text>
           <Text style={styles.subtitle}>أهلاً بالعميل {playerName}</Text>
           <Text style={[styles.status, { color: theme.colors.accentRed }]}>وضع الاستعداد</Text>
@@ -680,8 +686,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.paperClip} />
-            <View style={styles.tape} />
+          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
+            <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <View style={{alignItems: 'center', marginBottom: 20}}>
             <RoleAvatar role={roleData.role} size={120} />
           </View>
@@ -702,8 +708,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.paperClip} />
-            <View style={styles.tape} />
+          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
+            <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10}}>
              <View style={{flex: 1}}>
                 <View style={{width: '100%', padding: 10, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 5}}>
@@ -761,8 +767,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.paperClip} />
-            <View style={styles.tape} />
+          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
+            <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <View style={{position: 'absolute', top: 10, right: 10}}>
             <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
           </View>
@@ -779,8 +785,8 @@ export default function App() {
         <View style={styles.container}>
           <BackgroundWatermark />
           <View style={styles.paperContainer}>
-            <View style={styles.paperClip} />
-            <View style={styles.tape} />
+            <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
+            <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
             <View style={{position: 'absolute', top: 10, right: 10}}>
                 <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
             </View>
@@ -797,8 +803,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.paperClip} />
-            <View style={styles.tape} />
+          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
+            <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <View style={{position: 'absolute', top: 10, right: 10, zIndex: 100}}>
             <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
           </View>
@@ -874,8 +880,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.paperClip} />
-            <View style={styles.tape} />
+          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
+            <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <View style={{position: 'absolute', top: 10, right: 10}}>
             <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
           </View>
@@ -891,8 +897,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.paperClip} />
-            <View style={styles.tape} />
+          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
+            <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <View style={{position: 'absolute', top: 10, right: 10}}>
             <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
           </View>
@@ -916,99 +922,110 @@ export default function App() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: '#2c2c2c',
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
   },
   paperContainer: {
     width: '100%',
-    backgroundColor: '#fffcf0',
-    borderWidth: 2,
-    borderColor: theme.colors.text,
+    backgroundColor: '#f4e4bc',
+    borderWidth: 1,
+    borderColor: '#8d6e63',
     padding: 20,
-    shadowColor: theme.colors.text,
-    shadowOffset: { width: 10, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 5, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
     elevation: 10,
     position: 'relative',
     marginTop: 20,
   },
-  tape: {
-    position: 'absolute',
-    top: -15,
-    left: -10,
-    width: 120,
-    height: 35,
-    backgroundColor: 'rgba(255,255,255,0.3)',
-    borderLeftWidth: 2,
-    borderRightWidth: 2,
-    borderColor: 'rgba(0,0,0,0.1)',
-    borderStyle: 'dotted',
-    transform: [{ rotate: '-25deg' }],
-    zIndex: 10,
+  fileContainer: {
+    width: '100%',
+    height: '90%',
+    padding: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   paperClip: {
     position: 'absolute',
-    top: -15,
-    alignSelf: 'center',
-    width: 100,
-    height: 30,
-    backgroundColor: 'rgba(0,0,0,0.1)',
-    borderRadius: 5,
+    top: -10,
+    left: 20,
+    width: 50,
+    height: 100,
     zIndex: 5,
+  },
+  tape: {
+    position: 'absolute',
+    top: -25,
+    alignSelf: 'center',
+    width: 130,
+    height: 65,
+    zIndex: 10,
   },
   title: {
     fontSize: 32,
     fontWeight: 'bold',
-    color: theme.colors.text,
+    color: '#3e2723',
     marginBottom: 30,
     fontFamily: 'Courier New',
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: {width: 1, height: 1},
+    textShadowRadius: 2,
   },
   subtitle: {
     fontSize: 24,
-    color: theme.colors.text,
+    color: '#4e342e',
     marginBottom: 10,
   },
   input: {
     width: '80%',
     height: 50,
     borderBottomWidth: 2,
-    borderBottomColor: theme.colors.text,
+    borderBottomColor: '#5d4037',
     fontSize: 20,
     marginBottom: 20,
     textAlign: 'center',
-    color: theme.colors.text,
+    color: '#3e2723',
+    fontFamily: 'Courier New',
   },
   button: {
-    backgroundColor: theme.colors.text,
+    backgroundColor: '#3e2723',
     paddingVertical: 15,
     paddingHorizontal: 40,
     marginTop: 20,
-    shadowColor: theme.colors.accentYellow,
-    shadowOffset: { width: 5, height: 5 },
-    shadowOpacity: 1,
-    shadowRadius: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.5,
+    shadowRadius: 2,
     elevation: 5,
+    borderRadius: 2,
   },
   buttonText: {
-    color: theme.colors.background,
+    color: '#f4e4bc',
     fontSize: 18,
     fontWeight: 'bold',
+    fontFamily: 'Courier New',
   },
   stampContainer: {
-    borderWidth: 3,
+    borderWidth: 4,
     borderColor: theme.colors.accentRed,
-    padding: 10,
-    marginBottom: 30,
+    paddingVertical: 2,
+    paddingHorizontal: 10,
+    marginBottom: 20,
     transform: [{ rotate: '-5deg' }],
+    alignSelf: 'center',
+    borderRadius: 2,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
   },
   stamp: {
     color: theme.colors.accentRed,
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 12,
+    fontWeight: '900',
     textTransform: 'uppercase',
+    letterSpacing: 2,
   },
   status: {
     fontSize: 18,
@@ -1265,7 +1282,59 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
   },
+  fileButtonContainer: {
+    width: '90%',
+    height: 160,
+    marginBottom: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
+  },
+  fileButtonBackground: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  fileContent: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingTop: 20,
+  },
+  roleButtonTextBlack: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+    fontFamily: 'Courier New',
+  },
+  roleButtonSubtextBlack: {
+    fontSize: 14,
+    color: '#555',
+    textAlign: 'center',
+    fontWeight: 'bold',
+  },
+  stampContainerSmall: {
+    position: 'absolute',
+    top: 20,
+    right: 20,
+    borderWidth: 2,
+    borderColor: theme.colors.accentRed,
+    paddingVertical: 2,
+    paddingHorizontal: 5,
+    transform: [{ rotate: '-10deg' }],
+    borderRadius: 2,
+  },
+  stampSmall: {
+    color: theme.colors.accentRed,
+    fontSize: 10,
+    fontWeight: '900',
+    textTransform: 'uppercase',
+  },
 });
 
 AppRegistry.registerComponent('main', () => App);
+
 
