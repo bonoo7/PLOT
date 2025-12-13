@@ -16,7 +16,7 @@ const SOCKET_URL = __DEV__ ? 'http://192.168.8.19:3000' : 'http://localhost:3000
 export default function App() {
   useEffect(() => {
     if (Platform.OS === 'android') {
-      if (UIManager.setLayoutAnimationEnabledExperimental) {
+      if (UIManager.setLayoutAnimationEnabledExperimental && !global.nativeFabricUIManager) {
         UIManager.setLayoutAnimationEnabledExperimental(true);
       }
     }
@@ -111,6 +111,7 @@ export default function App() {
     });
 
     newSocket.on('gameStarted', (data) => {
+      if (data.roomCode) setRoomCode(data.roomCode);
       setGameTitle(data.title);
       setRound(data.round);
       setTotalRounds(data.totalRounds);
@@ -963,7 +964,7 @@ const styles = StyleSheet.create({
   paperClip: {
     position: 'absolute',
     top: -10,
-    left: 20,
+    right: 10, // Visual left in RTL
     width: 50,
     height: 100,
     zIndex: 5,
@@ -1335,22 +1336,27 @@ const styles = StyleSheet.create({
   },
   menuContainer: {
     width: '95%',
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    borderRadius: 15,
+    backgroundColor: 'rgba(244, 228, 188, 0.9)', // Paper color with opacity
+    borderRadius: 5,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
-    padding: 10,
+    borderColor: '#8d6e63',
+    padding: 15,
     maxHeight: '80%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
   },
   roleButtonTextBlack: {
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     color: '#333',
     marginBottom: 5,
     fontFamily: 'Courier New',
   },
   roleButtonSubtextBlack: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#555',
     textAlign: 'center',
     fontWeight: 'bold',
@@ -1366,8 +1372,8 @@ const styles = StyleSheet.create({
     right: 20,
     borderWidth: 2,
     borderColor: theme.colors.accentRed,
-    paddingVertical: 2,
-    paddingHorizontal: 5,
+    paddingVertical: 5,
+    paddingHorizontal: 10,
     transform: [{ rotate: '-10deg' }],
     borderRadius: 2,
   },

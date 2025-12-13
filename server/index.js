@@ -495,11 +495,71 @@ io.on('connection', (socket) => {
 
     // Start Tutorial Match
     socket.on('startTutorial', (desiredRole) => {
-        startGameLogic(socket, true, desiredRole);
+        console.log('Received startTutorial event from:', socket.id);
+        startTutorialLogic(socket, desiredRole);
     });
 
+    function startTutorialLogic(socket, desiredRole) {
+        console.log('Starting tutorial logic for:', socket.id);
+        
+        // Always create a new room for tutorial
+        const roomCode = generateRoomCode();
+        console.log('Generated tutorial room code:', roomCode);
+
+        const room = {
+            hostId: socket.id,
+            players: [],
+            state: 'LOBBY',
+            currentRound: 0,
+            totalRounds: 1,
+            usedScenarios: [],
+            isTutorial: true
+        };
+        rooms[roomCode] = room;
+        socket.join(roomCode);
+        
+        // Add the user as a player
+        room.players.push({
+            id: socket.id,
+            name: 'المتدرب',
+            score: 0,
+            role: null,
+            isLeader: true,
+            connected: true
+        });
+        
+        console.log(`Created tutorial room ${roomCode} for ${socket.id}. Players: ${room.players.length}`);
+
+        // Add Bots
+        let botCount = 0;
+        while (room.players.length < 4) {
+            botCount++;
+            const botId = `bot_${Date.now()}_${botCount}`;
+            room.players.push({
+                id: botId,
+                name: `Bot ${botCount} 🤖`,
+                score: 0,
+                role: null,
+                isLeader: false,
+                connected: true,
+                isBot: true
+            });
+        }
+
+        // Setup tutorial data
+        if (desiredRole) {
+            room.tutorialData = { userId: socket.id, role: desiredRole };
+        } else {
+            room.tutorialData = null;
+        }
+
+        // Start the game immediately
+        console.log('Calling startNewRound for tutorial room:', roomCode);
+        startNewRound(roomCode);
+    }
+
     function startGameLogic(socket, isTutorial, desiredRole = null) {
-        console.log(`Received ${isTutorial ? 'startTutorial' : 'startGame'} request from:`, socket.id);
+        console.log('Received startGame request from:', socket.id);
         
         // Find room where this socket is host OR leader
         let roomCode = null;
@@ -534,29 +594,10 @@ io.on('connection', (socket) => {
 
         console.log(`Starting game for room ${roomCode} with ${room.players.length} players`);
 
-        if (!isTutorial && room.players.length < 3) {
+        if (room.players.length < 3) {
             console.log('Error: Not enough players');
             socket.emit('error', 'عدد اللاعبين غير كافٍ (الحد الأدنى 3)');
             return;
-        }
-
-        // Add Bots for Tutorial if needed
-        if (isTutorial) {
-            let botCount = 0;
-            // Ensure at least 4 players for a good experience
-            while (room.players.length < 4) {
-                botCount++;
-                const botId = `bot_${Date.now()}_${botCount}`;
-                room.players.push({
-                    id: botId,
-                    name: `Bot ${botCount} 🤖`,
-                    score: 0,
-                    role: null,
-                    isLeader: false,
-                    connected: true,
-                    isBot: true
-                });
-            }
         }
 
         // Reset game state if starting new game
@@ -564,14 +605,9 @@ io.on('connection', (socket) => {
             room.currentRound = 0;
             room.usedScenarios = [];
             room.players.forEach(p => p.score = 0);
-            room.isTutorial = isTutorial; // Set Tutorial Flag
-            room.totalRounds = isTutorial ? 1 : 3; // Tutorial is 1 round
-            
-            if (isTutorial && desiredRole) {
-                room.tutorialData = { userId: socket.id, role: desiredRole };
-            } else {
-                room.tutorialData = null;
-            }
+            room.isTutorial = false;
+            room.totalRounds = 3;
+            room.tutorialData = null;
         }
 
         startNewRound(roomCode);
@@ -724,7 +760,8 @@ io.on('connection', (socket) => {
             title: room.isTutorial ? `(تدريب) ${room.currentScenario.title}` : room.currentScenario.title,
             round: room.currentRound,
             totalRounds: room.totalRounds,
-            isTutorial: room.isTutorial
+            isTutorial: room.isTutorial,
+            roomCode: roomCode
         });
         
         console.log(`Round ${room.currentRound} started in room ${roomCode}`);
