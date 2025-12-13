@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 export const theme = {
   colors: {
     background: '#F5F5DC',
@@ -8,8 +10,8 @@ export const theme = {
     error: '#FF0000',
   },
   fonts: {
-    main: 'Courier New', // Note: Custom fonts need linking in RN
-    bold: 'Courier New',
+    main: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+    bold: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
   },
   spacing: {
     s: 8,

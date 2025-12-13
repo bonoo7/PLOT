@@ -316,7 +316,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.tape} />
+          <View style={styles.paperClip} />
+            <View style={styles.tape} />
           <View style={styles.stampContainer}>
             <Text style={styles.stamp}>سري</Text>
           </View>
@@ -385,7 +386,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.tape} />
+          <View style={styles.paperClip} />
+            <View style={styles.tape} />
           <Text style={styles.title}>إعدادات مدير اللعبة</Text>
           <TouchableOpacity style={styles.button} onPress={handleCreateRoom}>
             <Text style={styles.buttonText}>إنشاء الغرفة</Text>
@@ -406,7 +408,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.tape} />
+          <View style={styles.paperClip} />
+            <View style={styles.tape} />
           <ScrollView contentContainerStyle={{alignItems: 'center', paddingBottom: 20}}>
             <Text style={styles.stamp}>غرفة العمليات</Text>
             <Text style={styles.screenLabel}>رمز الغرفة</Text>
@@ -469,7 +472,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.tape} />
+          <View style={styles.paperClip} />
+            <View style={styles.tape} />
           <ScrollView contentContainerStyle={{alignItems: 'center', paddingBottom: 20}}>
             <Text style={styles.title}>{gameTitle}</Text>
             <Text style={styles.timer}>{timeLeft}</Text>
@@ -492,7 +496,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.tape} />
+          <View style={styles.paperClip} />
+            <View style={styles.tape} />
           <ScrollView contentContainerStyle={{alignItems: 'center', paddingBottom: 20}}>
             <Text style={styles.title}>التقارير الواردة</Text>
             <View style={styles.answersList}>
@@ -514,7 +519,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.tape} />
+          <View style={styles.paperClip} />
+            <View style={styles.tape} />
           <Text style={styles.title}>مرحلة التصويت</Text>
           <Text style={styles.subtitle}>العملاء يقومون بالتصويت الآن...</Text>
         </View>
@@ -527,7 +533,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.tape} />
+          <View style={styles.paperClip} />
+            <View style={styles.tape} />
           <ScrollView contentContainerStyle={{alignItems: 'center', paddingBottom: 20}}>
             <Text style={styles.title}>نتائج الجولة</Text>
             <View style={styles.resultsList}>
@@ -552,7 +559,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.tape} />
+          <View style={styles.paperClip} />
+            <View style={styles.tape} />
           <ScrollView contentContainerStyle={{alignItems: 'center', paddingBottom: 20}}>
             <Text style={styles.title}>النتائج النهائية</Text>
             <View style={styles.resultsList}>
@@ -579,7 +587,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.tape} />
+          <View style={styles.paperClip} />
+            <View style={styles.tape} />
           <View style={styles.stampContainer}>
             <Text style={styles.stamp}>سري</Text>
           </View>
@@ -624,7 +633,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.tape} />
+          <View style={styles.paperClip} />
+            <View style={styles.tape} />
           <Text style={styles.title}>تم قبول التصريح</Text>
           <Text style={styles.subtitle}>أهلاً بالعميل {playerName}</Text>
           <Text style={[styles.status, { color: theme.colors.accentRed }]}>وضع الاستعداد</Text>
@@ -670,7 +680,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.tape} />
+          <View style={styles.paperClip} />
+            <View style={styles.tape} />
           <View style={{alignItems: 'center', marginBottom: 20}}>
             <RoleAvatar role={roleData.role} size={120} />
           </View>
@@ -691,7 +702,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.tape} />
+          <View style={styles.paperClip} />
+            <View style={styles.tape} />
           <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10}}>
              <View style={{flex: 1}}>
                 <View style={{width: '100%', padding: 10, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 5}}>
@@ -749,7 +761,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.tape} />
+          <View style={styles.paperClip} />
+            <View style={styles.tape} />
           <View style={{position: 'absolute', top: 10, right: 10}}>
             <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
           </View>
@@ -766,6 +779,7 @@ export default function App() {
         <View style={styles.container}>
           <BackgroundWatermark />
           <View style={styles.paperContainer}>
+            <View style={styles.paperClip} />
             <View style={styles.tape} />
             <View style={{position: 'absolute', top: 10, right: 10}}>
                 <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
@@ -783,7 +797,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.tape} />
+          <View style={styles.paperClip} />
+            <View style={styles.tape} />
           <View style={{position: 'absolute', top: 10, right: 10, zIndex: 100}}>
             <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
           </View>
@@ -859,7 +874,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.tape} />
+          <View style={styles.paperClip} />
+            <View style={styles.tape} />
           <View style={{position: 'absolute', top: 10, right: 10}}>
             <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
           </View>
@@ -875,7 +891,8 @@ export default function App() {
       <View style={styles.container}>
         <BackgroundWatermark />
         <View style={styles.paperContainer}>
-          <View style={styles.tape} />
+          <View style={styles.paperClip} />
+            <View style={styles.tape} />
           <View style={{position: 'absolute', top: 10, right: 10}}>
             <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
           </View>
@@ -921,42 +938,26 @@ const styles = StyleSheet.create({
   tape: {
     position: 'absolute',
     top: -15,
-    alignSelf: 'center',
-    width: 100,
-    height: 30,
-    backgroundColor: 'rgba(255,255,255,0.4)',
+    left: -10,
+    width: 120,
+    height: 35,
+    backgroundColor: 'rgba(255,255,255,0.3)',
     borderLeftWidth: 2,
     borderRightWidth: 2,
     borderColor: 'rgba(0,0,0,0.1)',
     borderStyle: 'dotted',
-    transform: [{ rotate: '-2deg' }],
+    transform: [{ rotate: '-25deg' }],
+    zIndex: 10,
   },
-  paperContainer: {
-    width: '100%',
-    backgroundColor: '#fffcf0',
-    borderWidth: 2,
-    borderColor: theme.colors.text,
-    padding: 20,
-    shadowColor: theme.colors.text,
-    shadowOffset: { width: 10, height: 10 },
-    shadowOpacity: 0.2,
-    shadowRadius: 0,
-    elevation: 10,
-    position: 'relative',
-    marginTop: 20,
-  },
-  tape: {
+  paperClip: {
     position: 'absolute',
     top: -15,
     alignSelf: 'center',
     width: 100,
     height: 30,
-    backgroundColor: 'rgba(255,255,255,0.4)',
-    borderLeftWidth: 2,
-    borderRightWidth: 2,
-    borderColor: 'rgba(0,0,0,0.1)',
-    borderStyle: 'dotted',
-    transform: [{ rotate: '-2deg' }],
+    backgroundColor: 'rgba(0,0,0,0.1)',
+    borderRadius: 5,
+    zIndex: 5,
   },
   title: {
     fontSize: 32,
@@ -1110,6 +1111,23 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     minWidth: 120,
     alignItems: 'center',
+    position: 'relative',
+    overflow: 'visible',
+  },
+  confidentialBadge: {
+    position: 'absolute',
+    top: -8,
+    right: -5,
+    backgroundColor: theme.colors.accentRed,
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+    transform: [{ rotate: '5deg' }],
+    zIndex: 1,
+  },
+  confidentialText: {
+    color: 'white',
+    fontSize: 8,
+    fontWeight: 'bold',
   },
   playerCardText: {
     fontSize: 14,
@@ -1250,3 +1268,4 @@ const styles = StyleSheet.create({
 });
 
 AppRegistry.registerComponent('main', () => App);
+

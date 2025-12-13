@@ -11,35 +11,35 @@
     },
     "Bot 1 🤖": {
       "name": "Bot 1 🤖",
-      "gamesPlayed": 14,
-      "wins": 2,
-      "totalScore": 14500,
+      "gamesPlayed": 15,
+      "wins": 3,
+      "totalScore": 15500,
       "rolesPlayed": {
         "SPY": 2,
         "WITNESS": 5,
-        "DETECTIVE": 5,
+        "DETECTIVE": 6,
         "ARCHITECT": 2
       }
     },
     "Bot 2 🤖": {
       "name": "Bot 2 🤖",
-      "gamesPlayed": 14,
-      "wins": 5,
-      "totalScore": 28500,
+      "gamesPlayed": 15,
+      "wins": 6,
+      "totalScore": 29500,
       "rolesPlayed": {
         "DETECTIVE": 5,
         "ARCHITECT": 4,
-        "SPY": 2,
+        "SPY": 3,
         "WITNESS": 3
       }
     },
     "Bot 3 🤖": {
       "name": "Bot 3 🤖",
-      "gamesPlayed": 14,
-      "wins": 2,
-      "totalScore": 14500,
+      "gamesPlayed": 15,
+      "wins": 3,
+      "totalScore": 15500,
       "rolesPlayed": {
-        "ARCHITECT": 7,
+        "ARCHITECT": 8,
         "SPY": 4,
         "DETECTIVE": 2,
         "WITNESS": 1
@@ -169,6 +169,15 @@
       "totalScore": 1500,
       "rolesPlayed": {
         "SPY": 1
+      }
+    },
+    "والهنا": {
+      "name": "والهنا",
+      "gamesPlayed": 1,
+      "wins": 1,
+      "totalScore": 1000,
+      "rolesPlayed": {
+        "CITIZEN": 1
       }
     }
   },
@@ -557,6 +566,32 @@
         }
       ],
       "timestamp": "2025-12-13T13:18:24.681Z"
+    },
+    {
+      "roomCode": "XWPL",
+      "players": [
+        {
+          "name": "والهنا",
+          "score": 1000,
+          "role": "CITIZEN"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 1000,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 1000,
+          "role": "SPY"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 1000,
+          "role": "ARCHITECT"
+        }
+      ],
+      "timestamp": "2025-12-13T16:16:36.139Z"
     }
   ]
 }
