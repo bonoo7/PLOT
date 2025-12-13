@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, I18nManager, AppRegistry, ScrollView, Modal, Image, ImageBackground } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, I18nManager, AppRegistry, ScrollView, Modal, Image, ImageBackground, Animated } from 'react-native';
 import io from 'socket.io-client';
 import { theme } from './src/styles/theme';
 import RoleAvatar from './components/RoleAvatar';
 import BackgroundWatermark from './components/BackgroundWatermark';
+import RedactedText from './components/RedactedText';
 
 // Force RTL
 I18nManager.forceRTL(true);
@@ -319,7 +320,7 @@ export default function App() {
           <Text style={[styles.title, {marginBottom: 30}]}>اختر دورك</Text>
           
           <ScrollView style={{width: '100%'}} contentContainerStyle={{alignItems: 'center', paddingBottom: 20}}>
-            <TouchableOpacity 
+            <TouchableOpacity activeOpacity={0.7} 
               style={styles.fileButtonContainer} 
               onPress={handleSelectHostRole}
             >
@@ -335,7 +336,7 @@ export default function App() {
               </ImageBackground>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity activeOpacity={0.7} 
               style={styles.fileButtonContainer} 
               onPress={handleSelectPlayerRole}
             >
@@ -348,7 +349,7 @@ export default function App() {
               </ImageBackground>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity activeOpacity={0.7} 
               style={styles.fileButtonContainer} 
               onPress={handleSelectTraining}
             >
@@ -368,15 +369,15 @@ export default function App() {
                 <Text style={styles.modalTitle}>اختر دورك للتدريب</Text>
                 <ScrollView style={{maxHeight: 300, width: '100%'}}>
                   {['WITNESS', 'ARCHITECT', 'DETECTIVE', 'SPY', 'ACCOMPLICE', 'LAWYER', 'TRICKSTER', 'CITIZEN'].map(role => (
-                     <TouchableOpacity key={role} onPress={() => handleStartTutorial(role)} style={styles.modalButton}>
+                     <TouchableOpacity activeOpacity={0.7} key={role} onPress={() => handleStartTutorial(role)} style={styles.modalButton}>
                        <Text style={styles.modalButtonText}>{role}</Text>
                      </TouchableOpacity>
                   ))}
-                  <TouchableOpacity onPress={() => handleStartTutorial(null)} style={[styles.modalButton, {backgroundColor: '#ddd'}]}>
+                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleStartTutorial(null)} style={[styles.modalButton, {backgroundColor: '#ddd'}]}>
                        <Text style={styles.modalButtonText}>عشوائي</Text>
                   </TouchableOpacity>
                 </ScrollView>
-                <TouchableOpacity onPress={() => setTutorialModalVisible(false)} style={styles.cancelButton}>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setTutorialModalVisible(false)} style={styles.cancelButton}>
                   <Text style={styles.cancelButtonText}>إلغاء</Text>
                 </TouchableOpacity>
               </View>
@@ -395,10 +396,10 @@ export default function App() {
           <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
             <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <Text style={styles.title}>إعدادات مدير اللعبة</Text>
-          <TouchableOpacity style={styles.button} onPress={handleCreateRoom}>
+          <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleCreateRoom}>
             <Text style={styles.buttonText}>إنشاء الغرفة</Text>
           </TouchableOpacity>
-          <TouchableOpacity 
+          <TouchableOpacity activeOpacity={0.7} 
             style={[styles.button, {backgroundColor: '#999', marginTop: 10}]} 
             onPress={handleBackToRoleSelect}
           >
@@ -432,7 +433,7 @@ export default function App() {
               ))}
             </View>
 
-            <TouchableOpacity 
+            <TouchableOpacity activeOpacity={0.7} 
               style={[styles.button, {opacity: players.length >= 3 ? 1 : 0.5}]}
               onPress={handleStartGame}
               disabled={players.length < 3}
@@ -440,7 +441,7 @@ export default function App() {
               <Text style={styles.buttonText}>بدء المهمة</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
+            <TouchableOpacity activeOpacity={0.7} 
               style={[styles.button, {marginTop: 10, backgroundColor: '#2F4F4F'}]}
               onPress={() => setTutorialModalVisible(true)}
             >
@@ -454,15 +455,15 @@ export default function App() {
                 <Text style={styles.modalTitle}>اختر دورك للتدريب</Text>
                 <ScrollView style={{maxHeight: 300, width: '100%'}}>
                   {['WITNESS', 'ARCHITECT', 'DETECTIVE', 'SPY', 'ACCOMPLICE', 'LAWYER', 'TRICKSTER', 'CITIZEN'].map(role => (
-                     <TouchableOpacity key={role} onPress={() => handleStartTutorial(role)} style={styles.modalButton}>
+                     <TouchableOpacity activeOpacity={0.7} key={role} onPress={() => handleStartTutorial(role)} style={styles.modalButton}>
                        <Text style={styles.modalButtonText}>{role}</Text>
                      </TouchableOpacity>
                   ))}
-                  <TouchableOpacity onPress={() => handleStartTutorial(null)} style={[styles.modalButton, {backgroundColor: '#ddd'}]}>
+                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleStartTutorial(null)} style={[styles.modalButton, {backgroundColor: '#ddd'}]}>
                        <Text style={styles.modalButtonText}>عشوائي</Text>
                   </TouchableOpacity>
                 </ScrollView>
-                <TouchableOpacity onPress={() => setTutorialModalVisible(false)} style={styles.cancelButton}>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setTutorialModalVisible(false)} style={styles.cancelButton}>
                   <Text style={styles.cancelButtonText}>إلغاء</Text>
                 </TouchableOpacity>
               </View>
@@ -551,7 +552,7 @@ export default function App() {
                 </View>
               ))}
             </View>
-            <TouchableOpacity style={styles.button} onPress={handleNextRound}>
+            <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleNextRound}>
               <Text style={styles.buttonText}>الجولة التالية</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -577,7 +578,7 @@ export default function App() {
                 </View>
               ))}
             </View>
-            <TouchableOpacity style={styles.button} onPress={handleRestart}>
+            <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleRestart}>
               <Text style={styles.buttonText}>لعبة جديدة</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -617,13 +618,13 @@ export default function App() {
             maxLength={4}
           />
           
-          <TouchableOpacity style={styles.button} onPress={handleJoin}>
+          <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleJoin}>
             <Text style={styles.buttonText}>
               {isTutorialFlow ? 'انضمام للتدريب' : 'انضمام للمهمة'}
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity 
+          <TouchableOpacity activeOpacity={0.7} 
             style={[styles.button, {backgroundColor: '#999', marginTop: 10}]} 
             onPress={handleBackToRoleSelect}
           >
@@ -649,7 +650,7 @@ export default function App() {
             <Text style={styles.stamp}>بانتظار القيادة</Text>
           </View>
 
-          <TouchableOpacity 
+          <TouchableOpacity activeOpacity={0.7} 
             style={[styles.button, {marginTop: 30, backgroundColor: '#2F4F4F'}]}
             onPress={() => setTutorialModalVisible(true)}
           >
@@ -662,15 +663,15 @@ export default function App() {
                 <Text style={styles.modalTitle}>اختر دورك للتدريب</Text>
                 <ScrollView style={{maxHeight: 300, width: '100%'}}>
                   {['WITNESS', 'ARCHITECT', 'DETECTIVE', 'SPY', 'ACCOMPLICE', 'LAWYER', 'TRICKSTER', 'CITIZEN'].map(role => (
-                     <TouchableOpacity key={role} onPress={() => handleStartTutorial(role)} style={styles.modalButton}>
+                     <TouchableOpacity activeOpacity={0.7} key={role} onPress={() => handleStartTutorial(role)} style={styles.modalButton}>
                        <Text style={styles.modalButtonText}>{role}</Text>
                      </TouchableOpacity>
                   ))}
-                  <TouchableOpacity onPress={() => handleStartTutorial(null)} style={[styles.modalButton, {backgroundColor: '#ddd'}]}>
+                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleStartTutorial(null)} style={[styles.modalButton, {backgroundColor: '#ddd'}]}>
                        <Text style={styles.modalButtonText}>عشوائي</Text>
                   </TouchableOpacity>
                 </ScrollView>
-                <TouchableOpacity onPress={() => setTutorialModalVisible(false)} style={styles.cancelButton}>
+                <TouchableOpacity activeOpacity={0.7} onPress={() => setTutorialModalVisible(false)} style={styles.cancelButton}>
                   <Text style={styles.cancelButtonText}>إلغاء</Text>
                 </TouchableOpacity>
               </View>
@@ -715,7 +716,7 @@ export default function App() {
                 <View style={{width: '100%', padding: 10, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 5}}>
                     <Text style={{textAlign: 'right', fontWeight: 'bold', color: theme.colors.accentRed}}>{gameTitle}</Text>
                     <Text style={{textAlign: 'right', fontWeight: 'bold'}}>أنت: {roleData?.roleName}</Text>
-                    <Text style={{textAlign: 'right', fontSize: 12}}>{roleData?.info}</Text>
+                    <RedactedText text={roleData?.info} />
                 </View>
              </View>
              <View style={{marginLeft: 10}}>
@@ -740,7 +741,7 @@ export default function App() {
               <Text style={{alignSelf: 'flex-end', marginRight: '10%'}}>{answer.length}/140</Text>
               
               {roleData?.role === 'SPY' && (roleData?.round >= 2 || roleData?.isTutorial) && !abilityUsed && (
-                <TouchableOpacity 
+                <TouchableOpacity activeOpacity={0.7} 
                   style={[styles.button, { backgroundColor: theme.colors.accentYellow, marginBottom: 10 }]} 
                   onPress={handleUseAbility}
                 >
@@ -748,7 +749,7 @@ export default function App() {
                 </TouchableOpacity>
               )}
 
-              <TouchableOpacity style={styles.button} onPress={handleSubmitAnswer}>
+              <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleSubmitAnswer}>
                 <Text style={styles.buttonText}>إرسال</Text>
               </TouchableOpacity>
             </>
@@ -819,7 +820,7 @@ export default function App() {
 
             <Text style={styles.sectionTitle}>1. أفضل إجابة (الأكثر إقناعاً)</Text>
             {votingData.answers.map((item) => (
-              <TouchableOpacity 
+              <TouchableOpacity activeOpacity={0.7} 
                 key={item.id} 
                 style={[
                   styles.voteButton, 
@@ -856,7 +857,7 @@ export default function App() {
             <Text style={styles.sectionTitle}>2. من هو الشاهد؟</Text>
             <View style={{flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center'}}>
               {votingData.players.map((player) => (
-                <TouchableOpacity 
+                <TouchableOpacity activeOpacity={0.7} 
                   key={player.id} 
                   style={[styles.playerButton, selectedIdentity === player.id && styles.selectedVote]}
                   onPress={() => setSelectedIdentity(player.id)}
@@ -866,7 +867,7 @@ export default function App() {
               ))}
             </View>
 
-            <TouchableOpacity style={styles.button} onPress={handleSubmitVote}>
+            <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleSubmitVote}>
               <Text style={styles.buttonText}>إرسال التصويت</Text>
             </TouchableOpacity>
           </ScrollView>
@@ -908,7 +909,7 @@ export default function App() {
           <Text style={styles.title}>نهاية اللعبة</Text>
           <Text style={styles.subtitle}>شكراً لمشاركتك</Text>
           
-          <TouchableOpacity style={[styles.button, {backgroundColor: '#666'}]} onPress={handleBackToRoleSelect}>
+          <TouchableOpacity activeOpacity={0.7} style={[styles.button, {backgroundColor: '#666'}]} onPress={handleBackToRoleSelect}>
             <Text style={styles.buttonText}>خروج</Text>
           </TouchableOpacity>
         </View>
@@ -1001,6 +1002,11 @@ const styles = StyleSheet.create({
     shadowRadius: 2,
     elevation: 5,
     borderRadius: 2,
+    transform: [{ scale: 1 }],
+  },
+  buttonPressed: {
+    opacity: 0.8,
+    transform: [{ scale: 0.98 }],
   },
   buttonText: {
     color: '#f4e4bc',
@@ -1145,6 +1151,19 @@ const styles = StyleSheet.create({
     color: 'white',
     fontSize: 8,
     fontWeight: 'bold',
+  },
+  enhancedCard: {
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: theme.colors.accentRed,
+    borderRadius: 4,
+    padding: 15,
+    marginVertical: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   playerCardText: {
     fontSize: 14,
@@ -1336,5 +1355,7 @@ const styles = StyleSheet.create({
 });
 
 AppRegistry.registerComponent('main', () => App);
+
+
 
 

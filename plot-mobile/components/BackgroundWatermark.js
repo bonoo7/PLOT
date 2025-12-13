@@ -7,15 +7,17 @@ export default function BackgroundWatermark() {
   return (
     <View style={styles.container} pointerEvents="none">
       <Text style={[styles.text, { top: '10%', left: '5%', transform: [{ rotate: '-25deg' }] }]}>
-        CONFIDENTIAL
+        سري للغاية
       </Text>
-      <Text style={[styles.text, { top: '40%', right: '-10%', transform: [{ rotate: '45deg' }] }]}>
-        TOP SECRET
+      <Text style={[styles.text, { top: '40%', right: '5%', transform: [{ rotate: '45deg' }] }]}>
+        سري جداً
       </Text>
       <Text style={[styles.text, { bottom: '15%', left: '10%', transform: [{ rotate: '-15deg' }] }]}>
-        RESTRICTED
+        محدود
       </Text>
-      <View style={styles.grid} />
+      <Text style={[styles.text, { top: '60%', left: '15%', transform: [{ rotate: '25deg' }] }]}>
+        سري
+      </Text>
     </View>
   );
 }
@@ -25,21 +27,13 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     zIndex: -1,
     overflow: 'hidden',
-    opacity: 0.08,
+    opacity: 0.12,
   },
   text: {
     position: 'absolute',
-    fontSize: 60,
+    fontSize: 48,
     fontWeight: 'bold',
     color: '#000',
-    width: 500,
+    width: 400,
   },
-  grid: {
-    ...StyleSheet.absoluteFillObject,
-    borderWidth: 1,
-    borderColor: '#000',
-    opacity: 0.1,
-    // Simple grid pattern simulation using borders is hard without many views, 
-    // so we'll just leave it as a subtle overlay or skip complex patterns.
-  }
 });
