@@ -1,0 +1,232 @@
+{
+  "players": {
+    "Uni": {
+      "name": "Uni",
+      "gamesPlayed": 1,
+      "wins": 1,
+      "totalScore": 4000,
+      "rolesPlayed": {
+        "WITNESS": 1
+      }
+    },
+    "Bot 1 🤖": {
+      "name": "Bot 1 🤖",
+      "gamesPlayed": 6,
+      "wins": 0,
+      "totalScore": 4000,
+      "rolesPlayed": {
+        "SPY": 2,
+        "WITNESS": 2,
+        "DETECTIVE": 2
+      }
+    },
+    "Bot 2 🤖": {
+      "name": "Bot 2 🤖",
+      "gamesPlayed": 6,
+      "wins": 1,
+      "totalScore": 8500,
+      "rolesPlayed": {
+        "DETECTIVE": 1,
+        "ARCHITECT": 3,
+        "SPY": 2
+      }
+    },
+    "Bot 3 🤖": {
+      "name": "Bot 3 🤖",
+      "gamesPlayed": 6,
+      "wins": 1,
+      "totalScore": 4000,
+      "rolesPlayed": {
+        "ARCHITECT": 2,
+        "SPY": 2,
+        "DETECTIVE": 1,
+        "WITNESS": 1
+      }
+    },
+    "Nuclei": {
+      "name": "Nuclei",
+      "gamesPlayed": 2,
+      "wins": 1,
+      "totalScore": 3500,
+      "rolesPlayed": {
+        "DETECTIVE": 2
+      }
+    },
+    "Icky": {
+      "name": "Icky",
+      "gamesPlayed": 2,
+      "wins": 1,
+      "totalScore": 3000,
+      "rolesPlayed": {
+        "WITNESS": 2
+      }
+    },
+    "ازسور": {
+      "name": "ازسور",
+      "gamesPlayed": 1,
+      "wins": 0,
+      "totalScore": 1000,
+      "rolesPlayed": {
+        "ARCHITECT": 1
+      }
+    }
+  },
+  "matches": [
+    {
+      "roomCode": "ISEF",
+      "players": [
+        {
+          "name": "Uni",
+          "score": 4000,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 0,
+          "role": "SPY"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 2000,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 0,
+          "role": "ARCHITECT"
+        }
+      ],
+      "timestamp": "2025-12-13T02:09:10.645Z"
+    },
+    {
+      "roomCode": "KLQP",
+      "players": [
+        {
+          "name": "Nuclei",
+          "score": 3500,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 3000,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 3500,
+          "role": "ARCHITECT"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 0,
+          "role": "SPY"
+        }
+      ],
+      "timestamp": "2025-12-13T02:13:46.982Z"
+    },
+    {
+      "roomCode": "KLQP",
+      "players": [
+        {
+          "name": "Nuclei",
+          "score": 0,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 0,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 0,
+          "role": "ARCHITECT"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 0,
+          "role": "SPY"
+        }
+      ],
+      "timestamp": "2025-12-13T02:16:16.385Z"
+    },
+    {
+      "roomCode": "BVDZ",
+      "players": [
+        {
+          "name": "Icky",
+          "score": 3000,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 1000,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 1000,
+          "role": "SPY"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 1000,
+          "role": "ARCHITECT"
+        }
+      ],
+      "timestamp": "2025-12-13T02:18:48.387Z"
+    },
+    {
+      "roomCode": "BVDZ",
+      "players": [
+        {
+          "name": "Icky",
+          "score": 0,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 0,
+          "role": "SPY"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 0,
+          "role": "ARCHITECT"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 0,
+          "role": "DETECTIVE"
+        }
+      ],
+      "timestamp": "2025-12-13T02:19:06.867Z"
+    },
+    {
+      "roomCode": "OSWR",
+      "players": [
+        {
+          "name": "ازسور",
+          "score": 1000,
+          "role": "ARCHITECT"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 0,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 2000,
+          "role": "SPY"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 3000,
+          "role": "WITNESS"
+        }
+      ],
+      "timestamp": "2025-12-13T02:21:56.306Z"
+    }
+  ]
+}

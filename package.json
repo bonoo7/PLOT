@@ -12,5 +12,8 @@
   "devDependencies": {
     "concurrently": "^8.2.2"
   },
-  "private": true
+  "private": true,
+  "dependencies": {
+    "qrcode-terminal": "^0.12.0"
+  }
 }

@@ -12,6 +12,10 @@
         <div class="stamp">سري</div>
         <h1>تسجيل الدخول</h1>
         
+        <div id="header-role" class="hidden" style="position: absolute; top: 10px; left: 10px; background: var(--text-color); color: var(--bg-color); padding: 5px 10px; font-size: 0.8rem; border-radius: 5px; z-index: 100;">
+            الدور: <span id="header-role-name"></span>
+        </div>
+
         <div id="login-screen">
             <input type="text" id="player-name" placeholder="الاسم الحركي" maxlength="12" autocomplete="off">
             <input type="text" id="room-code" placeholder="رمز الغرفة" maxlength="4" style="text-transform: uppercase;" autocomplete="off">
@@ -24,6 +28,27 @@
             <p>أهلاً بالعميل <span id="display-name" style="font-weight: bold;"></span></p>
             <p>الحالة: <span style="color: var(--accent-red);">وضع الاستعداد</span></p>
             <div class="stamp" style="margin-top: 30px; transform: rotate(10deg);">بانتظار القيادة</div>
+            
+            <div id="leader-controls" class="hidden" style="margin-top: 30px; border-top: 1px dashed #000; padding-top: 20px;">
+                <p style="font-weight: bold;">أنت القائد</p>
+                <button id="start-game-btn" style="background-color: var(--accent-red); color: white; margin-bottom: 10px;">بدء المهمة</button>
+                
+                <div style="margin-top: 10px; border: 1px solid #ccc; padding: 10px;">
+                    <p style="margin: 0 0 5px 0;">إعدادات التدريب:</p>
+                    <select id="tutorial-role-select" style="width: 100%; padding: 5px; margin-bottom: 5px;">
+                        <option value="">اختر دورك (عشوائي)</option>
+                        <option value="WITNESS">الشاهد</option>
+                        <option value="ARCHITECT">المهندس</option>
+                        <option value="DETECTIVE">المحقق</option>
+                        <option value="SPY">الجاسوس</option>
+                        <option value="ACCOMPLICE">المتواطئ</option>
+                        <option value="LAWYER">المحامي</option>
+                        <option value="TRICKSTER">المخادع</option>
+                        <option value="CITIZEN">مواطن</option>
+                    </select>
+                    <button id="start-tutorial-btn" style="background-color: var(--text-color); color: white; font-size: 0.9rem; width: 100%;">بدء تدريب (Tutorial)</button>
+                </div>
+            </div>
         </div>
 
         <div id="role-screen" class="hidden">
@@ -37,10 +62,21 @@
         </div>
 
         <div id="drafting-screen" class="hidden">
+            <div id="drafting-info-box" style="background: rgba(0,0,0,0.05); padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; font-size: 0.9rem;">
+                <div style="font-weight: bold; color: var(--accent-red);" id="drafting-game-title"></div>
+                <div>أنت: <span id="drafting-role-name" style="font-weight: bold;"></span></div>
+                <div id="drafting-role-info" style="font-size: 0.85rem; color: #555;"></div>
+            </div>
+
             <div id="timer" style="font-size: 3rem; font-weight: bold; color: var(--accent-red);">90</div>
             <h2>اكتب تبريرك</h2>
             <textarea id="answer-input" rows="4" maxlength="140" placeholder="اكتب قصتك هنا..." style="width: 100%; font-size: 1.2rem; padding: 10px; font-family: 'Courier New';"></textarea>
             <div style="text-align: left; margin-bottom: 10px;"><span id="char-count">0</span>/140</div>
+            
+            <div id="spy-ability-container" class="hidden" style="margin-bottom: 15px;">
+                <button id="spy-btn" style="background-color: var(--accent-yellow); color: var(--text-color);">👁️ عين الصقر</button>
+            </div>
+
             <button id="submit-btn">إرسال</button>
         </div>
 
@@ -70,6 +106,34 @@
             <h2>النتائج</h2>
             <p>انظر للشاشة الرئيسية</p>
         </div>
+
+        <div id="end-screen" class="hidden">
+            <div class="stamp">انتهت المهمة</div>
+            <h2>شكراً لمشاركتك</h2>
+            
+            <div id="end-leader-controls" class="hidden" style="margin-top: 20px; border-top: 1px dashed #000; padding-top: 20px;">
+                <p style="font-weight: bold;">أنت القائد</p>
+                <button id="end-start-game-btn" style="background-color: var(--accent-red); color: white; margin-bottom: 10px;">لعبة جديدة</button>
+                
+                <div style="margin-top: 10px; border: 1px solid #ccc; padding: 10px;">
+                    <p style="margin: 0 0 5px 0;">إعدادات التدريب:</p>
+                    <select id="end-tutorial-role-select" style="width: 100%; padding: 5px; margin-bottom: 5px;">
+                        <option value="">اختر دورك (عشوائي)</option>
+                        <option value="WITNESS">الشاهد</option>
+                        <option value="ARCHITECT">المهندس</option>
+                        <option value="DETECTIVE">المحقق</option>
+                        <option value="SPY">الجاسوس</option>
+                        <option value="ACCOMPLICE">المتواطئ</option>
+                        <option value="LAWYER">المحامي</option>
+                        <option value="TRICKSTER">المخادع</option>
+                        <option value="CITIZEN">مواطن</option>
+                    </select>
+                    <button id="end-start-tutorial-btn" style="background-color: var(--text-color); color: white; font-size: 0.9rem; width: 100%;">بدء تدريب (Tutorial)</button>
+                </div>
+            </div>
+
+            <button id="restart-btn" style="margin-top: 20px;">خروج</button>
+        </div>
     </div>
 
     <script>
@@ -83,11 +147,27 @@
         const presentationScreen = document.getElementById('presentation-screen');
         const votingScreen = document.getElementById('voting-screen');
         const resultsScreen = document.getElementById('results-screen');
+        const endScreen = document.getElementById('end-screen');
+        
+        const headerRole = document.getElementById('header-role');
+        const headerRoleName = document.getElementById('header-role-name');
         
         const joinBtn = document.getElementById('join-btn');
         const submitBtn = document.getElementById('submit-btn');
         const voteBtn = document.getElementById('vote-btn');
+        const spyBtn = document.getElementById('spy-btn');
+        const restartBtn = document.getElementById('restart-btn');
         
+        // Leader Controls
+        const leaderControls = document.getElementById('leader-controls');
+        const startGameBtn = document.getElementById('start-game-btn');
+        const startTutorialBtn = document.getElementById('start-tutorial-btn');
+        
+        const endLeaderControls = document.getElementById('end-leader-controls');
+        const endStartGameBtn = document.getElementById('end-start-game-btn');
+        const endStartTutorialBtn = document.getElementById('end-start-tutorial-btn');
+        const endTutorialRoleSelect = document.getElementById('end-tutorial-role-select');
+
         const nameInput = document.getElementById('player-name');
         const codeInput = document.getElementById('room-code');
         const answerInput = document.getElementById('answer-input');
@@ -102,10 +182,20 @@
         
         const qualityVotesContainer = document.getElementById('quality-votes');
         const identityVotesContainer = document.getElementById('identity-votes');
+        const spyAbilityContainer = document.getElementById('spy-ability-container');
+
+        const draftingGameTitle = document.getElementById('drafting-game-title');
+        const draftingRoleName = document.getElementById('drafting-role-name');
+        const draftingRoleInfo = document.getElementById('drafting-role-info');
 
         let currentRoomCode = '';
         let selectedQuality = null;
         let selectedIdentity = null;
+        let myRole = null;
+        let myRound = 0;
+        let abilityUsed = false;
+        let isLeader = false;
+        let currentGameTitle = '';
 
         joinBtn.addEventListener('click', () => {
             const name = nameInput.value.trim();
@@ -142,8 +232,39 @@
             submittedScreen.classList.remove('hidden'); // Reuse submitted screen
         });
 
+        spyBtn.addEventListener('click', () => {
+            if (myRole === 'SPY' && !abilityUsed) {
+                socket.emit('useAbility', { roomCode: currentRoomCode, abilityType: 'EAGLE_EYE' });
+            }
+        });
+
+        restartBtn.addEventListener('click', () => {
+            location.reload();
+        });
+
+        startGameBtn.addEventListener('click', () => {
+            socket.emit('startGame');
+        });
+
+        startTutorialBtn.addEventListener('click', () => {
+            const role = tutorialRoleSelect.value;
+            socket.emit('startTutorial', role || null);
+        });
+
+        endStartGameBtn.addEventListener('click', () => {
+            socket.emit('startGame');
+        });
+
+        endStartTutorialBtn.addEventListener('click', () => {
+            const role = endTutorialRoleSelect.value;
+            socket.emit('startTutorial', role || null);
+        });
+
         answerInput.addEventListener('input', () => {
-            charCount.textContent = answerInput.value.length;
+            const text = answerInput.value;
+            charCount.textContent = text.length;
+            // Sync draft
+            socket.emit('updateDraft', { roomCode: currentRoomCode, draft: text });
         });
 
         socket.on('joinedRoom', (data) => {
@@ -151,22 +272,56 @@
             waitingScreen.classList.remove('hidden');
             displayName.textContent = nameInput.value;
             errorMsg.textContent = "";
+            
+            if (data.isLeader) {
+                isLeader = true;
+                leaderControls.classList.remove('hidden');
+            }
+        });
+
+        socket.on('gameStarted', (data) => {
+            // Reset state
+            currentGameTitle = data.title;
+            answerInput.value = '';
+            selectedQuality = null;
+            selectedIdentity = null;
+            abilityUsed = false;
+            resultsScreen.classList.add('hidden');
+            endScreen.classList.add('hidden');
         });
 
         socket.on('roleAssigned', (data) => {
             waitingScreen.classList.add('hidden');
             roleScreen.classList.remove('hidden');
             
+            myRole = data.role;
+            myRound = data.round;
+            
             roleName.textContent = data.roleName;
             roleDesc.textContent = data.description;
             roleInfo.textContent = data.info;
+
+            // Show persistent role header
+            headerRole.classList.remove('hidden');
+            headerRoleName.textContent = data.roleName;
         });
 
         socket.on('startDrafting', ({ duration }) => {
             roleScreen.classList.add('hidden');
             draftingScreen.classList.remove('hidden');
             timerDisplay.textContent = duration;
-            answerInput.value = '';
+            
+            // Update Info Box
+            draftingGameTitle.textContent = currentGameTitle;
+            draftingRoleName.textContent = roleName.textContent;
+            draftingRoleInfo.textContent = roleInfo.textContent;
+
+            // Show Spy Ability if applicable
+            if (myRole === 'SPY' && myRound >= 1) { // Round 1 for testing
+                spyAbilityContainer.classList.remove('hidden');
+            } else {
+                spyAbilityContainer.classList.add('hidden');
+            }
         });
 
         socket.on('timerUpdate', (time) => {
@@ -185,22 +340,45 @@
             
             // Render Quality Votes
             qualityVotesContainer.innerHTML = '';
+            
+            // Show Detective Hint
+            if (myRole === 'DETECTIVE' && myRound >= 1 && !abilityUsed) {
+                const hint = document.createElement('p');
+                hint.textContent = "🕵️ اضغط مرتين (Double Click) على إجابة لاستجواب صاحبها";
+                hint.style.color = "var(--accent-red)";
+                hint.style.fontWeight = "bold";
+                qualityVotesContainer.appendChild(hint);
+            }
+
             data.answers.forEach(item => {
                 const btn = document.createElement('button');
-                btn.textContent = item.answer;
-                btn.className = 'vote-btn'; // Add style later
+                const isMe = item.id === socket.id;
+                
+                btn.textContent = item.answer + (isMe ? ' (أنت)' : '');
+                btn.className = 'vote-btn';
                 btn.style.width = '100%';
                 btn.style.marginBottom = '10px';
-                btn.style.backgroundColor = '#fff';
-                btn.style.color = '#000';
+                btn.style.backgroundColor = isMe ? '#f0f0f0' : '#fff';
+                btn.style.color = isMe ? '#999' : '#000';
                 btn.style.border = '1px solid #000';
+                btn.disabled = isMe;
                 
                 btn.onclick = () => {
-                    // Reset styles
-                    Array.from(qualityVotesContainer.children).forEach(c => c.style.backgroundColor = '#fff');
+                    if (isMe) return;
+                    Array.from(qualityVotesContainer.querySelectorAll('button')).forEach(c => c.style.backgroundColor = c.disabled ? '#f0f0f0' : '#fff');
                     btn.style.backgroundColor = '#E1AD01'; // Selected
                     selectedQuality = item.id;
                 };
+
+                // Detective Ability: Double Click to Interrogate
+                btn.ondblclick = () => {
+                    if (myRole === 'DETECTIVE' && myRound >= 1 && !abilityUsed && !isMe) {
+                        if (confirm('هل تريد استجواب هذا المشتبه به؟')) {
+                            socket.emit('useAbility', { roomCode: currentRoomCode, abilityType: 'INTERROGATION', targetId: item.id });
+                        }
+                    }
+                };
+
                 qualityVotesContainer.appendChild(btn);
             });
 
@@ -229,8 +407,31 @@
             resultsScreen.classList.remove('hidden');
         });
 
+        socket.on('gameEnded', () => {
+            resultsScreen.classList.add('hidden');
+            endScreen.classList.remove('hidden');
+            
+            if (isLeader) {
+                endLeaderControls.classList.remove('hidden');
+            }
+        });
+
+        socket.on('abilityResult', (data) => {
+            abilityUsed = true;
+            if (data.type === 'EAGLE_EYE') {
+                alert(`عين الصقر:\n\n"${data.content}"`);
+                spyAbilityContainer.classList.add('hidden');
+            } else if (data.type === 'INTERROGATION') {
+                alert(`نتيجة الاستجواب:\n\n${data.content}`);
+            }
+        });
+
         socket.on('error', (msg) => {
-            errorMsg.textContent = msg;
+            if (msg.includes('نفسك')) {
+                alert(msg);
+            } else {
+                errorMsg.textContent = msg;
+            }
         });
     </script>
 </body>

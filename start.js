@@ -3,6 +3,7 @@
 const { exec } = require('child_process');
 const os = require('os');
 const path = require('path');
+const qrcode = require('qrcode-terminal');
 
 // Get local IP address
 function getLocalIP() {
@@ -23,6 +24,12 @@ console.log('║          🎮 الحبكة - THE PLOT GAME 🎮                
 console.log('╚════════════════════════════════════════════════════════════╝\n');
 console.log(`📱 Server IP Address: ${localIP}`);
 console.log(`📡 Server URL: http://${localIP}:3000\n`);
+
+// Generate QR Code for Mobile App
+const mobileUrl = `exp://${localIP}:8081`; // Default Expo port
+console.log('📱 Scan this QR code with Expo Go App:');
+qrcode.generate(mobileUrl, { small: true });
+console.log(`Or enter URL manually: ${mobileUrl}\n`);
 
 // Start server
 const serverPath = path.join(__dirname, 'server');
