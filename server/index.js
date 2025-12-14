@@ -14,6 +14,11 @@ app.get(['/host.html', '/player.html'], (req, res) => {
     res.redirect('/');
 });
 
+// Handle SPA routing - send index.html for all other routes
+app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
