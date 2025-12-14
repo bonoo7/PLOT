@@ -367,7 +367,8 @@ function calculateScores(room) {
 
     // Add 0 score note for players with no breakdown
     room.players.forEach(p => {
-        if (breakdown[p.id].length === 0) {
+        if (!breakdown[p.id] || breakdown[p.id].length === 0) {
+            if (!breakdown[p.id]) breakdown[p.id] = [];
             breakdown[p.id].push(`لم يحصل على نقاط إضافية`);
         }
     });
