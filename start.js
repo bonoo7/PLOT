@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { exec } = require('child_process');
+const { exec, execSync } = require('child_process');
 const os = require('os');
 const path = require('path');
 const qrcode = require('qrcode-terminal');
@@ -23,7 +23,7 @@ console.log('\n╔════════════════════�
 console.log('║          🎮 الحبكة - THE PLOT GAME 🎮                    ║');
 console.log('╚════════════════════════════════════════════════════════════╝\n');
 console.log(`📱 Server IP Address: ${localIP}`);
-console.log(`📡 Server URL: http://${localIP}:3000\n`);
+console.log(`🌐 Web App URL: http://${localIP}:3000 (Browser)\n`);
 
 // Generate QR Code for Mobile App
 const mobileUrl = `exp://${localIP}:8081`; // Default Expo port
@@ -31,11 +31,21 @@ console.log('📱 Scan this QR code with Expo Go App:');
 qrcode.generate(mobileUrl, { small: true });
 console.log(`Or enter URL manually: ${mobileUrl}\n`);
 
-// Start server
+// Paths
 const serverPath = path.join(__dirname, 'server');
 const clientPath = path.join(__dirname, 'plot-mobile');
 
-console.log('🚀 Starting server...');
+// Build Web App
+console.log('🔨 Building Web App (syncing with Mobile)...');
+try {
+    execSync(`cd "${clientPath}" && npm run build:web`, { stdio: 'inherit' });
+    console.log('✅ Web App built successfully!');
+} catch (error) {
+    console.error('❌ Failed to build Web App:', error.message);
+}
+
+// Start server
+console.log('\n🚀 Starting server...');
 const server = exec(`cd "${serverPath}" && npm start`, (error, stdout, stderr) => {
     if (error) console.error(`Server error: ${error.message}`);
 });
