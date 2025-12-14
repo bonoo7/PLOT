@@ -240,26 +240,32 @@
             results.forEach((p, index) => {
                 const li = document.createElement('li');
                 li.className = 'player-card';
-                li.style.width = '90%';
+                li.style.width = '95%';
                 li.style.display = 'block';
-                li.style.fontSize = '1.2rem';
+                li.style.fontSize = '1rem';
                 li.style.marginBottom = '20px';
-                li.style.padding = '15px';
-                li.style.border = '2px solid #333';
-                li.style.borderRadius = '8px';
-                li.style.backgroundColor = '#f5f5f0';
+                li.style.padding = '20px';
+                li.style.border = '3px solid #333';
+                li.style.borderRadius = '10px';
+                li.style.backgroundColor = '#fafaf5';
                 
                 const breakdownHTML = p.breakdown && p.breakdown.length > 0 
-                    ? p.breakdown.map(item => `<div style="padding: 5px 0; margin-top: 8px; font-size: 1rem; color: #555;">${item}</div>`).join('')
-                    : '<div style="color: #999;">لا توجد نقاط إضافية</div>';
+                    ? p.breakdown.map(item => `<div style="padding: 8px 0; margin: 5px 0; font-size: 0.95rem; color: #333; border-left: 4px solid #2ecc71; padding-left: 10px;">${item}</div>`).join('')
+                    : '<div style="color: #999; padding: 8px;">لا توجد نقاط</div>';
                 
                 li.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                        <span style="font-weight: bold;">#${index + 1} ${p.name} <small style="color: #666;">(${p.role})</small></span>
-                        <span style="font-weight: bold; color: #2ecc71;">+${p.roundScore} (المجموع: ${p.totalScore})</span>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 10px; border-bottom: 2px solid #333;">
+                        <div>
+                            <div style="font-weight: bold; font-size: 1.1rem;">#${index + 1} ${p.name}</div>
+                            <div style="color: #666; font-size: 0.9rem;">${p.role}</div>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-weight: bold; color: #2ecc71; font-size: 1.2rem;">+${p.roundScore}</div>
+                            <div style="color: #666; font-size: 0.9rem;">المجموع: ${p.totalScore}</div>
+                        </div>
                     </div>
-                    <div style="border-top: 1px solid #ddd; padding-top: 10px; margin-top: 10px;">
-                        <div style="font-weight: bold; color: #333; margin-bottom: 8px;">📊 تفصيل النقاط:</div>
+                    <div>
+                        <div style="font-weight: bold; color: #333; margin-bottom: 10px; font-size: 1rem;">📊 كيف حصل على نقاطه:</div>
                         ${breakdownHTML}
                     </div>
                 `;

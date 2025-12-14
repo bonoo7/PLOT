@@ -558,21 +558,26 @@ export default function App() {
             <Text style={styles.title}>نتائج الجولة</Text>
             <View style={styles.resultsList}>
               {results.map((player, index) => (
-                <View key={index} style={[styles.resultCard, {borderWidth: 2, borderColor: '#333', padding: 15, marginBottom: 15}]}>
-                  <View style={{marginBottom: 10}}>
+                <View key={index} style={[styles.resultCard, {borderWidth: 3, borderColor: '#333', padding: 15, marginBottom: 15, backgroundColor: '#fafaf5'}]}>
+                  <View style={{marginBottom: 15, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: '#333'}}>
                     <Text style={{fontWeight: 'bold', fontSize: 16}}>#{index + 1} {player.name}</Text>
-                    <Text style={{color: '#666', fontSize: 14}}>({player.role})</Text>
-                    <Text style={{fontWeight: 'bold', color: '#2ecc71', marginTop: 5}}>+{player.roundScore} نقطة (المجموع: {player.totalScore})</Text>
+                    <Text style={{color: '#666', fontSize: 13, marginTop: 5}}>{player.role}</Text>
+                    <View style={{marginTop: 10}}>
+                      <Text style={{fontWeight: 'bold', color: '#2ecc71', fontSize: 18}}>+{player.roundScore}</Text>
+                      <Text style={{color: '#666', fontSize: 12}}>المجموع: {player.totalScore}</Text>
+                    </View>
                   </View>
                   
-                  <View style={{borderTopWidth: 1, borderTopColor: '#ddd', paddingTop: 10, marginTop: 10}}>
-                    <Text style={{fontWeight: 'bold', marginBottom: 8}}>📊 تفصيل النقاط:</Text>
+                  <View>
+                    <Text style={{fontWeight: 'bold', marginBottom: 10, fontSize: 14}}>📊 كيف حصل على نقاطه:</Text>
                     {player.breakdown && player.breakdown.length > 0 ? (
                       player.breakdown.map((item, idx) => (
-                        <Text key={idx} style={{color: '#555', fontSize: 13, marginVertical: 4}}>• {item}</Text>
+                        <View key={idx} style={{backgroundColor: '#e8f5e9', padding: 8, marginVertical: 4, borderLeftWidth: 4, borderLeftColor: '#2ecc71', borderRadius: 4}}>
+                          <Text style={{color: '#333', fontSize: 13}}>{item}</Text>
+                        </View>
                       ))
                     ) : (
-                      <Text style={{color: '#999'}}>لا توجد نقاط إضافية</Text>
+                      <Text style={{color: '#999', fontSize: 12}}>لا توجد نقاط</Text>
                     )}
                   </View>
                 </View>
