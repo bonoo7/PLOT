@@ -558,9 +558,23 @@ export default function App() {
             <Text style={styles.title}>نتائج الجولة</Text>
             <View style={styles.resultsList}>
               {results.map((player, index) => (
-                <View key={index} style={styles.resultCard}>
-                  <Text style={{flex: 1}}>#{index + 1} {player.name} ({player.role})</Text>
-                  <Text>+{player.roundScore} (المجموع: {player.totalScore})</Text>
+                <View key={index} style={[styles.resultCard, {borderWidth: 2, borderColor: '#333', padding: 15, marginBottom: 15}]}>
+                  <View style={{marginBottom: 10}}>
+                    <Text style={{fontWeight: 'bold', fontSize: 16}}>#{index + 1} {player.name}</Text>
+                    <Text style={{color: '#666', fontSize: 14}}>({player.role})</Text>
+                    <Text style={{fontWeight: 'bold', color: '#2ecc71', marginTop: 5}}>+{player.roundScore} نقطة (المجموع: {player.totalScore})</Text>
+                  </View>
+                  
+                  <View style={{borderTopWidth: 1, borderTopColor: '#ddd', paddingTop: 10, marginTop: 10}}>
+                    <Text style={{fontWeight: 'bold', marginBottom: 8}}>📊 تفصيل النقاط:</Text>
+                    {player.breakdown && player.breakdown.length > 0 ? (
+                      player.breakdown.map((item, idx) => (
+                        <Text key={idx} style={{color: '#555', fontSize: 13, marginVertical: 4}}>• {item}</Text>
+                      ))
+                    ) : (
+                      <Text style={{color: '#999'}}>لا توجد نقاط إضافية</Text>
+                    )}
+                  </View>
                 </View>
               ))}
             </View>

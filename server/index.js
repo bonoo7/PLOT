@@ -219,7 +219,11 @@ function startVotingPhase(roomCode) {
 
 function calculateScores(room) {
     const scores = {};
-    room.players.forEach(p => scores[p.id] = 0);
+    const breakdown = {};  // تفصيل النقاط لكل لاعب
+    room.players.forEach(p => {
+        scores[p.id] = 0;
+        breakdown[p.id] = [];  // قائمة بمصادر النقاط
+    });
 
     const witness = room.players.find(p => p.role === 'WITNESS');
     const architect = room.players.find(p => p.role === 'ARCHITECT');
@@ -256,7 +260,9 @@ function calculateScores(room) {
 
     // 1. Logic Vote Points (+1000 per vote)
     for (const [targetId, count] of Object.entries(qualityVotes)) {
-        scores[targetId] += count * 1000;
+        const points = count * 1000;
+        scores[targetId] += points;
+        breakdown[targetId].push(`نقاط الإقناع: +${points} (${count} أصوات)`);
     }
 
     // 2. Deduction Points
@@ -265,17 +271,20 @@ function calculateScores(room) {
     // Detective finds Witness (+2500)
     if (detective && room.votes[detective.id]?.identity === witness?.id) {
         scores[detective.id] += 2500;
+        breakdown[detective.id].push(`💡 الاستنتاج الصحيح (كشف الشاهد): +2500`);
     }
     
     // ✅ FIX: Detective penalty for wrong guess (-500)
     if (detective && room.votes[detective.id]?.identity !== witness?.id) {
         scores[detective.id] -= 500;
+        breakdown[detective.id].push(`⚠️ استنتاج خاطئ: -500`);
     }
 
     // Others find Witness (+500)
     room.players.forEach(p => {
         if (p.role !== 'DETECTIVE' && p.role !== 'WITNESS' && room.votes[p.id]?.identity === witness?.id) {
             scores[p.id] += 500;
+            breakdown[p.id].push(`💡 استنتاج صحيح (عثور على الشاهد): +500`);
         }
     });
 
@@ -284,6 +293,7 @@ function calculateScores(room) {
     const architectVotes = qualityVotes[architect?.id] || 0;
     if (architect && witness && architectVotes > witnessVotes) {
         scores[architect.id] += 1500;
+        breakdown[architect.id].push(`🎭 تفوق على الشاهد: +1500`);
     }
 
     // Witness survives (less than 50% found him)
@@ -292,22 +302,25 @@ function calculateScores(room) {
     
     if (witnessSurvived) {
         scores[witness.id] += 2000;
+        breakdown[witness.id].push(`✅ نجاة من الاكتشاف: +2000`);
     }
 
     // ✅ FIX: Witness penalty when discovered by Detective (-50%)
     if (detective && room.votes[detective.id]?.identity === witness?.id && witness) {
         const witnessRoundScore = scores[witness.id];
-        scores[witness.id] = Math.floor(witnessRoundScore * 0.5);
+        const penalty = Math.floor(witnessRoundScore * 0.5);
+        scores[witness.id] = penalty;
+        breakdown[witness.id].push(`❌ تم اكتشاف الهوية: -50% من النقاط`);
     }
 
     // Accomplice Bonus: If Witness wins quality vote OR survives
     if (accomplice && witness) {
-        // If Witness got most quality votes (or tied for most)
         const maxQualityVotes = Math.max(...Object.values(qualityVotes), 0);
         const witnessWonQuality = witnessVotes === maxQualityVotes && witnessVotes > 0;
 
         if (witnessSurvived || witnessWonQuality) {
             scores[accomplice.id] += 1500;
+            breakdown[accomplice.id].push(`🤝 حماية الشاهد: +1500`);
         }
     }
 
@@ -316,6 +329,7 @@ function calculateScores(room) {
     if (lawyer && lawyer.lawyerClient) {
         if (lawyer.lawyerClient !== accusedId) {
             scores[lawyer.id] += 2000;
+            breakdown[lawyer.id].push(`⚖️ نجاة الموكل: +2000`);
         }
     }
 
@@ -323,33 +337,35 @@ function calculateScores(room) {
     const spyVotes = qualityVotes[spy?.id] || 0;
     if (spy && Math.abs(spyVotes - witnessVotes) <= 1 && spyVotes > 0) {
         scores[spy.id] += 1500;
+        breakdown[spy.id].push(`🕵️ أصوات قريبة من الشاهد: +1500`);
     }
 
     // ✅ FIX: Trickster bonus (was MISSING) - Uses trap word with at least 1 quality vote
     const tricksterVotes = qualityVotes[trickster?.id] || 0;
     if (trickster && tricksterVotes > 0) {
         scores[trickster.id] += 1500;
+        breakdown[trickster.id].push(`😈 كلمة الفخ الناجحة: +1500`);
     }
 
     // ✅ FIX: Citizen bonus corrected from +500 to +1000
     // Citizen: Votes for Witness correctly gets +1000 (instead of +500)
     room.players.forEach(p => {
         if (p.role === 'CITIZEN' && room.votes[p.id]?.identity === witness?.id) {
-            // Remove the +500 that was already added in the generic deduction section
             scores[p.id] -= 500;
-            // Add the correct +1000
             scores[p.id] += 1000;
+            breakdown[p.id].pop();  // إزالة السطر القديم
+            breakdown[p.id].push(`👤 استنتاج صحيح (مواطن): +1000`);
         }
     });
 
-    return scores;
+    return { scores, breakdown };
 }
 
 function endRound(roomCode) {
     const room = rooms[roomCode];
     if (!room) return;
 
-    const roundScores = calculateScores(room);
+    const { scores: roundScores, breakdown } = calculateScores(room);
     
     // Update total scores
     room.players.forEach(p => {
@@ -360,7 +376,8 @@ function endRound(roomCode) {
         name: p.name,
         role: getRoleName(p.role),
         roundScore: roundScores[p.id] || 0,
-        totalScore: p.score
+        totalScore: p.score,
+        breakdown: breakdown[p.id] || []  // إضافة التفصيل
     })).sort((a, b) => b.totalScore - a.totalScore);
 
     io.to(roomCode).emit('roundResults', { results });
