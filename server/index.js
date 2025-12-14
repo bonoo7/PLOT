@@ -226,6 +226,8 @@ function calculateScores(room) {
     const detective = room.players.find(p => p.role === 'DETECTIVE');
     const accomplice = room.players.find(p => p.role === 'ACCOMPLICE');
     const lawyer = room.players.find(p => p.role === 'LAWYER');
+    const spy = room.players.find(p => p.role === 'SPY');
+    const trickster = room.players.find(p => p.role === 'TRICKSTER');
 
     // Count votes
     const qualityVotes = {}; // targetId -> count
@@ -258,9 +260,16 @@ function calculateScores(room) {
     }
 
     // 2. Deduction Points
+    const witnessVotes = qualityVotes[witness?.id] || 0;
+    
     // Detective finds Witness (+2500)
     if (detective && room.votes[detective.id]?.identity === witness?.id) {
         scores[detective.id] += 2500;
+    }
+    
+    // ✅ FIX: Detective penalty for wrong guess (-500)
+    if (detective && room.votes[detective.id]?.identity !== witness?.id) {
+        scores[detective.id] -= 500;
     }
 
     // Others find Witness (+500)
@@ -273,7 +282,6 @@ function calculateScores(room) {
     // 3. Deception Points
     // Architect beats Witness in quality votes (+1500)
     const architectVotes = qualityVotes[architect?.id] || 0;
-    const witnessVotes = qualityVotes[witness?.id] || 0;
     if (architect && witness && architectVotes > witnessVotes) {
         scores[architect.id] += 1500;
     }
@@ -284,6 +292,12 @@ function calculateScores(room) {
     
     if (witnessSurvived) {
         scores[witness.id] += 2000;
+    }
+
+    // ✅ FIX: Witness penalty when discovered by Detective (-50%)
+    if (detective && room.votes[detective.id]?.identity === witness?.id && witness) {
+        const witnessRoundScore = scores[witness.id];
+        scores[witness.id] = Math.floor(witnessRoundScore * 0.5);
     }
 
     // Accomplice Bonus: If Witness wins quality vote OR survives
@@ -297,13 +311,36 @@ function calculateScores(room) {
         }
     }
 
+    // ✅ FIX: Lawyer bonus corrected from +1500 to +2000
     // Lawyer Bonus: If Client is NOT the Accused (most voted)
     if (lawyer && lawyer.lawyerClient) {
-        // If client didn't get the MOST votes (even if they got some)
         if (lawyer.lawyerClient !== accusedId) {
-            scores[lawyer.id] += 1500;
+            scores[lawyer.id] += 2000;
         }
     }
+
+    // ✅ FIX: SPY bonus (was MISSING) - Quality votes close to Witness (difference ≤ 1)
+    const spyVotes = qualityVotes[spy?.id] || 0;
+    if (spy && Math.abs(spyVotes - witnessVotes) <= 1 && spyVotes > 0) {
+        scores[spy.id] += 1500;
+    }
+
+    // ✅ FIX: Trickster bonus (was MISSING) - Uses trap word with at least 1 quality vote
+    const tricksterVotes = qualityVotes[trickster?.id] || 0;
+    if (trickster && tricksterVotes > 0) {
+        scores[trickster.id] += 1500;
+    }
+
+    // ✅ FIX: Citizen bonus corrected from +500 to +1000
+    // Citizen: Votes for Witness correctly gets +1000 (instead of +500)
+    room.players.forEach(p => {
+        if (p.role === 'CITIZEN' && room.votes[p.id]?.identity === witness?.id) {
+            // Remove the +500 that was already added in the generic deduction section
+            scores[p.id] -= 500;
+            // Add the correct +1000
+            scores[p.id] += 1000;
+        }
+    });
 
     return scores;
 }
