@@ -9,14 +9,14 @@
 3. ✅ **Drafting Phase**: كتابة الإجابات (90 ثانية)
 4. ✅ **Presentation Phase**: عرض الإجابات
 5. ✅ **Voting Phase**: التصويت (أفضل إجابة + تخمين الشاهد)
-6. ✅ **Results Phase**: حساب ونشر النتائج
+6. ✅ **Results Phase**: حساب ونشر النتائج مع تفصيل دقيق للنقاط
 7. ✅ **Multi-Round System**: دعم 3 جولات متتالية مع تراكم النقاط وشاشة نهائية
 
 ### التقنيات المستخدمة:
 - **Backend**: Node.js + Express + Socket.io
 - **Database**: JSON File System (Low-latency, NoSQL-like structure)
-- **Frontend (Web)**: HTML5 + CSS3 + JavaScript (Vanilla)
-- **Frontend (Mobile)**: React Native (Expo)
+- **Frontend (Unified)**: React Native (Expo) for both Mobile and Web
+- **Web Support**: React Native Web (Single Codebase)
 - **اللغة**: JavaScript/JSX
 - **الاتصال**: WebSocket (Socket.io)
 
@@ -29,13 +29,12 @@ plot/
 │   ├── database.js                 # نظام تخزين البيانات (JSON)
 │   ├── db.json                     # ملف قاعدة البيانات (يتم إنشاؤه تلقائياً)
 │   ├── package.json
-│   └── /public                     # الملفات الثابتة
-│       ├── host.html              # واجهة الشاشة الرئيسية
-│       ├── player.html            # واجهة اللاعب (ويب)
-│       └── style.css              # التنسيق الموحد
+│   └── /public                     # ملفات الويب المبنية (React Native Web Build)
+│       ├── index.html             # نقطة الدخول للتطبيق
+│       └── /_expo                 # ملفات الجافاسكريبت والأصول
 │
-├── plot-mobile/                    # React Native (Expo)
-│   ├── App.js                     # المكون الرئيسي
+├── plot-mobile/                    # React Native (Expo) - الكود الموحد
+│   ├── App.js                     # المكون الرئيسي (يعمل للويب والجوال)
 │   ├── app.json                   # إعدادات Expo
 │   ├── package.json
 │   ├── /assets
@@ -57,6 +56,15 @@ plot/
     ├── ROADMAP.md               # خطة العمل
     └── الهوية البصرية.md
 ```
+
+## توحيد المنصات (Web & Mobile Unification)
+تم دمج واجهات الويب والجوال في كود واحد باستخدام **React Native Web**.
+- **الكود المصدري:** `plot-mobile/App.js` هو المصدر الوحيد.
+- **البناء للويب:** يتم تحويل الكود إلى HTML/JS ووضعه في `server/public`.
+- **التوجيه (Routing):** الخادم يدعم SPA Routing (توجيه جميع الطلبات إلى `index.html`).
+- **التصميم المتجاوب (Responsive):**
+  - **Portrait (Mobile):** تصميم عمودي ملائم للهواتف.
+  - **Landscape (Web/Tablet):** تصميم أفقي يستغل المساحة، مع حاوية مركزية تحاكي "ملف القضية".
 
 ## بروتوكول الاتصال (Socket.io Events)
 
