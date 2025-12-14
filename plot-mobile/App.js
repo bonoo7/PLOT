@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, I18nManager, AppRegistry, ScrollView, Modal, Image, ImageBackground, Animated, LayoutAnimation, UIManager, Platform } from 'react-native';
+import { registerRootComponent } from 'expo';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, I18nManager, ScrollView, Modal, Image, ImageBackground, Animated, LayoutAnimation, UIManager, Platform } from 'react-native';
 import io from 'socket.io-client';
 import { theme } from './src/styles/theme';
 import RoleAvatar from './components/RoleAvatar';
@@ -7,8 +8,14 @@ import BackgroundWatermark from './components/BackgroundWatermark';
 import RedactedText from './components/RedactedText';
 
 // Force RTL
-I18nManager.forceRTL(true);
-I18nManager.allowRTL(true);
+if (Platform.OS !== 'web') {
+  try {
+    I18nManager.forceRTL(true);
+    I18nManager.allowRTL(true);
+  } catch (e) {
+    console.error('RTL Error:', e);
+  }
+}
 
 // Replace with your computer's local IP address
 const SOCKET_URL = Platform.OS === 'web' 
@@ -16,6 +23,8 @@ const SOCKET_URL = Platform.OS === 'web'
   : (__DEV__ ? 'http://192.168.8.19:3000' : 'http://localhost:3000');
 
 export default function App() {
+  console.log('App rendering, Platform:', Platform.OS);
+  
   useEffect(() => {
     if (Platform.OS === 'android') {
       if (UIManager.setLayoutAnimationEnabledExperimental && !global.nativeFabricUIManager) {
@@ -967,6 +976,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 20,
+    minHeight: Platform.OS === 'web' ? '100vh' : undefined,
   },
   paperContainer: {
     width: '100%',
@@ -1413,7 +1423,7 @@ const styles = StyleSheet.create({
   },
 });
 
-AppRegistry.registerComponent('main', () => App);
+registerRootComponent(App);
 
 
 
