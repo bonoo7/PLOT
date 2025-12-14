@@ -387,13 +387,21 @@ function endRound(roomCode) {
         p.score += (roundScores[p.id] || 0);
     });
 
-    const results = room.players.map(p => ({
-        name: p.name,
-        role: getRoleName(p.role),
-        roundScore: roundScores[p.id] || 0,
-        totalScore: p.score,
-        breakdown: breakdown[p.id] || []  // التفصيل الكامل
-    })).sort((a, b) => b.totalScore - a.totalScore);
+    const results = room.players.map(p => {
+        // Ensure breakdown is valid
+        let playerBreakdown = breakdown[p.id];
+        if (!playerBreakdown || !Array.isArray(playerBreakdown) || playerBreakdown.length === 0) {
+            playerBreakdown = ["لم يحصل على نقاط إضافية"];
+        }
+
+        return {
+            name: p.name,
+            role: getRoleName(p.role),
+            roundScore: roundScores[p.id] || 0,
+            totalScore: p.score,
+            breakdown: playerBreakdown
+        };
+    }).sort((a, b) => b.totalScore - a.totalScore);
 
     io.to(roomCode).emit('roundResults', { results });
     room.state = 'RESULTS';
