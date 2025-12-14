@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { registerRootComponent } from 'expo';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, I18nManager, ScrollView, Modal, Image, ImageBackground, Animated, LayoutAnimation, UIManager, Platform } from 'react-native';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, I18nManager, ScrollView, Modal, Image, ImageBackground, Animated, LayoutAnimation, UIManager, Platform, useWindowDimensions } from 'react-native';
 import io from 'socket.io-client';
 import { theme } from './src/styles/theme';
 import RoleAvatar from './components/RoleAvatar';
@@ -25,6 +25,29 @@ const SOCKET_URL = Platform.OS === 'web'
 export default function App() {
   console.log('App rendering, Platform:', Platform.OS);
   
+  const { width, height } = useWindowDimensions();
+  const isLandscape = width > height;
+
+  // Responsive Styles
+  const responsiveStyles = {
+    paperContainer: {
+      width: isLandscape ? (width > 1000 ? '50%' : '70%') : '100%',
+      maxWidth: 800,
+      alignSelf: 'center',
+    },
+    menuContent: {
+      flexDirection: isLandscape ? 'row' : 'column',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      alignItems: 'center',
+    },
+    fileButtonContainer: {
+      width: isLandscape ? '45%' : '90%',
+      margin: isLandscape ? 10 : 0,
+      marginBottom: 20,
+    }
+  };
+
   useEffect(() => {
     if (Platform.OS === 'android') {
       if (UIManager.setLayoutAnimationEnabledExperimental && !global.nativeFabricUIManager) {
@@ -343,10 +366,10 @@ export default function App() {
         <View style={{flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 40, width: '100%'}}>
           <Text style={[styles.title, {marginBottom: 30, color: '#f4e4bc'}]}>اختر دورك</Text>
           
-          <View style={styles.menuContainer}>
-            <ScrollView style={{width: '100%'}} contentContainerStyle={{alignItems: 'center', paddingVertical: 20}}>
+          <View style={[styles.menuContainer, isLandscape && { width: '80%', maxWidth: 900 }]}>
+            <ScrollView style={{width: '100%'}} contentContainerStyle={responsiveStyles.menuContent}>
               <TouchableOpacity activeOpacity={0.7} 
-                style={styles.fileButtonContainer} 
+                style={[styles.fileButtonContainer, responsiveStyles.fileButtonContainer]} 
                 onPress={handleSelectHostRole}
               >
                 <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="stretch">
@@ -361,7 +384,7 @@ export default function App() {
               </TouchableOpacity>
 
               <TouchableOpacity activeOpacity={0.7} 
-                style={styles.fileButtonContainer} 
+                style={[styles.fileButtonContainer, responsiveStyles.fileButtonContainer]} 
                 onPress={handleSelectPlayerRole}
               >
                 <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="stretch">
@@ -373,7 +396,7 @@ export default function App() {
               </TouchableOpacity>
 
               <TouchableOpacity activeOpacity={0.7} 
-                style={styles.fileButtonContainer} 
+                style={[styles.fileButtonContainer, responsiveStyles.fileButtonContainer]} 
                 onPress={handleSelectTraining}
               >
                 <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="stretch">
@@ -415,7 +438,7 @@ export default function App() {
     return (
       <View style={styles.container}>
         <BackgroundWatermark />
-        <View style={styles.paperContainer}>
+        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
           <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
             <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <Text style={styles.title}>إعدادات مدير اللعبة</Text>
@@ -437,7 +460,7 @@ export default function App() {
     return (
       <View style={styles.container}>
         <BackgroundWatermark />
-        <View style={styles.paperContainer}>
+        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
           <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
             <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <ScrollView contentContainerStyle={{alignItems: 'center', paddingBottom: 20}}>
@@ -501,7 +524,7 @@ export default function App() {
     return (
       <View style={styles.container}>
         <BackgroundWatermark />
-        <View style={styles.paperContainer}>
+        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
           <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
             <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <ScrollView contentContainerStyle={{alignItems: 'center', paddingBottom: 20}}>
@@ -525,7 +548,7 @@ export default function App() {
     return (
       <View style={styles.container}>
         <BackgroundWatermark />
-        <View style={styles.paperContainer}>
+        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
           <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
             <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <ScrollView contentContainerStyle={{alignItems: 'center', paddingBottom: 20}}>
@@ -548,7 +571,7 @@ export default function App() {
     return (
       <View style={styles.container}>
         <BackgroundWatermark />
-        <View style={styles.paperContainer}>
+        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
           <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
             <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <Text style={styles.title}>مرحلة التصويت</Text>
@@ -562,7 +585,7 @@ export default function App() {
     return (
       <View style={styles.container}>
         <BackgroundWatermark />
-        <View style={styles.paperContainer}>
+        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
           <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
             <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <ScrollView contentContainerStyle={{alignItems: 'center', paddingBottom: 20}}>
@@ -614,7 +637,7 @@ export default function App() {
     return (
       <View style={styles.container}>
         <BackgroundWatermark />
-        <View style={styles.paperContainer}>
+        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
           <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
             <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <ScrollView contentContainerStyle={{alignItems: 'center', paddingBottom: 20}}>
@@ -642,7 +665,7 @@ export default function App() {
     return (
       <View style={styles.container}>
         <BackgroundWatermark />
-        <View style={styles.paperContainer}>
+        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
           <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
             <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <View style={styles.stampContainer}>
@@ -688,7 +711,7 @@ export default function App() {
     return (
       <View style={styles.container}>
         <BackgroundWatermark />
-        <View style={styles.paperContainer}>
+        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
           <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
             <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <Text style={styles.title}>تم قبول التصريح</Text>
@@ -735,7 +758,7 @@ export default function App() {
     return (
       <View style={styles.container}>
         <BackgroundWatermark />
-        <View style={styles.paperContainer}>
+        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
           <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
             <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <View style={{alignItems: 'center', marginBottom: 20}}>
@@ -757,7 +780,7 @@ export default function App() {
     return (
       <View style={styles.container}>
         <BackgroundWatermark />
-        <View style={styles.paperContainer}>
+        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
           <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
             <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <View style={{flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10}}>
@@ -816,7 +839,7 @@ export default function App() {
     return (
       <View style={styles.container}>
         <BackgroundWatermark />
-        <View style={styles.paperContainer}>
+        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
           <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
             <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <View style={{position: 'absolute', top: 10, right: 10}}>
@@ -834,7 +857,7 @@ export default function App() {
       return (
         <View style={styles.container}>
           <BackgroundWatermark />
-          <View style={styles.paperContainer}>
+          <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
             <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
             <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
             <View style={{position: 'absolute', top: 10, right: 10}}>
@@ -852,7 +875,7 @@ export default function App() {
     return (
       <View style={styles.container}>
         <BackgroundWatermark />
-        <View style={styles.paperContainer}>
+        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
           <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
             <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <View style={{position: 'absolute', top: 10, right: 10, zIndex: 100}}>
@@ -929,7 +952,7 @@ export default function App() {
     return (
       <View style={styles.container}>
         <BackgroundWatermark />
-        <View style={styles.paperContainer}>
+        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
           <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
             <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <View style={{position: 'absolute', top: 10, right: 10}}>
@@ -946,7 +969,7 @@ export default function App() {
     return (
       <View style={styles.container}>
         <BackgroundWatermark />
-        <View style={styles.paperContainer}>
+        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
           <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
             <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
           <View style={{position: 'absolute', top: 10, right: 10}}>
