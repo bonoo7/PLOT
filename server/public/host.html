@@ -250,7 +250,13 @@
                 li.style.backgroundColor = '#fafaf5';
                 
                 const breakdownHTML = p.breakdown && p.breakdown.length > 0 
-                    ? p.breakdown.map(item => `<div style="padding: 8px 0; margin: 5px 0; font-size: 0.95rem; color: #333; border-left: 4px solid #2ecc71; padding-left: 10px;">${item}</div>`).join('')
+                    ? p.breakdown.map(item => {
+                        const isNegative = item.includes('-') && !item.includes('لم');
+                        const bgColor = isNegative ? '#ffebee' : '#e8f5e9';
+                        const borderColor = isNegative ? '#f44336' : '#2ecc71';
+                        const textColor = isNegative ? '#c62828' : '#1b5e20';
+                        return `<div style="padding: 10px; margin: 5px 0; font-size: 0.95rem; color: ${textColor}; border-left: 4px solid ${borderColor}; padding-left: 10px; background-color: ${bgColor}; font-weight: 500;">${item}</div>`;
+                    }).join('')
                     : '<div style="color: #999; padding: 8px;">لا توجد نقاط</div>';
                 
                 li.innerHTML = `

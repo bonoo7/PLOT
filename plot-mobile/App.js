@@ -571,11 +571,18 @@ export default function App() {
                   <View>
                     <Text style={{fontWeight: 'bold', marginBottom: 10, fontSize: 14}}>📊 كيف حصل على نقاطه:</Text>
                     {player.breakdown && player.breakdown.length > 0 ? (
-                      player.breakdown.map((item, idx) => (
-                        <View key={idx} style={{backgroundColor: '#e8f5e9', padding: 8, marginVertical: 4, borderLeftWidth: 4, borderLeftColor: '#2ecc71', borderRadius: 4}}>
-                          <Text style={{color: '#333', fontSize: 13}}>{item}</Text>
-                        </View>
-                      ))
+                      player.breakdown.map((item, idx) => {
+                        const isNegative = item.includes('-') && !item.includes('لم');
+                        const bgColor = isNegative ? '#ffebee' : '#e8f5e9';
+                        const borderColor = isNegative ? '#f44336' : '#2ecc71';
+                        const textColor = isNegative ? '#c62828' : '#1b5e20';
+                        
+                        return (
+                          <View key={idx} style={{backgroundColor: bgColor, padding: 10, marginVertical: 5, borderLeftWidth: 4, borderLeftColor: borderColor, borderRadius: 4}}>
+                            <Text style={{color: textColor, fontSize: 13, fontWeight: '500'}}>{item}</Text>
+                          </View>
+                        );
+                      })
                     ) : (
                       <Text style={{color: '#999', fontSize: 12}}>لا توجد نقاط</Text>
                     )}
