@@ -9,6 +9,11 @@ const app = express();
 app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Redirect legacy paths to root
+app.get(['/host.html', '/player.html'], (req, res) => {
+    res.redirect('/');
+});
+
 const server = http.createServer(app);
 const io = new Server(server, {
     cors: {

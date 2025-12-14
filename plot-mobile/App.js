@@ -11,7 +11,9 @@ I18nManager.forceRTL(true);
 I18nManager.allowRTL(true);
 
 // Replace with your computer's local IP address
-const SOCKET_URL = __DEV__ ? 'http://192.168.8.19:3000' : 'http://localhost:3000';
+const SOCKET_URL = Platform.OS === 'web' 
+  ? window.location.origin 
+  : (__DEV__ ? 'http://192.168.8.19:3000' : 'http://localhost:3000');
 
 export default function App() {
   useEffect(() => {
