@@ -48,7 +48,7 @@ function getRoleName(role) {
 }
 
 function getRoleDescription(role) {
-     const descs = {
+    const descs = {
         'WITNESS': 'أنت الوحيد الذي يعرف الحقيقة. اكتب تبريراً مقنعاً دون أن تكشف نفسك.',
         'ARCHITECT': 'لديك كلمات مبعثرة. ابنِ كذبة متماسكة لتبدو كأنك تعرف القصة.',
         'DETECTIVE': 'مهمتك كشف الشاهد والمهندس. راقب الإجابات بدقة.',
@@ -73,7 +73,7 @@ function generateRoomCode() {
 function checkDraftingComplete(roomCode) {
     const room = rooms[roomCode];
     if (!room) return;
-    
+
     if (Object.keys(room.answers).length === room.players.length) {
         clearInterval(room.timer);
         startPresentationPhase(roomCode);
@@ -113,18 +113,30 @@ function startDraftingPhase(roomCode) {
 
 function simulateBotDrafting(room, bot) {
     let targetText = "";
+
     if (bot.role === 'WITNESS') {
         targetText = room.currentScenario.story;
     } else if (bot.role === 'ARCHITECT') {
         targetText = `أعتقد أن القصة تتعلق بـ ${room.currentScenario.keywords.join(' و ')}... ربما حدث شيء غريب!`;
+    } else if (bot.role === 'DETECTIVE') {
+        const clues = room.currentScenario.keywords.slice(0, 2).join(' و ');
+        targetText = `بناءً على التحليل، أرى أدلة واضحة على ${clues}. يجب التحقيق أكثر!`;
+    } else if (bot.role === 'SPY') {
+        targetText = `أنا أتابع الأمور بحذر... شيء غريب يحدث هنا. سأراقب بعناية! 👁️`;
+    } else if (bot.role === 'ACCOMPLICE') {
+        targetText = `أنا متفق مع كل شيء قيل هنا. لا شيء مريب... أعتقد!`;
+    } else if (bot.role === 'LAWYER') {
+        targetText = `من الناحية القانونية، لا توجد أدلة واضحة حتى الآن. يجب احترام حقوق الجميع!`;
     } else if (bot.role === 'TRICKSTER') {
-        targetText = `بصراحة، رأيت ${room.currentScenario.tricksterWord} يطير في السماء وكان المنظر مضحكاً جداً!`;
+        targetText = `بصراحة، رأيت ${room.currentScenario.tricksterWord} يطير في السماء وكان المنظر مضحكاً جداً! 😄`;
     } else {
+        // CITIZEN - المواطن العادي
         const excuses = [
             "كنت نائماً وقت الحادث ولا أعرف شيئاً.",
             "سمعت ضجة كبيرة ولكن لم أرَ التفاصيل.",
             "أظن أن الفاعل هرب من النافذة الخلفية.",
-            "لا علاقة لي بهذا الأمر، أنا بريء!"
+            "لا علاقة لي بهذا الأمر، أنا بريء!",
+            "كنت في مكان آخر تماماً، لم أشهد شيئاً."
         ];
         targetText = excuses[Math.floor(Math.random() * excuses.length)];
     }
@@ -132,7 +144,7 @@ function simulateBotDrafting(room, bot) {
     // Simulate typing
     let charIndex = 0;
     const typingSpeed = 50 + Math.random() * 100; // Random speed
-    
+
     const typingInterval = setInterval(() => {
         if (charIndex < targetText.length) {
             if (!room.drafts[bot.id]) room.drafts[bot.id] = "";
@@ -156,19 +168,19 @@ function simulateBotDrafting(room, bot) {
 function startPresentationPhase(roomCode) {
     const room = rooms[roomCode];
     if (!room) return;
-    
+
     room.state = 'PRESENTATION';
     io.to(roomCode).emit('startPresentation');
-    
+
     // Send answers to host
     const answersList = room.players.map(p => ({
         playerId: p.id,
         playerName: p.name,
         answer: room.answers[p.id] || "لم يكتب شيئاً..."
     }));
-    
+
     io.to(room.hostId).emit('receiveAnswers', answersList);
-    
+
     // Start Voting Phase after 10 seconds of reading answers
     setTimeout(() => {
         startVotingPhase(roomCode);
@@ -190,7 +202,7 @@ function startVotingPhase(roomCode) {
 
     room.state = 'VOTING';
     room.votes = {}; // { playerId: { quality: targetId, identity: targetId } }
-    
+
     // Send answers list to players for voting (without names for quality vote)
     const anonymousAnswers = room.players.map(p => ({
         id: p.id,
@@ -203,7 +215,7 @@ function startVotingPhase(roomCode) {
         name: p.name
     }));
 
-    io.to(roomCode).emit('startVoting', { 
+    io.to(roomCode).emit('startVoting', {
         answers: anonymousAnswers,
         players: playersList
     });
@@ -216,7 +228,7 @@ function startVotingPhase(roomCode) {
                 // Quality Vote: Random player who is NOT self
                 const otherPlayers = room.players.filter(op => op.id !== p.id);
                 const qualityTarget = otherPlayers[Math.floor(Math.random() * otherPlayers.length)].id;
-                
+
                 // Identity Vote: Random player
                 const identityTarget = room.players[Math.floor(Math.random() * room.players.length)].id;
 
@@ -230,7 +242,7 @@ function startVotingPhase(roomCode) {
 function calculateScores(room) {
     const scores = {};
     const breakdown = {};  // تفصيل النقاط لكل لاعب
-    
+
     // Initialize for all players
     room.players.forEach(p => {
         scores[p.id] = 0;
@@ -281,13 +293,13 @@ function calculateScores(room) {
 
     // 2. Deduction Points
     const witnessVotes = qualityVotes[witness?.id] || 0;
-    
+
     // Detective finds Witness (+2500)
     if (detective && room.votes[detective.id]?.identity === witness?.id) {
         scores[detective.id] += 2500;
         breakdown[detective.id].push(`💡 كشف الشاهد بشكل صحيح: +2500`);
     }
-    
+
     // ✅ FIX: Detective penalty for wrong guess (-500)
     if (detective && room.votes[detective.id]?.identity !== witness?.id) {
         scores[detective.id] -= 500;
@@ -313,7 +325,7 @@ function calculateScores(room) {
     // Witness survives (less than 50% found him)
     const witnessFoundCount = identityVotes[witness?.id] || 0;
     const witnessSurvived = witness && witnessFoundCount < (room.players.length / 2);
-    
+
     if (witnessSurvived) {
         scores[witness.id] += 2000;
         breakdown[witness.id].push(`✅ نجح في الهروب دون اكتشاف: +2000 (${witnessFoundCount} أصوات فقط)`);
@@ -391,7 +403,7 @@ function endRound(roomCode) {
     if (!room) return;
 
     const { scores: roundScores, breakdown } = calculateScores(room);
-    
+
     // Update total scores
     room.players.forEach(p => {
         p.score += (roundScores[p.id] || 0);
@@ -437,26 +449,26 @@ io.on('connection', (socket) => {
     });
 
     // Player joins a room
-    socket.on('joinRoom', ({ roomCode, playerName }) => {
+    socket.on('joinRoom', ({ roomCode, playerName, desiredRole }) => {
         const room = rooms[roomCode.toUpperCase()];
-        
+
         if (room) {
             // Check if player already exists (Reconnection)
             const existingPlayer = room.players.find(p => p.name === playerName);
-            
+
             if (existingPlayer) {
                 // Update socket ID
                 existingPlayer.id = socket.id;
                 existingPlayer.connected = true;
                 socket.join(roomCode.toUpperCase());
-                
+
                 // Notify player they joined
-                socket.emit('joinedRoom', { 
-                    roomCode: roomCode.toUpperCase(), 
+                socket.emit('joinedRoom', {
+                    roomCode: roomCode.toUpperCase(),
                     playerId: socket.id,
-                    isLeader: existingPlayer.isLeader 
+                    isLeader: existingPlayer.isLeader
                 });
-                
+
                 console.log(`${playerName} reconnected to room ${roomCode}`);
 
                 // If game is running, send current state
@@ -511,7 +523,7 @@ io.on('connection', (socket) => {
                             id: p.id,
                             name: p.name
                         }));
-                        socket.emit('startVoting', { 
+                        socket.emit('startVoting', {
                             answers: anonymousAnswers,
                             players: playersList
                         });
@@ -522,35 +534,63 @@ io.on('connection', (socket) => {
 
             // New Player
             const isLeader = room.players.length === 0;
-            
+
             const player = {
                 id: socket.id,
                 name: playerName,
                 score: 0,
-                role: null,
+                role: null, // Will be set later or if desiredRole is present
                 isLeader: isLeader,
                 connected: true
             };
-            
-            room.players.push(player);
-            socket.join(roomCode.toUpperCase());
-            
+
+            // ✅ Handle Training Mode Join Logic
+            if (desiredRole) {
+                console.log(`🎓 Training Mode Join: ${playerName} wants to be ${desiredRole}`);
+                room.isTutorial = true;
+                room.totalRounds = 1;
+                player.role = desiredRole;
+
+                // Add player first
+                room.players.push(player);
+                socket.join(roomCode.toUpperCase());
+
+                // Fill with Bots (Total 8 players)
+                let botCount = 0;
+                while (room.players.length < 8) {
+                    botCount++;
+                    const botId = `bot_${Date.now()}_${botCount}`;
+                    room.players.push({
+                        id: botId,
+                        name: `Bot ${botCount} 🤖`,
+                        score: 0,
+                        role: null, // Will be assigned by startGame
+                        isLeader: false,
+                        connected: true,
+                        isBot: true
+                    });
+                }
+            } else {
+                room.players.push(player);
+                socket.join(roomCode.toUpperCase());
+            }
+
             // Notify player they joined
-            socket.emit('joinedRoom', { 
-                roomCode: roomCode.toUpperCase(), 
+            socket.emit('joinedRoom', {
+                roomCode: roomCode.toUpperCase(),
                 playerId: socket.id,
                 isLeader: isLeader
             });
-            
+
             // Notify host (and everyone in room) about new player
             io.to(roomCode.toUpperCase()).emit('playerJoined', room.players);
-            
-            console.log(`${playerName} joined room ${roomCode}`);
+
+            console.log(`${playerName} joined room ${roomCode} ${desiredRole ? '(Training Mode)' : ''}`);
 
             // Late Join Logic
             if (room.state !== 'LOBBY' && room.state !== 'END') {
                 player.role = 'CITIZEN'; // Assign default role
-                
+
                 // Send game started info
                 socket.emit('gameStarted', {
                     title: room.currentScenario.title,
@@ -575,6 +615,46 @@ io.on('connection', (socket) => {
         }
     });
 
+    // ✅ Fill Room with Bots (Host Action)
+    socket.on('fillBots', () => {
+        // Find room where this socket is host
+        let roomCode = null;
+        let room = null;
+        for (const code in rooms) {
+            if (rooms[code].hostId === socket.id) {
+                roomCode = code;
+                room = rooms[code];
+                break;
+            }
+        }
+
+        if (!room) {
+            socket.emit('error', 'أنت لست مضيفاً لأي غرفة');
+            return;
+        }
+
+        // Fill up to 8 players
+        let botCount = 0;
+        let addedCount = 0;
+        while (room.players.length < 8) {
+            botCount++;
+            addedCount++;
+            const botId = `bot_${Date.now()}_${botCount}`;
+            room.players.push({
+                id: botId,
+                name: `Bot ${botCount} 🤖`,
+                score: 0,
+                role: null,
+                isLeader: false,
+                connected: true,
+                isBot: true
+            });
+        }
+
+        io.to(roomCode).emit('playerJoined', room.players);
+        console.log(`🤖 Added ${addedCount} bots to room ${roomCode} by host request`);
+    });
+
     // Host starts the game
     socket.on('startGame', () => {
         startGameLogic(socket, false);
@@ -588,7 +668,7 @@ io.on('connection', (socket) => {
 
     function startTutorialLogic(socket, desiredRole) {
         console.log('Starting tutorial logic for:', socket.id);
-        
+
         // Always create a new room for tutorial
         const roomCode = generateRoomCode();
         console.log('Generated tutorial room code:', roomCode);
@@ -600,26 +680,15 @@ io.on('connection', (socket) => {
             currentRound: 0,
             totalRounds: 1,
             usedScenarios: [],
-            isTutorial: true
+            isTutorial: true,
+            hostCode: roomCode
         };
         rooms[roomCode] = room;
-        socket.join(roomCode);
-        
-        // Add the user as a player
-        room.players.push({
-            id: socket.id,
-            name: 'المتدرب',
-            score: 0,
-            role: null,
-            isLeader: true,
-            connected: true
-        });
-        
-        console.log(`Created tutorial room ${roomCode} for ${socket.id}. Players: ${room.players.length}`);
+        // socket.join(roomCode); // Do not join socket yet, wait for manual join
 
-        // Add Bots
+        // Add Bots - 7 Bots to make 8 players total
         let botCount = 0;
-        while (room.players.length < 4) {
+        while (room.players.length < 7) {
             botCount++;
             const botId = `bot_${Date.now()}_${botCount}`;
             room.players.push({
@@ -635,23 +704,28 @@ io.on('connection', (socket) => {
 
         // Setup tutorial data
         if (desiredRole) {
+            // We store the socket ID temporarily to map the role when they join
             room.tutorialData = { userId: socket.id, role: desiredRole };
         } else {
             room.tutorialData = null;
         }
 
-        // Start the game immediately
-        console.log('Calling startNewRound for tutorial room:', roomCode);
-        startNewRound(roomCode);
+        // Emit Code to User so they can enter it manually
+        socket.emit('tutorialCreated', {
+            roomCode: roomCode,
+            message: `Tm oluşturuldu. Lütfen kodu girin: ${roomCode}`
+        });
+
+        console.log(`Created tutorial room ${roomCode} with 7 bots. Waiting for user to join.`);
     }
 
     function startGameLogic(socket, isTutorial, desiredRole = null) {
         console.log('Received startGame request from:', socket.id);
-        
+
         // Find room where this socket is host OR leader
         let roomCode = null;
         let room = null;
-        
+
         // Check if host
         for (const code in rooms) {
             if (rooms[code].hostId === socket.id) {
@@ -705,17 +779,17 @@ io.on('connection', (socket) => {
         if (!room) return;
 
         room.currentRound++;
-        
+
         if (room.currentRound > room.totalRounds) {
             endGame(roomCode);
             return;
         }
 
         room.state = 'PLAYING';
-        
+
         // Select random scenario that hasn't been used
         let availableScenarios = scenarios.filter(s => !room.usedScenarios.includes(s.id));
-        
+
         // If Tutorial, use a specific simple scenario if available, or just random
         if (room.isTutorial) {
             // Try to find a simple one or just pick first
@@ -729,19 +803,19 @@ io.on('connection', (socket) => {
             }
             room.currentScenario = availableScenarios[Math.floor(Math.random() * availableScenarios.length)];
         }
-        
+
         room.usedScenarios.push(room.currentScenario.id);
 
         // Assign Roles
         let shuffledPlayers = [...room.players].sort(() => 0.5 - Math.random());
         const roles = ['WITNESS', 'ARCHITECT', 'DETECTIVE'];
-        
+
         // Add more roles if players > 3
         if (shuffledPlayers.length > 3) roles.push('SPY');
         if (shuffledPlayers.length > 4) roles.push('ACCOMPLICE');
         if (shuffledPlayers.length > 5) roles.push('LAWYER');
         if (shuffledPlayers.length > 6) roles.push('TRICKSTER');
-        
+
         while (roles.length < shuffledPlayers.length) {
             roles.push('CITIZEN');
         }
@@ -753,15 +827,15 @@ io.on('connection', (socket) => {
         if (room.isTutorial && room.tutorialData) {
             const { userId, role } = room.tutorialData;
             const targetPlayerIndex = shuffledPlayers.findIndex(p => p.id === userId);
-            
+
             if (targetPlayerIndex !== -1) {
                 // Remove target player from shuffle list temporarily
                 const targetPlayer = shuffledPlayers[targetPlayerIndex];
                 shuffledPlayers.splice(targetPlayerIndex, 1);
-                
+
                 // Assign role to target player
                 targetPlayer.role = role;
-                
+
                 // Remove that role from available roles
                 const roleIndex = roles.indexOf(role);
                 if (roleIndex !== -1) {
@@ -772,7 +846,7 @@ io.on('connection', (socket) => {
 
                 // Shuffle remaining roles
                 shuffledRoles = roles.sort(() => 0.5 - Math.random());
-                
+
                 // Assign roles to others
                 shuffledPlayers.forEach((player, index) => {
                     player.role = shuffledRoles[index];
@@ -803,7 +877,7 @@ io.on('connection', (socket) => {
         // Assign and send data
         shuffledPlayers.forEach((player) => {
             const role = player.role;
-            
+
             // Logic for Lawyer's Client (Random player who is NOT the Lawyer)
             let lawyerClientName = null;
             if (role === 'LAWYER') {
@@ -850,9 +924,9 @@ io.on('connection', (socket) => {
             isTutorial: room.isTutorial,
             roomCode: roomCode
         });
-        
+
         console.log(`Round ${room.currentRound} started in room ${roomCode}`);
-        
+
         // Start Drafting Phase after 5 seconds (to let players read roles)
         setTimeout(() => {
             startDraftingPhase(roomCode);
@@ -880,7 +954,7 @@ io.on('connection', (socket) => {
 
         room.players.forEach(p => {
             const isWinner = p.score === winnerScore && p.score > 0;
-            
+
             // Update player stats
             db.updatePlayerStats(p.name, {
                 score: p.score,
@@ -900,7 +974,7 @@ io.on('connection', (socket) => {
         // Get updated leaderboard
         const leaderboard = db.getLeaderboard();
 
-        io.to(roomCode).emit('gameEnded', { 
+        io.to(roomCode).emit('gameEnded', {
             results: finalResults,
             leaderboard: leaderboard
         });
@@ -917,7 +991,7 @@ io.on('connection', (socket) => {
         const room = rooms[roomCode];
         if (room && room.state === 'DRAFTING') {
             room.answers[socket.id] = answer;
-            
+
             // Notify host
             const player = room.players.find(p => p.id === socket.id);
             if (player) {
@@ -960,15 +1034,15 @@ io.on('connection', (socket) => {
             if (!witness) return;
 
             const witnessDraft = (room.drafts && room.drafts[witness.id]) || "";
-            
+
             // Obfuscate text (replace 30% of characters with *)
             let obfuscated = witnessDraft.split('').map(char => {
                 return Math.random() > 0.7 ? '*' : char;
             }).join('');
 
-            socket.emit('abilityResult', { 
-                type: 'EAGLE_EYE', 
-                content: obfuscated || "الشاهد لم يكتب شيئاً بعد..." 
+            socket.emit('abilityResult', {
+                type: 'EAGLE_EYE',
+                content: obfuscated || "الشاهد لم يكتب شيئاً بعد..."
             });
         } else if (player.role === 'DETECTIVE' && abilityType === 'INTERROGATION') {
             const targetPlayer = room.players.find(p => p.id === targetId);
@@ -978,7 +1052,7 @@ io.on('connection', (socket) => {
             // Logic: Compare target's answer with Scenario keywords
             const targetAnswer = room.answers[targetId] || "";
             const keywords = room.currentScenario.keywords;
-            
+
             let matchCount = 0;
             keywords.forEach(kw => {
                 if (targetAnswer.includes(kw)) matchCount++;
@@ -1012,7 +1086,7 @@ io.on('connection', (socket) => {
             }
 
             room.votes[socket.id] = { quality: qualityVote, identity: identityVote };
-            
+
             // Check if all voted
             checkVotingComplete(roomCode);
         }
@@ -1040,7 +1114,7 @@ io.on('connection', (socket) => {
         for (const code in rooms) {
             const room = rooms[code];
             const player = room.players.find(p => p.id === socket.id);
-            
+
             if (player) {
                 player.connected = false;
                 // We don't remove the player to allow reconnection

@@ -2,12 +2,12 @@ import { Platform } from 'react-native';
 
 export const theme = {
   colors: {
-    background: '#FDF5E6',
-    text: '#1A1A1A',
-    accentRed: '#D32F2F',
-    accentYellow: '#FFC107',
+    background: '#F5F5DC',     // ✅ بيج ورق قديم (كما في الهوية)
+    text: '#2F4F4F',            // ✅ رمادي فحمي (كما في الهوية)
+    accentRed: '#B22222',       // ✅ أحمر باهت (كما في الهوية)
+    accentYellow: '#E1AD01',    // ✅ أصفر خردل (كما في الهوية)
     white: '#FFFFFF',
-    error: '#D32F2F',
+    error: '#B22222',           // ✅ نفس الأحمر
   },
   fonts: {
     main: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
