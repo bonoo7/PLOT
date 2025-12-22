@@ -6,6 +6,7 @@ import { theme } from './src/styles/theme';
 import RoleAvatar from './components/RoleAvatar';
 import BackgroundWatermark from './components/BackgroundWatermark';
 import RedactedText from './components/RedactedText';
+import GlobalLayout from './src/components/GlobalLayout'; // ✅ New Import
 
 // Force RTL
 if (Platform.OS !== 'web') {
@@ -438,11 +439,8 @@ export default function App() {
 
   if (screen === 'ROLE_SELECT') {
     return (
-      <View style={styles.container}>
-        <BackgroundWatermark />
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 40, width: '100%' }}>
-          <Text style={[styles.title, { marginBottom: 30, color: '#f4e4bc' }]}>اختر دورك</Text>
-
+      <GlobalLayout title="تصنيف العملاء" showStamp={false}>
+        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', width: '100%' }}>
           <View style={[styles.menuContainer, isLandscape && { width: '80%', maxWidth: 900 }]}>
             <ScrollView style={{ width: '100%' }} contentContainerStyle={responsiveStyles.menuContent}>
               <TouchableOpacity activeOpacity={0.7}
@@ -507,7 +505,7 @@ export default function App() {
             </View>
           </Modal>
         </View>
-      </View>
+      </GlobalLayout>
     );
   }
 
@@ -559,247 +557,187 @@ export default function App() {
 
   if (screen === 'HOST_LOBBY') {
     return (
-      <View style={styles.container}>
-        <BackgroundWatermark />
-        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
-          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
-          <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
-          <ScrollView contentContainerStyle={{ alignItems: 'center', paddingBottom: 20 }}>
-            <Text style={styles.stamp}>غرفة العمليات</Text>
-            <Text style={styles.screenLabel}>رمز الغرفة</Text>
-            <View style={styles.roomCodeBox}>
-              <Text style={styles.roomCode}>{roomCode}</Text>
-            </View>
+      <GlobalLayout title="غرفة العمليات" showStamp={true}>
+        <ScrollView contentContainerStyle={{ alignItems: 'center', paddingBottom: 20, width: '100%' }}>
+          <Text style={styles.screenLabel}>رمز الغرفة</Text>
+          <View style={styles.roomCodeBox}>
+            <Text style={styles.roomCode}>{roomCode}</Text>
+          </View>
 
-            <Text style={styles.screenLabel}>العملاء المتصلون ({players.length})</Text>
-            <View style={styles.playerList}>
-              {players.map((p, i) => (
-                <View key={i} style={styles.playerCard}>
-                  <Text style={styles.playerCardText}>{p.name}</Text>
-                </View>
-              ))}
-            </View>
+          <Text style={styles.screenLabel}>العملاء المتصلون ({players.length})</Text>
+          <View style={styles.playerList}>
+            {players.map((p, i) => (
+              <View key={i} style={styles.playerCard}>
+                <Text style={styles.playerCardText}>{p.name}</Text>
+              </View>
+            ))}
+          </View>
 
-            <TouchableOpacity activeOpacity={0.7}
-              style={[styles.button, { opacity: players.length >= 3 ? 1 : 0.5 }]}
-              onPress={handleStartGame}
-              disabled={players.length < 3}
-            >
-              <Text style={styles.buttonText}>بدء المهمة</Text>
-            </TouchableOpacity>
+          <TouchableOpacity activeOpacity={0.7}
+            style={[styles.button, { opacity: players.length >= 3 ? 1 : 0.5 }]}
+            onPress={handleStartGame}
+            disabled={players.length < 3}
+          >
+            <Text style={styles.buttonText}>بدء المهمة</Text>
+          </TouchableOpacity>
 
-            <TouchableOpacity activeOpacity={0.7}
-              style={[styles.button, { marginTop: 10, backgroundColor: '#2F4F4F' }]}
-              onPress={handleFillBots}
-            >
-              <Text style={styles.buttonText}>🤖 تعبئة بوتات</Text>
-            </TouchableOpacity>
+          <TouchableOpacity activeOpacity={0.7}
+            style={[styles.button, { marginTop: 10, backgroundColor: '#2F4F4F' }]}
+            onPress={handleFillBots}
+          >
+            <Text style={styles.buttonText}>🤖 تعبئة بوتات</Text>
+          </TouchableOpacity>
 
-            {/* ✅ زر التحقق من كود المضيف */}
-            <TouchableOpacity activeOpacity={0.7}
-              style={[styles.button, { marginTop: 10, backgroundColor: '#E1AD01' }]}
-              onPress={() => setShowHostCodeModal(true)}
-            >
-              <Text style={styles.buttonText}>🔐 التحقق من كود المضيف</Text>
-            </TouchableOpacity>
-          </ScrollView>
+          <TouchableOpacity activeOpacity={0.7}
+            style={[styles.button, { marginTop: 10, backgroundColor: '#E1AD01' }]}
+            onPress={() => setShowHostCodeModal(true)}
+          >
+            <Text style={styles.buttonText}>🔐 التحقق من كود المضيف</Text>
+          </TouchableOpacity>
+        </ScrollView>
 
-          {/* ✅ نموذج التحقق من كود المضيف */}
-          <Modal visible={showHostCodeModal} transparent animationType="slide">
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>🔐 التحقق من كود المضيف</Text>
-                <Text style={{ fontSize: 12, color: '#2F4F4F', textAlign: 'center', marginBottom: 15 }}>
-                  أدخل كود المضيف للتحقق من الهوية
-                </Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="أدخل كود المضيف"
-                  value={hostCodeInput}
-                  onChangeText={setHostCodeInput}
-                  placeholderTextColor="#999"
-                  maxLength={4}
-                />
-                <TouchableOpacity activeOpacity={0.7}
-                  style={[styles.modalButton, { marginTop: 15, backgroundColor: '#E1AD01' }]}
-                  onPress={handleVerifyHostCode}
-                >
-                  <Text style={styles.modalButtonText}>✓ التحقق</Text>
+        {/* Modal stays outside or inside? Inside is fine if absolute positioned, but GlobalLayout has overflow hidden... 
+            Actually Modals in React Native are native and sit on top. So it's fine. 
+        */}
+        <Modal visible={showHostCodeModal} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>🔐 التحقق من كود المضيف</Text>
+              <Text style={{ fontSize: 12, color: '#2F4F4F', textAlign: 'center', marginBottom: 15 }}>
+                أدخل كود المضيف للتحقق من الهوية
+              </Text>
+              <TextInput
+                style={styles.input}
+                placeholder="أدخل كود المضيف"
+                value={hostCodeInput}
+                onChangeText={setHostCodeInput}
+                placeholderTextColor="#999"
+              />
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
+                <TouchableOpacity style={[styles.modalButton, { backgroundColor: '#ccc' }]} onPress={() => setShowHostCodeModal(false)}>
+                  <Text style={styles.buttonText}>إلغاء</Text>
                 </TouchableOpacity>
-                <TouchableOpacity activeOpacity={0.7}
-                  onPress={() => {
-                    setShowHostCodeModal(false);
-                    setHostCodeInput('');
-                  }}
-                  style={styles.cancelButton}
-                >
-                  <Text style={styles.cancelButtonText}>إلغاء</Text>
+                <TouchableOpacity style={[styles.modalButton, { backgroundColor: '#2F4F4F' }]} onPress={handleVerifyHostCode}>
+                  <Text style={styles.buttonText}>تحقق</Text>
                 </TouchableOpacity>
               </View>
             </View>
-          </Modal>
-
-          <Modal visible={tutorialModalVisible} transparent animationType="slide">
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>اختر دورك للتدريب</Text>
-                <ScrollView style={{ maxHeight: 300, width: '100%' }}>
-                  {['WITNESS', 'ARCHITECT', 'DETECTIVE', 'SPY', 'ACCOMPLICE', 'LAWYER', 'TRICKSTER', 'CITIZEN'].map(role => (
-                    <TouchableOpacity activeOpacity={0.7} key={role} onPress={() => handleStartTutorial(role)} style={styles.modalButton}>
-                      <Text style={styles.modalButtonText}>{role}</Text>
-                    </TouchableOpacity>
-                  ))}
-                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleStartTutorial(null)} style={[styles.modalButton, { backgroundColor: '#ddd' }]}>
-                    <Text style={styles.modalButtonText}>عشوائي</Text>
-                  </TouchableOpacity>
-                </ScrollView>
-                <TouchableOpacity activeOpacity={0.7} onPress={() => setTutorialModalVisible(false)} style={styles.cancelButton}>
-                  <Text style={styles.cancelButtonText}>إلغاء</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
-        </View>
-      </View>
+          </View>
+        </Modal>
+      </GlobalLayout>
     );
   }
 
   if (screen === 'HOST_GAME' || screen === 'HOST_DRAFTING') {
     return (
-      <View style={styles.container}>
-        <BackgroundWatermark />
-        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
-          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
-          <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
-          <ScrollView contentContainerStyle={{ alignItems: 'center', paddingBottom: 20 }}>
-            <Text style={styles.title}>{gameTitle}</Text>
-            <Text style={styles.timer}>{timeLeft}</Text>
-            <Text style={styles.subtitle}>جاري كتابة التقارير...</Text>
-            <View style={styles.playerList}>
-              {submittedPlayers.map((name, index) => (
-                <View key={index} style={[styles.playerCard, { backgroundColor: '#e0ffe0' }]}>
-                  <Text style={styles.playerCardText}>{name} ✅</Text>
-                </View>
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-      </View>
+      <GlobalLayout title={gameTitle || "المهمة جارية"} showStamp={false}>
+        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%' }}>
+          <Text style={styles.timer}>{timeLeft}</Text>
+          <Text style={styles.subtitle}>جاري كتابة التقارير...</Text>
+          <View style={styles.playerList}>
+            {submittedPlayers.map((name, index) => (
+              <View key={index} style={[styles.playerCard, { backgroundColor: '#e0ffe0' }]}>
+                <Text style={styles.playerCardText}>{name} ✅</Text>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </GlobalLayout>
     );
   }
 
   if (screen === 'HOST_PRESENTATION') {
     return (
-      <View style={styles.container}>
-        <BackgroundWatermark />
-        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
-          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
-          <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
-          <ScrollView contentContainerStyle={{ alignItems: 'center', paddingBottom: 20 }}>
-            <Text style={styles.title}>التقارير الواردة</Text>
-            <View style={styles.answersList}>
-              {answers.map((item, index) => (
-                <View key={index} style={styles.answerCard}>
+      <GlobalLayout title="التقارير الواردة" showStamp={false}>
+        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%', paddingBottom: 20 }}>
+          <View style={styles.answersList}>
+            {answers.map((item, index) => (
+              <View key={index} style={styles.answerCardSquare}>
+                <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
                   <Text style={styles.answerText}>"{item.answer}"</Text>
-                  <Text style={styles.answerAuthor}>- {item.playerName}</Text>
-                </View>
-              ))}
-            </View>
-          </ScrollView>
-        </View>
-      </View>
+                </ScrollView>
+                <Text style={styles.answerAuthor}>- {item.playerName}</Text>
+              </View>
+            ))}
+          </View>
+        </ScrollView>
+      </GlobalLayout>
     );
   }
 
   if (screen === 'HOST_VOTING') {
     return (
-      <View style={styles.container}>
-        <BackgroundWatermark />
-        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
-          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
-          <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
-          <Text style={styles.title}>مرحلة التصويت</Text>
+      <GlobalLayout title="مرحلة التصويت" showStamp={false}>
+        <View style={{ alignItems: 'center', marginVertical: 20 }}>
           <Text style={styles.subtitle}>العملاء يقومون بالتصويت الآن...</Text>
         </View>
-      </View>
+      </GlobalLayout>
     );
   }
 
   if (screen === 'HOST_RESULTS') {
     return (
-      <View style={styles.container}>
-        <BackgroundWatermark />
-        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
-          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
-          <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
-          <ScrollView contentContainerStyle={{ alignItems: 'center', paddingBottom: 20 }}>
-            <Text style={styles.title}>نتائج الجولة</Text>
-            <View style={styles.resultsList}>
-              {results.map((player, index) => (
-                <View key={index} style={[styles.resultCard, { borderWidth: 3, borderColor: '#333', padding: 15, marginBottom: 15, backgroundColor: '#fafaf5' }]}>
-                  <View style={{ marginBottom: 15, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: '#333' }}>
-                    <Text style={{ fontWeight: 'bold', fontSize: 16 }}>#{index + 1} {player.name}</Text>
-                    <Text style={{ color: '#666', fontSize: 13, marginTop: 5 }}>{player.role}</Text>
-                    <View style={{ marginTop: 10 }}>
-                      <Text style={{ fontWeight: 'bold', color: '#E1AD01', fontSize: 18 }}>+{player.roundScore}</Text>
-                      <Text style={{ color: '#666', fontSize: 12 }}>المجموع: {player.totalScore}</Text>
-                    </View>
-                  </View>
-
-                  <View>
-                    <Text style={{ fontWeight: 'bold', marginBottom: 10, fontSize: 14 }}>📊 كيف حصل على نقاطه:</Text>
-                    {player.breakdown && player.breakdown.length > 0 ? (
-                      player.breakdown.map((item, idx) => {
-                        const isNegative = item.includes('-') && !item.includes('لم');
-                        const bgColor = isNegative ? '#ffebee' : '#e8f5e9';
-                        const borderColor = isNegative ? '#B22222' : '#E1AD01';
-                        const textColor = isNegative ? '#c62828' : '#1b5e20';
-
-                        return (
-                          <View key={idx} style={{ backgroundColor: bgColor, padding: 10, marginVertical: 5, borderLeftWidth: 4, borderLeftColor: borderColor, borderRadius: 4 }}>
-                            <Text style={{ color: textColor, fontSize: 13, fontWeight: '500' }}>{item}</Text>
-                          </View>
-                        );
-                      })
-                    ) : (
-                      <Text style={{ color: '#2F4F4F', fontSize: 12 }}>لا توجد نقاط</Text>
-                    )}
+      <GlobalLayout title="نتائج الجولة" showStamp={false}>
+        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%', paddingBottom: 20 }}>
+          <View style={styles.resultsList}>
+            {results.map((player, index) => (
+              <View key={index} style={[styles.resultCard, { borderWidth: 3, borderColor: '#333', padding: 15, marginBottom: 15, backgroundColor: '#fafaf5' }]}>
+                <View style={{ marginBottom: 15, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: '#333' }}>
+                  <Text style={{ fontWeight: 'bold', fontSize: 16 }}>#{index + 1} {player.name}</Text>
+                  <Text style={{ color: '#666', fontSize: 13, marginTop: 5 }}>{player.role}</Text>
+                  <View style={{ marginTop: 10 }}>
+                    <Text style={{ fontWeight: 'bold', color: '#E1AD01', fontSize: 18 }}>+{player.roundScore}</Text>
+                    <Text style={{ color: '#666', fontSize: 12 }}>المجموع: {player.totalScore}</Text>
                   </View>
                 </View>
-              ))}
-            </View>
-            <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleNextRound}>
-              <Text style={styles.buttonText}>الجولة التالية</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-      </View>
+
+                <View>
+                  <Text style={{ fontWeight: 'bold', marginBottom: 10, fontSize: 14 }}>📊 كيف حصل على نقاطه:</Text>
+                  {player.breakdown && player.breakdown.length > 0 ? (
+                    player.breakdown.map((item, idx) => {
+                      const isNegative = item.includes('-') && !item.includes('لم');
+                      const bgColor = isNegative ? '#ffebee' : '#e8f5e9';
+                      const borderColor = isNegative ? '#B22222' : '#E1AD01';
+                      const textColor = isNegative ? '#c62828' : '#1b5e20';
+
+                      return (
+                        <View key={idx} style={{ backgroundColor: bgColor, padding: 10, marginVertical: 5, borderLeftWidth: 4, borderLeftColor: borderColor, borderRadius: 4 }}>
+                          <Text style={{ color: textColor, fontSize: 13, fontWeight: '500' }}>{item}</Text>
+                        </View>
+                      );
+                    })
+                  ) : (
+                    <Text style={{ color: '#2F4F4F', fontSize: 12 }}>لا توجد نقاط</Text>
+                  )}
+                </View>
+              </View>
+            ))}
+          </View>
+          <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleNextRound}>
+            <Text style={styles.buttonText}>الجولة التالية</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </GlobalLayout>
     );
   }
 
   if (screen === 'HOST_END') {
     return (
-      <View style={styles.container}>
-        <BackgroundWatermark />
-        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
-          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
-          <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
-          <ScrollView contentContainerStyle={{ alignItems: 'center', paddingBottom: 20 }}>
-            <Text style={styles.title}>النتائج النهائية</Text>
-            <View style={styles.resultsList}>
-              {results.map((player, index) => (
-                <View key={index} style={styles.resultCard}>
-                  <Text>{index === 0 ? '🏆 ' : ''} #{index + 1} {player.name}</Text>
-                  <Text>{player.totalScore} نقطة</Text>
-                </View>
-              ))}
-            </View>
-            <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleRestart}>
-              <Text style={styles.buttonText}>لعبة جديدة</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-      </View>
+      <GlobalLayout title="النتائج النهائية" showStamp={true} stampText="انتهت المهمة">
+        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%', paddingBottom: 20 }}>
+          <View style={styles.resultsList}>
+            {results.map((player, index) => (
+              <View key={index} style={styles.resultCard}>
+                <Text>{index === 0 ? '🏆 ' : ''} #{index + 1} {player.name}</Text>
+                <Text>{player.totalScore} نقطة</Text>
+              </View>
+            ))}
+          </View>
+          <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleRestart}>
+            <Text style={styles.buttonText}>لعبة جديدة</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </GlobalLayout>
     );
   }
 
@@ -807,11 +745,8 @@ export default function App() {
 
   if (screen === 'LOGIN') {
     return (
-      <View style={styles.container}>
-        <BackgroundWatermark />
-        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
-          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
-          <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
+      <GlobalLayout title="تسجيل الدخول" showStamp={false}>
+        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%' }}>
           <View style={styles.stampContainer}>
             <Text style={styles.stamp}>سري للغاية</Text>
           </View>
@@ -846,19 +781,15 @@ export default function App() {
           >
             <Text style={styles.buttonText}>رجوع</Text>
           </TouchableOpacity>
-        </View>
-      </View>
+        </ScrollView>
+      </GlobalLayout>
     );
   }
 
   if (screen === 'LOBBY') {
     return (
-      <View style={styles.container}>
-        <BackgroundWatermark />
-        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
-          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
-          <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
-          <Text style={styles.title}>تم قبول التصريح</Text>
+      <GlobalLayout title="تم قبول التصريح" showStamp={true} stampText="بانتظار القيادة">
+        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%' }}>
           <Text style={styles.subtitle}>أهلاً بالعميل {playerName}</Text>
           <Text style={[styles.status, { color: theme.colors.accentRed }]}>وضع الاستعداد</Text>
 
@@ -869,9 +800,7 @@ export default function App() {
             </View>
           )}
 
-          <View style={[styles.stampContainer, { transform: [{ rotate: '10deg' }], marginTop: 50 }]}>
-            <Text style={styles.stamp}>بانتظار القيادة</Text>
-          </View>
+          {/* Existing 'Wait for leader' stamp was removed in favor of GlobalLayout stamp */}
 
           <TouchableOpacity activeOpacity={0.7}
             style={[styles.button, { marginTop: 30, backgroundColor: '#B22222' }]}
@@ -900,41 +829,36 @@ export default function App() {
               </View>
             </View>
           </Modal>
-        </View>
-      </View>
+        </ScrollView>
+      </GlobalLayout>
     );
   }
 
   if (screen === 'GAME' && roleData) {
     return (
-      <View style={styles.container}>
-        <BackgroundWatermark />
-        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
-          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
-          <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
-          <View style={{ alignItems: 'center', marginBottom: 20 }}>
-            <RoleAvatar role={roleData.role} size={120} />
-          </View>
-          <Text style={[styles.roleTitle, { color: theme.colors.accentRed }]}>{roleData.roleName}</Text>
+      <GlobalLayout title="هوية العميل" showStamp={true} stampText="سري للغاية">
+        <View style={{ alignItems: 'center', marginBottom: 20, width: '100%' }}>
+          <RoleAvatar role={roleData.role} size={120} />
+        </View>
+
+        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%' }}>
+          <Text style={[styles.roleTitle, { color: theme.colors.accentRed, textAlign: 'center' }]}>{roleData.roleName}</Text>
           <Text style={styles.roleDesc}>{roleData.description}</Text>
 
           <View style={styles.infoBox}>
             <Text style={styles.infoLabel}>معلومات سرية:</Text>
             <Text style={styles.infoText}>{roleData.info}</Text>
           </View>
-        </View>
-      </View>
+        </ScrollView>
+      </GlobalLayout>
     );
   }
 
   if (screen === 'DRAFTING') {
     return (
-      <View style={styles.container}>
-        <BackgroundWatermark />
-        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
-          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
-          <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+      <GlobalLayout title="تقرير المهمة" showStamp={isSubmitted} stampText="تم الإرسال">
+        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%' }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, width: '100%' }}>
             <View style={{ flex: 1 }}>
               <View style={{ width: '100%', padding: 10, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 5 }}>
                 <Text style={{ textAlign: 'right', fontWeight: 'bold', color: theme.colors.accentRed }}>{gameTitle}</Text>
@@ -977,166 +901,143 @@ export default function App() {
               </TouchableOpacity>
             </>
           ) : (
-            <View style={styles.stampContainer}>
-              <Text style={styles.stamp}>تم الإرسال</Text>
-            </View>
+            <Text style={styles.subtitle}>بانتظار التقارير الأخرى...</Text>
           )}
-        </View>
-      </View>
+        </ScrollView>
+      </GlobalLayout>
     );
   }
 
   if (screen === 'PRESENTATION') {
     return (
-      <View style={styles.container}>
-        <BackgroundWatermark />
-        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
-          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
-          <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
-          <View style={{ position: 'absolute', top: 10, right: 10 }}>
-            <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
+      <GlobalLayout title="وقت المواجهة" showStamp={false}>
+        {/* Avatar floating top right is hard with this layout, putting it inline or removing it for now. 
+              Actually, putting it at top of scroll. */}
+        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%' }}>
+          <View style={{ marginBottom: 20 }}>
+            <RoleAvatar role={roleData?.role} size={80} showLabel={false} />
           </View>
-          <Text style={styles.title}>وقت المواجهة</Text>
           <Text style={styles.subtitle}>انظر للشاشة الرئيسية</Text>
-        </View>
-      </View>
+        </ScrollView>
+      </GlobalLayout>
     );
   }
 
   if (screen === 'VOTING' && votingData) {
     if (isSubmitted) {
       return (
-        <View style={styles.container}>
-          <BackgroundWatermark />
-          <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
-            <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
-            <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
-            <View style={{ position: 'absolute', top: 10, right: 10 }}>
-              <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
-            </View>
-            <View style={styles.stampContainer}>
-              <Text style={styles.stamp}>تم التصويت</Text>
-            </View>
-            <Text style={styles.subtitle}>بانتظار النتائج...</Text>
+        <GlobalLayout title="التصويت" showStamp={true} stampText="تم التصويت">
+          <View style={{ alignItems: 'center', marginVertical: 20 }}>
+            <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
           </View>
-        </View>
+          <Text style={styles.subtitle}>بانتظار النتائج...</Text>
+        </GlobalLayout>
       );
     }
 
     return (
-      <View style={styles.container}>
-        <BackgroundWatermark />
-        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
-          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
-          <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
-          <View style={{ position: 'absolute', top: 10, right: 10, zIndex: 100 }}>
+      <GlobalLayout title="التصويت" showStamp={false}>
+        {/* Avatar Header */}
+        <View style={{ position: 'absolute', top: 10, right: 10, zIndex: 100 }}>
+          {/* Floating avatar might overlap title in Global Layout, better to put it inline or remove. 
+                 I'll remove the absolute floating one and put it inline at top if needed, or skip it to keep UI clean. 
+                 User knows their role. */}
+        </View>
+
+        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%', paddingBottom: 20 }}>
+          <View style={{ marginBottom: 10 }}>
             <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
           </View>
-          <ScrollView contentContainerStyle={{ alignItems: 'center', paddingBottom: 20 }}>
-            <Text style={styles.title}>التصويت</Text>
 
-            {roleData?.role === 'DETECTIVE' && (roleData?.round >= 2 || roleData?.isTutorial) && !abilityUsed && (
-              <Text style={{ color: theme.colors.accentRed, fontWeight: 'bold', marginBottom: 10 }}>
-                🕵️ يمكنك الضغط مطولاً على إجابة لاستجواب صاحبها
+          {roleData?.role === 'DETECTIVE' && (roleData?.round >= 2 || roleData?.isTutorial) && !abilityUsed && (
+            <Text style={{ color: theme.colors.accentRed, fontWeight: 'bold', marginBottom: 10 }}>
+              🕵️ يمكنك الضغط مطولاً على إجابة لاستجواب صاحبها
+            </Text>
+          )}
+
+          <Text style={styles.sectionTitle}>1. أفضل إجابة (الأكثر إقناعاً)</Text>
+          {votingData.answers.map((item) => (
+            <TouchableOpacity activeOpacity={0.7}
+              key={item.id}
+              style={[
+                styles.voteButton,
+                selectedQuality === item.id && styles.selectedVote,
+                item.id === socket.id && styles.disabledVote
+              ]}
+              onPress={() => {
+                if (item.id !== socket.id) {
+                  setSelectedQuality(item.id);
+                } else {
+                  Alert.alert('تنبيه', 'لا يمكنك التصويت لنفسك!');
+                }
+              }}
+              onLongPress={() => {
+                if (roleData?.role === 'DETECTIVE' && (roleData?.round >= 2 || roleData?.isTutorial) && !abilityUsed && item.id !== socket.id) {
+                  Alert.alert(
+                    'استجواب',
+                    'هل تريد استجواب هذا المشتبه به؟',
+                    [
+                      { text: 'إلغاء', style: 'cancel' },
+                      { text: 'نعم', onPress: () => handleInterrogate(item.id) }
+                    ]
+                  );
+                }
+              }}
+              disabled={item.id === socket.id}
+            >
+              <Text style={[styles.voteText, item.id === socket.id && { color: '#2F4F4F' }]}>
+                "{item.answer}"
+                {'\n'}
+                <Text style={{ fontWeight: 'bold', fontSize: 14, color: '#666' }}>- {item.name}</Text>
+                {item.id === socket.id ? ' (أنت)' : ''}
               </Text>
-            )}
+            </TouchableOpacity>
+          ))}
 
-            <Text style={styles.sectionTitle}>1. أفضل إجابة (الأكثر إقناعاً)</Text>
-            {votingData.answers.map((item) => (
+          <Text style={styles.sectionTitle}>2. من هو الشاهد؟</Text>
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }}>
+            {votingData.players.map((player) => (
               <TouchableOpacity activeOpacity={0.7}
-                key={item.id}
-                style={[
-                  styles.voteButton,
-                  selectedQuality === item.id && styles.selectedVote,
-                  item.id === socket.id && styles.disabledVote
-                ]}
-                onPress={() => {
-                  if (item.id !== socket.id) {
-                    setSelectedQuality(item.id);
-                  } else {
-                    Alert.alert('تنبيه', 'لا يمكنك التصويت لنفسك!');
-                  }
-                }}
-                onLongPress={() => {
-                  if (roleData?.role === 'DETECTIVE' && (roleData?.round >= 2 || roleData?.isTutorial) && !abilityUsed && item.id !== socket.id) {
-                    Alert.alert(
-                      'استجواب',
-                      'هل تريد استجواب هذا المشتبه به؟',
-                      [
-                        { text: 'إلغاء', style: 'cancel' },
-                        { text: 'نعم', onPress: () => handleInterrogate(item.id) }
-                      ]
-                    );
-                  }
-                }}
-                disabled={item.id === socket.id}
+                key={player.id}
+                style={[styles.playerButton, selectedIdentity === player.id && styles.selectedVote]}
+                onPress={() => setSelectedIdentity(player.id)}
               >
-                <Text style={[styles.voteText, item.id === socket.id && { color: '#2F4F4F' }]}>
-                  {item.answer} {item.id === socket.id ? '(أنت)' : ''}
-                </Text>
+                <Text style={styles.voteText}>{player.name}</Text>
               </TouchableOpacity>
             ))}
+          </View>
 
-            <Text style={styles.sectionTitle}>2. من هو الشاهد؟</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }}>
-              {votingData.players.map((player) => (
-                <TouchableOpacity activeOpacity={0.7}
-                  key={player.id}
-                  style={[styles.playerButton, selectedIdentity === player.id && styles.selectedVote]}
-                  onPress={() => setSelectedIdentity(player.id)}
-                >
-                  <Text style={styles.voteText}>{player.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleSubmitVote}>
-              <Text style={styles.buttonText}>إرسال التصويت</Text>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-      </View>
+          <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleSubmitVote}>
+            <Text style={styles.buttonText}>إرسال التصويت</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </GlobalLayout>
     );
   }
 
   if (screen === 'RESULTS') {
     return (
-      <View style={styles.container}>
-        <BackgroundWatermark />
-        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
-          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
-          <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
-          <View style={{ position: 'absolute', top: 10, right: 10 }}>
-            <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
-          </View>
-          <Text style={styles.title}>النتائج</Text>
-          <Text style={styles.subtitle}>انظر للشاشة الرئيسية</Text>
+      <GlobalLayout title="النتائج" showStamp={false}>
+        <View style={{ alignItems: 'center', marginVertical: 20 }}>
+          <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
         </View>
-      </View>
+        <Text style={styles.subtitle}>انظر للشاشة الرئيسية</Text>
+      </GlobalLayout>
     );
   }
 
   if (screen === 'END') {
     return (
-      <View style={styles.container}>
-        <BackgroundWatermark />
-        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
-          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
-          <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
-          <View style={{ position: 'absolute', top: 10, right: 10 }}>
-            <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
-          </View>
-          <View style={styles.stampContainer}>
-            <Text style={styles.stamp}>انتهت المهمة</Text>
-          </View>
-          <Text style={styles.title}>نهاية اللعبة</Text>
-          <Text style={styles.subtitle}>شكراً لمشاركتك</Text>
-
-          <TouchableOpacity activeOpacity={0.7} style={[styles.button, { backgroundColor: '#666' }]} onPress={handleBackToRoleSelect}>
-            <Text style={styles.buttonText}>خروج</Text>
-          </TouchableOpacity>
+      <GlobalLayout title="نهاية اللعبة" showStamp={true} stampText="انتهت المهمة">
+        <View style={{ alignItems: 'center', marginVertical: 20 }}>
+          <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
         </View>
-      </View>
+        <Text style={styles.subtitle}>شكراً لمشاركتك</Text>
+
+        <TouchableOpacity activeOpacity={0.7} style={[styles.button, { backgroundColor: '#666', marginTop: 30 }]} onPress={handleBackToRoleSelect}>
+          <Text style={styles.buttonText}>خروج</Text>
+        </TouchableOpacity>
+      </GlobalLayout>
     );
   }
 
@@ -1200,20 +1101,26 @@ const styles = StyleSheet.create({
     textShadowRadius: 2,
   },
   subtitle: {
-    fontSize: 24,
+    fontSize: 22,
+    fontWeight: 'bold',
     color: '#4e342e',
-    marginBottom: 10,
+    marginBottom: 15,
+    textAlign: 'center',
+    lineHeight: 30,
   },
   input: {
     width: '80%',
-    height: 50,
-    borderBottomWidth: 2,
-    borderBottomColor: '#5d4037',
-    fontSize: 20,
+    height: 55,
+    borderBottomWidth: 3,
+    borderBottomColor: '#3e2723',
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+    fontSize: 22,
+    fontWeight: 'bold',
     marginBottom: 20,
     textAlign: 'center',
     color: '#3e2723',
     fontFamily: 'Courier New',
+    borderRadius: 4,
   },
   button: {
     backgroundColor: '#3e2723',
@@ -1268,11 +1175,13 @@ const styles = StyleSheet.create({
     marginBottom: 10,
   },
   roleDesc: {
-    fontSize: 16,
+    fontSize: 18,
+    lineHeight: 26,
     fontStyle: 'italic',
     textAlign: 'center',
     marginBottom: 30,
-    color: theme.colors.text,
+    color: '#2F4F4F',
+    fontWeight: '500',
   },
   infoBox: {
     backgroundColor: 'rgba(0,0,0,0.05)',
@@ -1289,9 +1198,11 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   infoText: {
-    fontSize: 18,
-    textAlign: 'right',
-    lineHeight: 24,
+    fontSize: 20, // Larger
+    fontWeight: 'bold', // Bolder
+    textAlign: 'right', // Arabic alignment
+    lineHeight: 30,
+    color: '#1a1a1a', // Darker black
   },
   roleButton: {
     width: '85%',
@@ -1390,9 +1301,9 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   playerCardText: {
-    fontSize: 14,
+    fontSize: 16,
     color: theme.colors.text,
-    fontWeight: '500',
+    fontWeight: 'bold',
   },
   timer: {
     fontSize: 48,
@@ -1404,20 +1315,40 @@ const styles = StyleSheet.create({
     width: '100%',
     marginVertical: 20,
     gap: 15,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   answerCard: {
     backgroundColor: '#fffcf0',
     borderWidth: 2,
-    borderColor: theme.colors.text,
+    borderColor: '#2F4F4F',
     paddingVertical: 15,
     paddingHorizontal: 20,
     marginVertical: 10,
   },
+  answerCardSquare: {
+    backgroundColor: '#fffcf0',
+    borderWidth: 2,
+    borderColor: '#2F4F4F',
+    width: '45%', // 2 per row
+    aspectRatio: 1, // Square
+    padding: 10,
+    margin: '2.5%',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 0.1,
+    elevation: 3,
+  },
   answerText: {
-    fontSize: 16,
-    color: theme.colors.text,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#2e2e2e',
     marginVertical: 10,
     fontStyle: 'italic',
+    textAlign: 'center',
   },
   answerAuthor: {
     fontSize: 14,

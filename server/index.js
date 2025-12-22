@@ -203,10 +203,11 @@ function startVotingPhase(roomCode) {
     room.state = 'VOTING';
     room.votes = {}; // { playerId: { quality: targetId, identity: targetId } }
 
-    // Send answers list to players for voting (without names for quality vote)
+    // Send answers list to players for voting (WITH NAMES as requested)
     const anonymousAnswers = room.players.map(p => ({
         id: p.id,
-        answer: room.answers[p.id] || "..."
+        answer: room.answers[p.id] || "...",
+        name: p.name // Added name for visibility in voting
     }));
 
     // Send players list for identity vote
