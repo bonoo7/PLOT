@@ -21,7 +21,7 @@ if (Platform.OS !== 'web') {
 // Replace with your computer's local IP address
 const SOCKET_URL = Platform.OS === 'web'
   ? 'http://localhost:3000'  // ✅ تصحيح: الخادم يعمل على 3000، ليس 8081
-  : (__DEV__ ? 'http://192.168.8.19:3000' : 'http://localhost:3000');
+  : (__DEV__ ? 'http://192.168.8.9:3000' : 'http://localhost:3000');
 
 console.log('🌐 SOCKET_URL:', SOCKET_URL, 'Platform:', Platform.OS);
 
@@ -43,10 +43,12 @@ export default function App() {
       flexWrap: 'wrap',
       justifyContent: 'center',
       alignItems: 'center',
+      width: '100%',
     },
     fileButtonContainer: {
-      width: isLandscape ? '45%' : '90%',
-      margin: isLandscape ? 10 : 0,
+      // In landscape: 28% to safely fit 3 items with margins. Portrait: 100% full width.
+      width: isLandscape ? '28%' : '100%',
+      margin: isLandscape ? '2%' : 0,
       marginBottom: 20,
     }
   };
@@ -440,118 +442,116 @@ export default function App() {
   if (screen === 'ROLE_SELECT') {
     return (
       <GlobalLayout title="تصنيف العملاء" showStamp={false}>
-        <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', width: '100%' }}>
-          <View style={[styles.menuContainer, isLandscape && { width: '80%', maxWidth: 900 }]}>
-            <ScrollView style={{ width: '100%' }} contentContainerStyle={responsiveStyles.menuContent}>
-              <TouchableOpacity activeOpacity={0.7}
-                style={[styles.fileButtonContainer, responsiveStyles.fileButtonContainer]}
-                onPress={handleSelectHostRole}
-              >
-                <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="stretch">
-                  <View style={styles.fileContent}>
-                    <Text style={styles.roleButtonTextBlack}>مدير اللعبة</Text>
-                    <Text style={styles.roleButtonSubtextBlack}>أنشئ غرفة وأدر اللعبة</Text>
-                  </View>
-                  <View style={styles.stampContainerSmall}>
-                    <Text style={styles.stampSmall}>سري للغاية</Text>
-                  </View>
-                </ImageBackground>
-              </TouchableOpacity>
+        <View style={{ flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center' }}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            style={{ width: '100%' }}
+            contentContainerStyle={[responsiveStyles.menuContent, { paddingVertical: 10, flexGrow: 1, justifyContent: 'center' }]}
+          >
+            <TouchableOpacity activeOpacity={0.7}
+              style={[styles.fileButtonContainer, responsiveStyles.fileButtonContainer]}
+              onPress={handleSelectHostRole}
+            >
+              <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="contain">
+                <View style={styles.fileContent}>
+                  <Text style={styles.roleButtonTextBlack}>مدير اللعبة</Text>
+                  <Text style={styles.roleButtonSubtextBlack}>أنشئ غرفة وأدر اللعبة</Text>
+                </View>
+                <View style={styles.stampContainerSmall}>
+                  <Text style={styles.stampSmall}>سري للغاية</Text>
+                </View>
+              </ImageBackground>
+            </TouchableOpacity>
 
-              <TouchableOpacity activeOpacity={0.7}
-                style={[styles.fileButtonContainer, responsiveStyles.fileButtonContainer]}
-                onPress={handleSelectPlayerRole}
-              >
-                <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="stretch">
-                  <View style={styles.fileContent}>
-                    <Text style={styles.roleButtonTextBlack}>لاعب</Text>
-                    <Text style={styles.roleButtonSubtextBlack}>انضم إلى غرفة موجودة</Text>
-                  </View>
-                </ImageBackground>
-              </TouchableOpacity>
+            <TouchableOpacity activeOpacity={0.7}
+              style={[styles.fileButtonContainer, responsiveStyles.fileButtonContainer]}
+              onPress={handleSelectPlayerRole}
+            >
+              <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="contain">
+                <View style={styles.fileContent}>
+                  <Text style={styles.roleButtonTextBlack}>لاعب</Text>
+                  <Text style={styles.roleButtonSubtextBlack}>انضم إلى غرفة موجودة</Text>
+                </View>
+              </ImageBackground>
+            </TouchableOpacity>
 
-              <TouchableOpacity activeOpacity={0.7}
-                style={[styles.fileButtonContainer, responsiveStyles.fileButtonContainer]}
-                onPress={handleSelectTraining}
-              >
-                <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="stretch">
-                  <View style={styles.fileContent}>
-                    <Text style={styles.roleButtonTextBlack}>تدريب فردي</Text>
-                    <Text style={styles.roleButtonSubtextBlack}>العب ضد الروبوتات</Text>
-                  </View>
-                </ImageBackground>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
-
-          <Modal visible={tutorialModalVisible} transparent animationType="slide">
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>اختر دورك للتدريب</Text>
-                <ScrollView style={{ maxHeight: 300, width: '100%' }}>
-                  {['WITNESS', 'ARCHITECT', 'DETECTIVE', 'SPY', 'ACCOMPLICE', 'LAWYER', 'TRICKSTER', 'CITIZEN'].map(role => (
-                    <TouchableOpacity activeOpacity={0.7} key={role} onPress={() => handleStartTutorial(role)} style={styles.modalButton}>
-                      <Text style={styles.modalButtonText}>{role}</Text>
-                    </TouchableOpacity>
-                  ))}
-                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleStartTutorial(null)} style={[styles.modalButton, { backgroundColor: '#ddd' }]}>
-                    <Text style={styles.modalButtonText}>عشوائي</Text>
-                  </TouchableOpacity>
-                </ScrollView>
-                <TouchableOpacity activeOpacity={0.7} onPress={() => setTutorialModalVisible(false)} style={styles.cancelButton}>
-                  <Text style={styles.cancelButtonText}>إلغاء</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
+            <TouchableOpacity activeOpacity={0.7}
+              style={[styles.fileButtonContainer, responsiveStyles.fileButtonContainer]}
+              onPress={handleSelectTraining}
+            >
+              <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="contain">
+                <View style={styles.fileContent}>
+                  <Text style={styles.roleButtonTextBlack}>تدريب فردي</Text>
+                  <Text style={styles.roleButtonSubtextBlack}>العب ضد الروبوتات</Text>
+                </View>
+              </ImageBackground>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
+
+        <Modal visible={tutorialModalVisible} transparent animationType="slide">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>اختر دورك للتدريب</Text>
+              <ScrollView style={{ maxHeight: 300, width: '100%' }}>
+                {['WITNESS', 'ARCHITECT', 'DETECTIVE', 'SPY', 'ACCOMPLICE', 'LAWYER', 'TRICKSTER', 'CITIZEN'].map(role => (
+                  <TouchableOpacity activeOpacity={0.7} key={role} onPress={() => handleStartTutorial(role)} style={styles.modalButton}>
+                    <Text style={styles.modalButtonText}>{role}</Text>
+                  </TouchableOpacity>
+                ))}
+                <TouchableOpacity activeOpacity={0.7} onPress={() => handleStartTutorial(null)} style={[styles.modalButton, { backgroundColor: '#ddd' }]}>
+                  <Text style={styles.modalButtonText}>عشوائي</Text>
+                </TouchableOpacity>
+              </ScrollView>
+              <TouchableOpacity activeOpacity={0.7} onPress={() => setTutorialModalVisible(false)} style={styles.cancelButton}>
+                <Text style={styles.cancelButtonText}>إلغاء</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
       </GlobalLayout>
     );
   }
 
   if (screen === 'HOST_SETUP') {
     return (
-      <View style={styles.container}>
-        <BackgroundWatermark />
-        <View style={[styles.paperContainer, responsiveStyles.paperContainer]}>
-          <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
-          <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
-          <Text style={styles.title}>إعدادات مدير اللعبة</Text>
+      <GlobalLayout title="إعدادات المدير" showStamp={false}>
+        <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
+        <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
 
-          <View style={{ backgroundColor: '#F5F5DC', padding: 12, borderRadius: 8, marginBottom: 20, borderLeftWidth: 4, borderLeftColor: '#B22222' }}>
-            <Text style={{ fontSize: 12, color: '#666', marginBottom: 8, textAlign: 'right' }}>
+        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%' }}>
+          <View style={{ backgroundColor: 'rgba(255,255,255,0.5)', padding: 15, borderRadius: 8, marginBottom: 30, width: '80%', borderWidth: 1, borderColor: '#aaa' }}>
+            <Text style={{ fontSize: 14, color: '#666', marginBottom: 8, textAlign: 'right', fontWeight: 'bold' }}>
               📡 حالة الاتصال:
             </Text>
             {socketConnected ? (
-              <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#B22222', textAlign: 'right' }}>
-                ✅ متصل بالخادم
+              <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.accentRed, textAlign: 'right' }}>
+                ✅ مفعل وجاهز
               </Text>
             ) : (
               <>
-                <Text style={{ fontSize: 14, fontWeight: 'bold', color: '#B22222', textAlign: 'right' }}>
+                <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#B22222', textAlign: 'right' }}>
                   ❌ غير متصل
                 </Text>
-                <Text style={{ fontSize: 11, color: '#2F4F4F', marginTop: 5, textAlign: 'right' }}>
+                <Text style={{ fontSize: 12, color: '#2F4F4F', marginTop: 5, textAlign: 'right' }}>
                   الخادم: {SOCKET_URL}
-                </Text>
-                <Text style={{ fontSize: 11, color: '#2F4F4F', marginTop: 3, textAlign: 'right' }}>
-                  جارٍ محاولة الاتصال...
                 </Text>
               </>
             )}
           </View>
 
           <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleCreateRoom}>
-            <Text style={styles.buttonText}>إنشاء الغرفة</Text>
+            <Text style={styles.buttonText}>إنشاء الغرفة (Create Room)</Text>
           </TouchableOpacity>
+
           <TouchableOpacity activeOpacity={0.7}
-            style={[styles.button, { backgroundColor: '#2F4F4F', marginTop: 10 }]}
+            style={[styles.button, { backgroundColor: '#2F4F4F', marginTop: 15 }]}
             onPress={handleBackToRoleSelect}
           >
             <Text style={styles.buttonText}>رجوع</Text>
           </TouchableOpacity>
-        </View>
-      </View>
+        </ScrollView>
+      </GlobalLayout>
     );
   }
 
@@ -653,9 +653,9 @@ export default function App() {
           <View style={styles.answersList}>
             {answers.map((item, index) => (
               <View key={index} style={styles.answerCardSquare}>
-                <ScrollView contentContainerStyle={{ flexGrow: 1, justifyContent: 'center' }}>
-                  <Text style={styles.answerText}>"{item.answer}"</Text>
-                </ScrollView>
+                <View style={{ flex: 1, justifyContent: 'center', width: '100%' }}>
+                  <Text style={styles.answerText} numberOfLines={8} adjustsFontSizeToFit>"{item.answer}"</Text>
+                </View>
                 <Text style={styles.answerAuthor}>- {item.playerName}</Text>
               </View>
             ))}
@@ -837,8 +837,8 @@ export default function App() {
   if (screen === 'GAME' && roleData) {
     return (
       <GlobalLayout title="هوية العميل" showStamp={true} stampText="سري للغاية">
-        <View style={{ alignItems: 'center', marginBottom: 20, width: '100%' }}>
-          <RoleAvatar role={roleData.role} size={120} />
+        <View style={{ alignItems: 'center', marginBottom: 15, width: '100%' }}>
+          <RoleAvatar role={roleData.role} size={100} />
         </View>
 
         <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%' }}>
@@ -937,14 +937,10 @@ export default function App() {
 
     return (
       <GlobalLayout title="التصويت" showStamp={false}>
-        {/* Avatar Header */}
-        <View style={{ position: 'absolute', top: 10, right: 10, zIndex: 100 }}>
-          {/* Floating avatar might overlap title in Global Layout, better to put it inline or remove. 
-                 I'll remove the absolute floating one and put it inline at top if needed, or skip it to keep UI clean. 
-                 User knows their role. */}
-        </View>
-
-        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%', paddingBottom: 20 }}>
+        <ScrollView
+          style={{ width: '100%', flex: 1 }}
+          contentContainerStyle={{ alignItems: 'center', paddingBottom: 40 }}
+        >
           <View style={{ marginBottom: 10 }}>
             <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
           </View>
@@ -955,56 +951,54 @@ export default function App() {
             </Text>
           )}
 
-          <Text style={styles.sectionTitle}>1. أفضل إجابة (الأكثر إقناعاً)</Text>
-          {votingData.answers.map((item) => (
-            <TouchableOpacity activeOpacity={0.7}
-              key={item.id}
-              style={[
-                styles.voteButton,
-                selectedQuality === item.id && styles.selectedVote,
-                item.id === socket.id && styles.disabledVote
-              ]}
-              onPress={() => {
-                if (item.id !== socket.id) {
-                  setSelectedQuality(item.id);
-                } else {
-                  Alert.alert('تنبيه', 'لا يمكنك التصويت لنفسك!');
-                }
-              }}
-              onLongPress={() => {
-                if (roleData?.role === 'DETECTIVE' && (roleData?.round >= 2 || roleData?.isTutorial) && !abilityUsed && item.id !== socket.id) {
-                  Alert.alert(
-                    'استجواب',
-                    'هل تريد استجواب هذا المشتبه به؟',
-                    [
-                      { text: 'إلغاء', style: 'cancel' },
-                      { text: 'نعم', onPress: () => handleInterrogate(item.id) }
-                    ]
-                  );
-                }
-              }}
-              disabled={item.id === socket.id}
-            >
-              <Text style={[styles.voteText, item.id === socket.id && { color: '#2F4F4F' }]}>
-                "{item.answer}"
-                {'\n'}
-                <Text style={{ fontWeight: 'bold', fontSize: 14, color: '#666' }}>- {item.name}</Text>
-                {item.id === socket.id ? ' (أنت)' : ''}
-              </Text>
-            </TouchableOpacity>
-          ))}
-
-          <Text style={styles.sectionTitle}>2. من هو الشاهد؟</Text>
-          <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }}>
-            {votingData.players.map((player) => (
+          <View style={{ width: '90%' }}>
+            <Text style={[styles.sectionTitle, { textAlign: 'center' }]}>1. أفضل إجابة</Text>
+            {votingData.answers.map((item) => (
               <TouchableOpacity activeOpacity={0.7}
-                key={player.id}
-                style={[styles.playerButton, selectedIdentity === player.id && styles.selectedVote]}
-                onPress={() => setSelectedIdentity(player.id)}
+                key={item.id}
+                style={[
+                  styles.voteButton,
+                  selectedQuality === item.id && styles.selectedVote,
+                  item.id === socket.id && styles.disabledVote
+                ]}
+                onPress={() => {
+                  if (item.id !== socket.id) setSelectedQuality(item.id);
+                  else Alert.alert('تنبيه', 'لا يمكنك التصويت لنفسك!');
+                }}
+                onLongPress={() => {
+                  if (roleData?.role === 'DETECTIVE' && (roleData?.round >= 2 || roleData?.isTutorial) && !abilityUsed && item.id !== socket.id) {
+                    Alert.alert(
+                      'استجواب',
+                      'هل تريد استجواب هذا المشتبه به؟',
+                      [{ text: 'إلغاء', style: 'cancel' }, { text: 'نعم', onPress: () => handleInterrogate(item.id) }]
+                    );
+                  }
+                }}
+                disabled={item.id === socket.id}
               >
-                <Text style={styles.voteText}>{player.name}</Text>
+                <Text style={[styles.voteText, item.id === socket.id && { color: '#2F4F4F' }]}>
+                  "{item.answer}"
+                </Text>
+                <Text style={{ fontSize: 12, color: '#666', textAlign: 'right', marginTop: 4 }}>
+                  - {item.name} {item.id === socket.id ? '(أنت)' : ''}
+                </Text>
               </TouchableOpacity>
             ))}
+          </View>
+
+          <View style={{ width: '90%', marginTop: 20 }}>
+            <Text style={[styles.sectionTitle, { textAlign: 'center' }]}>2. من هو الشاهد؟</Text>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }}>
+              {votingData.players.map((player) => (
+                <TouchableOpacity activeOpacity={0.7}
+                  key={player.id}
+                  style={[styles.playerButton, selectedIdentity === player.id && styles.selectedVote]}
+                  onPress={() => setSelectedIdentity(player.id)}
+                >
+                  <Text style={[styles.voteText, { textAlign: 'center', fontSize: 14 }]}>{player.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
           </View>
 
           <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleSubmitVote}>
@@ -1030,7 +1024,7 @@ export default function App() {
     return (
       <GlobalLayout title="نهاية اللعبة" showStamp={true} stampText="انتهت المهمة">
         <View style={{ alignItems: 'center', marginVertical: 20 }}>
-          <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
+          <RoleAvatar role={roleData?.role} size={50} showLabel={false} />
         </View>
         <Text style={styles.subtitle}>شكراً لمشاركتك</Text>
 
@@ -1091,32 +1085,33 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   title: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: 'bold',
     color: '#3e2723',
-    marginBottom: 30,
+    marginBottom: 20,
     fontFamily: 'Courier New',
     textShadowColor: 'rgba(0, 0, 0, 0.1)',
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 2,
+    textAlign: 'center',
   },
   subtitle: {
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 'bold',
     color: '#4e342e',
-    marginBottom: 15,
+    marginBottom: 10,
     textAlign: 'center',
-    lineHeight: 30,
+    lineHeight: 24,
   },
   input: {
-    width: '80%',
-    height: 55,
-    borderBottomWidth: 3,
+    width: '90%',
+    height: 45,
+    borderBottomWidth: 2,
     borderBottomColor: '#3e2723',
     backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    fontSize: 22,
+    fontSize: 18,
     fontWeight: 'bold',
-    marginBottom: 20,
+    marginBottom: 15,
     textAlign: 'center',
     color: '#3e2723',
     fontFamily: 'Courier New',
@@ -1124,9 +1119,9 @@ const styles = StyleSheet.create({
   },
   button: {
     backgroundColor: '#3e2723',
-    paddingVertical: 15,
-    paddingHorizontal: 40,
-    marginTop: 20,
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    marginTop: 15,
     shadowColor: '#000',
     shadowOffset: { width: 2, height: 2 },
     shadowOpacity: 0.5,
@@ -1134,14 +1129,12 @@ const styles = StyleSheet.create({
     elevation: 5,
     borderRadius: 2,
     transform: [{ scale: 1 }],
-  },
-  buttonPressed: {
-    opacity: 0.8,
-    transform: [{ scale: 0.98 }],
+    minWidth: 150,
+    alignItems: 'center',
   },
   buttonText: {
     color: '#f4e4bc',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
     fontFamily: 'Courier New',
   },
@@ -1332,7 +1325,8 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: '#2F4F4F',
     width: '45%', // 2 per row
-    aspectRatio: 1, // Square
+    minHeight: 150, // Allow growth if needed, but flex wrap helps.
+    // aspectRatio: 1, // REMOVE AspectRatio to allow vertical growth for long text
     padding: 10,
     margin: '2.5%',
     alignItems: 'center',
@@ -1343,12 +1337,13 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   answerText: {
-    fontSize: 18,
+    fontSize: 16, // Reduced from 18
     fontWeight: 'bold',
     color: '#2e2e2e',
     marginVertical: 10,
     fontStyle: 'italic',
     textAlign: 'center',
+    flexWrap: 'wrap', // Ensure wrapping
   },
   answerAuthor: {
     fontSize: 14,
@@ -1367,9 +1362,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 15,
     marginVertical: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: 'column', // Changed to column for small screens, or let it wrap
+    width: '100%',
+    alignItems: 'flex-start',
   },
   sectionTitle: {
     fontSize: 20,
@@ -1384,10 +1379,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderWidth: 1,
     borderColor: theme.colors.text,
-    padding: 15,
-    marginBottom: 10,
+    padding: 10,
+    marginBottom: 8,
     width: '100%',
     borderRadius: 5,
+    alignSelf: 'center',
   },
   playerButton: {
     backgroundColor: '#fff',
@@ -1409,9 +1405,12 @@ const styles = StyleSheet.create({
     borderColor: '#ccc',
   },
   voteText: {
-    fontSize: 16,
+    fontSize: 14, // Reduced from 16
     color: theme.colors.text,
     textAlign: 'right',
+    flexWrap: 'wrap',
+    width: '100%',
+    lineHeight: 20, // Better line spacing for reading
   },
   modalOverlay: {
     flex: 1,
@@ -1458,9 +1457,8 @@ const styles = StyleSheet.create({
   },
   fileButtonContainer: {
     width: '90%',
-    height: 160,
-    marginBottom: 20,
-    // ✅ تم إزالة الظل ليبدو نفسه على الويب والجوال
+    height: 120, // Reduced from 160
+    marginBottom: 15,
   },
   fileButtonBackground: {
     width: '100%',
@@ -1471,21 +1469,17 @@ const styles = StyleSheet.create({
   fileContent: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: 20,
+    paddingTop: 10, // Reduced padding
   },
   menuContainer: {
     width: '95%',
-    backgroundColor: '#F5F5DC',                  // ✅ بيج ورق (أفتح من الخلفية)
-    borderRadius: 5,
-    borderWidth: 2,                              // ✅ حد أسمك للتمييز
-    borderColor: '#B22222',                      // ✅ أحمر باهت (للأختام)
-    padding: 15,
-    maxHeight: '80%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 5,
+    backgroundColor: 'rgba(245, 245, 220, 0.6)', // More subtle paper color
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(178, 34, 34, 0.4)',
+    padding: 10,
+    maxHeight: '90%', // More space
+    alignItems: 'center',
   },
   roleButtonTextBlack: {
     fontSize: 16,
@@ -1521,6 +1515,13 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontWeight: '900',
     textTransform: 'uppercase',
+  },
+  roleTitle: {
+    fontSize: 28, // Reduced from 36
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+    flexWrap: 'wrap', // Wrap long names
   },
 });
 

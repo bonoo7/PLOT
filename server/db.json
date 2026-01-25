@@ -11,11 +11,11 @@
     },
     "Bot 1 🤖": {
       "name": "Bot 1 🤖",
-      "gamesPlayed": 18,
+      "gamesPlayed": 19,
       "wins": 3,
-      "totalScore": 20000,
+      "totalScore": 21500,
       "rolesPlayed": {
-        "SPY": 3,
+        "SPY": 4,
         "WITNESS": 5,
         "DETECTIVE": 7,
         "ARCHITECT": 3
@@ -23,27 +23,29 @@
     },
     "Bot 2 🤖": {
       "name": "Bot 2 🤖",
-      "gamesPlayed": 18,
+      "gamesPlayed": 19,
       "wins": 8,
-      "totalScore": 41500,
+      "totalScore": 51000,
       "rolesPlayed": {
         "DETECTIVE": 5,
         "ARCHITECT": 5,
         "SPY": 3,
-        "WITNESS": 5
+        "WITNESS": 5,
+        "TRICKSTER": 1
       }
     },
     "Bot 3 🤖": {
       "name": "Bot 3 🤖",
-      "gamesPlayed": 18,
+      "gamesPlayed": 19,
       "wins": 3,
-      "totalScore": 27000,
+      "totalScore": 35500,
       "rolesPlayed": {
         "ARCHITECT": 9,
         "SPY": 4,
         "DETECTIVE": 3,
         "WITNESS": 1,
-        "TRICKSTER": 1
+        "TRICKSTER": 1,
+        "LAWYER": 1
       }
     },
     "Nuclei": {
@@ -129,13 +131,14 @@
     },
     "المتدرب": {
       "name": "المتدرب",
-      "gamesPlayed": 4,
+      "gamesPlayed": 5,
       "wins": 1,
-      "totalScore": 4500,
+      "totalScore": 6000,
       "rolesPlayed": {
         "LAWYER": 1,
         "SPY": 1,
-        "ACCOMPLICE": 2
+        "ACCOMPLICE": 2,
+        "WITNESS": 1
       }
     },
     "sdfsd": {
@@ -185,38 +188,41 @@
     },
     "Bot 4 🤖": {
       "name": "Bot 4 🤖",
-      "gamesPlayed": 1,
+      "gamesPlayed": 2,
       "wins": 0,
-      "totalScore": 3000,
+      "totalScore": 8000,
       "rolesPlayed": {
-        "CITIZEN": 1
+        "CITIZEN": 1,
+        "ARCHITECT": 1
       }
     },
     "Bot 5 🤖": {
       "name": "Bot 5 🤖",
-      "gamesPlayed": 1,
-      "wins": 1,
-      "totalScore": 9000,
+      "gamesPlayed": 2,
+      "wins": 2,
+      "totalScore": 20500,
       "rolesPlayed": {
-        "DETECTIVE": 1
+        "DETECTIVE": 2
       }
     },
     "Bot 6 🤖": {
       "name": "Bot 6 🤖",
-      "gamesPlayed": 1,
+      "gamesPlayed": 2,
       "wins": 0,
-      "totalScore": 8000,
+      "totalScore": 14500,
       "rolesPlayed": {
-        "SPY": 1
+        "SPY": 1,
+        "ACCOMPLICE": 1
       }
     },
     "Bot 7 🤖": {
       "name": "Bot 7 🤖",
-      "gamesPlayed": 1,
+      "gamesPlayed": 2,
       "wins": 0,
-      "totalScore": 8500,
+      "totalScore": 13000,
       "rolesPlayed": {
-        "LAWYER": 1
+        "LAWYER": 1,
+        "CITIZEN": 1
       }
     }
   },
@@ -729,6 +735,52 @@
         }
       ],
       "timestamp": "2025-12-17T15:29:19.681Z"
+    },
+    {
+      "roomCode": "MESO",
+      "players": [
+        {
+          "name": "المتدرب",
+          "score": 1500,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 1500,
+          "role": "SPY"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 9500,
+          "role": "TRICKSTER"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 8500,
+          "role": "LAWYER"
+        },
+        {
+          "name": "Bot 4 🤖",
+          "score": 5000,
+          "role": "ARCHITECT"
+        },
+        {
+          "name": "Bot 5 🤖",
+          "score": 11500,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 6 🤖",
+          "score": 6500,
+          "role": "ACCOMPLICE"
+        },
+        {
+          "name": "Bot 7 🤖",
+          "score": 4500,
+          "role": "CITIZEN"
+        }
+      ],
+      "timestamp": "2026-01-02T03:34:40.272Z"
     }
   ]
 }

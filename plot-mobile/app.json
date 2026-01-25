@@ -17,6 +17,11 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#F5F5DC"
+      },
+      "navigationBar": {
+        "visible": "hide",
+        "behavior": "immersive",
+        "backgroundColor": "#00000000"
       }
     }
   }

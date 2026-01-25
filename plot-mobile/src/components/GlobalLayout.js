@@ -1,72 +1,90 @@
-import React from 'react';
-import { View, Text, StyleSheet, Image, Platform, ScrollView, ImageBackground } from 'react-native';
-
-const THEME = {
-    colors: {
-        background: '#F5F5DC', // Beige / Old Paper
-        text: '#2F4F4F',       // Charcoal
-        accentRed: '#B22222',  // Stamp Red
-        accentYellow: '#E1AD01', // Post-it Yellow
-        folderTab: '#E8E4C9',  // Slightly darker beige for variation
-        shadow: 'rgba(0,0,0,0.2)'
-    },
-    fonts: {
-        // Courier New is standard for typewriter feel. 
-        // On Android 'monospace' is the safe fallback.
-        main: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
-        heading: Platform.OS === 'ios' ? 'Courier New' : 'monospace', // Should ideally be a rougher font
-    }
-};
+import { View, Text, StyleSheet, Image, Platform, ImageBackground, useWindowDimensions, StatusBar } from 'react-native';
+import { theme } from '../styles/theme';
 
 const GlobalLayout = ({ children, title, showStamp = false, stampText = "سري للغاية" }) => {
+    const { width, height } = useWindowDimensions();
+    const isLandscape = width > height;
+    const isWeb = Platform.OS === 'web';
+
+    // Dynamic Sizing
+    const maxFolderWidth = isWeb ? 1000 : 90; // Web: reduced width, Mobile: 90%
+    const folderHeight = isWeb ? '85%' : '85%'; // Reduced height for all modes
+
     return (
         <View style={styles.container}>
-            {/* Background Texture (Optional: could be an image) */}
-            <View style={styles.backgroundTexture} />
+            {/* Hide Status Bar on Mobile for Full Screen effect */}
+            {!isWeb && <StatusBar hidden />}
 
-            {/* Main Folder Container */}
+            {/* Main Desk Background */}
             <ImageBackground
-                source={require('../../assets/bg_paper.png')}
-                style={styles.folderContainer}
-                imageStyle={{ opacity: 0.8 }}
+                source={require('../../assets/desk_background_noir.png')}
+                style={styles.deskBackground}
                 resizeMode="cover"
             >
-                {/* Light Overlay for better text contrast */}
-                <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(255,255,255,0.4)' }]} />
+                {/* Dark Overlay for focus */}
+                <View style={styles.darkOverlay} />
 
-                {/* Folder Tab (Visual element) */}
-                <View style={styles.folderTab}>
-                    <Text style={styles.tabText}>P.L.O.T - CASE FILE #892</Text>
-                </View>
-
-                {/* Paper Content Area */}
-                <View style={styles.paperContent}>
-
-                    {/* Header Area */}
-                    <View style={styles.header}>
-                        <View style={styles.headerLine} />
-                        <Text style={styles.headerTitle}>{title || "ملف العملية"}</Text>
-                        <View style={styles.headerLine} />
+                {/* Main Folder File */}
+                <View style={[
+                    styles.folderWrapper,
+                    {
+                        // Web: Fixed max. Mobile Landscape: 80% (wide enough). Mobile Portrait: 85% (show bg).
+                        maxWidth: isWeb ? maxFolderWidth : (isLandscape ? '80%' : '85%'),
+                        // Web/Landscape: 85% height. Portrait: 80% to show desk top/bottom.
+                        height: isLandscape ? '85%' : (isWeb ? '90%' : '75%'),
+                        paddingHorizontal: isWeb ? 0 : 5
+                    }
+                ]}>
+                    {/* Folder Tab */}
+                    <View style={[styles.folderTab, { width: isLandscape ? 250 : 180, marginBottom: -2 }]}>
+                        <Text style={styles.tabText}>CASE FILE #892</Text>
                     </View>
 
-                    {/* Optional Stamp */}
-                    {showStamp && (
-                        <View style={styles.stampContainer}>
-                            <View style={styles.stampBox}>
-                                <Text style={styles.stampText}>{stampText}</Text>
-                            </View>
+                    {/* Folder Paper Texture */}
+                    <ImageBackground
+                        source={require('../../assets/paper_texture_vintage.png')}
+                        style={styles.folderContainer}
+                        imageStyle={{ borderRadius: 4 }}
+                        resizeMode="cover"
+                    >
+                        {/* Header Area */}
+                        <View style={[styles.header, { marginBottom: isLandscape ? 15 : 10 }]}>
+                            <View style={styles.headerLine} />
+                            <Text style={[
+                                styles.headerTitle,
+                                { fontSize: isWeb ? 32 : (isLandscape ? 22 : 18) }
+                            ]}>{title || "ملف العملية"}</Text>
+                            <View style={styles.headerLine} />
                         </View>
-                    )}
 
-                    {/* Main Content */}
-                    <View style={styles.contentBody}>
-                        {children}
-                    </View>
+                        {/* Optional Stamp */}
+                        {showStamp && (
+                            <View style={[
+                                styles.stampContainer,
+                                {
+                                    width: isWeb ? 120 : 100,
+                                    height: isWeb ? 80 : 60,
+                                    left: isWeb ? 40 : 20
+                                }
+                            ]}>
+                                <Image
+                                    source={require('../../assets/stamp_secret.png')}
+                                    style={styles.stampImage}
+                                    resizeMode="contain"
+                                />
+                            </View>
+                        )}
 
-                    {/* Footer / Watermark */}
-                    <View style={styles.footer}>
-                        <Text style={styles.footerText}>وكالة المخابرات المركزية - قسم التحقيقات الخاصة</Text>
-                    </View>
+                        {/* Main Content - Centered */}
+                        <View style={styles.contentBody}>
+                            {children}
+                        </View>
+
+                        {/* Footer */}
+                        <View style={styles.footer}>
+                            <Text style={styles.footerText}>CONFIDENTIAL - TOP SECRET</Text>
+                        </View>
+                    </ImageBackground>
                 </View>
             </ImageBackground>
         </View >
@@ -76,108 +94,102 @@ const GlobalLayout = ({ children, title, showStamp = false, stampText = "سري 
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: '#2b2b2b', // Dark desk background behind the folder
+        backgroundColor: '#0f0f0f',
+    },
+    deskBackground: {
+        flex: 1,
+        width: '100%',
+        height: '100%',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: Platform.OS === 'web' ? 20 : 10,
     },
-    backgroundTexture: {
+    darkOverlay: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: '#333', // Fallback
-        opacity: 0.1,
+        backgroundColor: 'rgba(0,0,0,0.4)', // Slightly darker
     },
-    folderContainer: {
+    folderWrapper: {
         width: '100%',
-        maxWidth: 800, // Limit width for web/tablet
-        flex: 1,
-        backgroundColor: THEME.colors.background,
-        borderRadius: 8,
-        overflow: 'hidden',
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 10 },
-        shadowOpacity: 0.3,
+        shadowOpacity: 0.6,
         shadowRadius: 15,
         elevation: 10,
-        borderWidth: 1,
-        borderColor: '#dcd8b8',
-        elevation: 5,
     },
     folderTab: {
-        backgroundColor: THEME.colors.folderTab,
-        paddingVertical: 8,
+        backgroundColor: '#d6c68b',
+        height: 30,
+        borderTopLeftRadius: 8,
+        borderTopRightRadius: 8,
+        marginLeft: '5%', // Relative margin
+        justifyContent: 'center',
         paddingHorizontal: 15,
-        borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.1)',
-        flexDirection: 'row-reverse', // Arabic alignment
+        zIndex: 1,
+        marginBottom: -1,
     },
     tabText: {
-        fontFamily: THEME.fonts.main,
-        fontSize: 12,
-        color: '#888',
+        fontFamily: theme.fonts.main,
+        fontSize: 10,
+        color: '#5c5236',
+        fontWeight: 'bold',
         letterSpacing: 1,
     },
-    paperContent: {
+    folderContainer: {
         flex: 1,
-        padding: 20,
-        // Add subtle paper grain if possible via image background
+        width: '100%',
+        padding: 12,
+        overflow: 'hidden',
+        borderRadius: 4,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 20,
+        marginTop: 5,
         justifyContent: 'center',
     },
     headerLine: {
         height: 2,
-        backgroundColor: THEME.colors.text,
+        backgroundColor: '#2F4F4F',
         flex: 1,
-        opacity: 0.5,
+        opacity: 0.6,
     },
     headerTitle: {
-        fontFamily: THEME.fonts.heading,
-        fontSize: 24,
+        fontFamily: theme.fonts.heading,
         fontWeight: 'bold',
-        color: THEME.colors.text,
-        marginHorizontal: 15,
+        color: '#1a1a1a',
+        marginHorizontal: 10,
         textTransform: 'uppercase',
     },
     stampContainer: {
         position: 'absolute',
-        top: 10,
-        left: 20,
+        top: 15,
         transform: [{ rotate: '-15deg' }],
         zIndex: 10,
-        opacity: 0.8,
+        opacity: 0.85,
     },
-    stampBox: {
-        borderWidth: 4,
-        borderColor: THEME.colors.accentRed,
-        paddingVertical: 5,
-        paddingHorizontal: 12,
-        borderRadius: 8,
-    },
-    stampText: {
-        color: THEME.colors.accentRed,
-        fontFamily: THEME.fonts.heading,
-        fontSize: 16,
-        fontWeight: 'bold',
-        letterSpacing: 2,
+    stampImage: {
+        width: '100%',
+        height: '100%',
     },
     contentBody: {
         flex: 1,
+        width: '100%',
+        alignItems: 'center',
+        justifyContent: 'center', // ✅ Center vertically for menu
     },
     footer: {
-        marginTop: 20,
+        marginTop: 5,
         borderTopWidth: 1,
-        borderTopColor: 'rgba(47, 79, 79, 0.2)', // Charcoal text low opacity
-        paddingTop: 10,
+        borderTopColor: 'rgba(47, 79, 79, 0.2)',
+        paddingTop: 5,
         alignItems: 'center',
+        marginBottom: 5,
     },
     footerText: {
-        fontFamily: THEME.fonts.main,
-        fontSize: 10,
-        color: THEME.colors.text,
-        opacity: 0.6,
+        fontFamily: theme.fonts.main,
+        fontSize: 8,
+        color: '#555',
+        opacity: 0.7,
+        letterSpacing: 1,
     }
 });
 
