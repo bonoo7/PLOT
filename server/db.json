@@ -11,40 +11,40 @@
     },
     "Bot 1 🤖": {
       "name": "Bot 1 🤖",
-      "gamesPlayed": 19,
+      "gamesPlayed": 20,
       "wins": 3,
-      "totalScore": 21500,
+      "totalScore": 26000,
       "rolesPlayed": {
         "SPY": 4,
         "WITNESS": 5,
-        "DETECTIVE": 7,
+        "DETECTIVE": 8,
         "ARCHITECT": 3
       }
     },
     "Bot 2 🤖": {
       "name": "Bot 2 🤖",
-      "gamesPlayed": 19,
+      "gamesPlayed": 20,
       "wins": 8,
-      "totalScore": 51000,
+      "totalScore": 56000,
       "rolesPlayed": {
         "DETECTIVE": 5,
         "ARCHITECT": 5,
         "SPY": 3,
-        "WITNESS": 5,
+        "WITNESS": 6,
         "TRICKSTER": 1
       }
     },
     "Bot 3 🤖": {
       "name": "Bot 3 🤖",
-      "gamesPlayed": 19,
+      "gamesPlayed": 20,
       "wins": 3,
-      "totalScore": 35500,
+      "totalScore": 38000,
       "rolesPlayed": {
         "ARCHITECT": 9,
         "SPY": 4,
         "DETECTIVE": 3,
         "WITNESS": 1,
-        "TRICKSTER": 1,
+        "TRICKSTER": 2,
         "LAWYER": 1
       }
     },
@@ -131,12 +131,12 @@
     },
     "المتدرب": {
       "name": "المتدرب",
-      "gamesPlayed": 5,
+      "gamesPlayed": 6,
       "wins": 1,
-      "totalScore": 6000,
+      "totalScore": 12500,
       "rolesPlayed": {
         "LAWYER": 1,
-        "SPY": 1,
+        "SPY": 2,
         "ACCOMPLICE": 2,
         "WITNESS": 1
       }
@@ -188,41 +188,44 @@
     },
     "Bot 4 🤖": {
       "name": "Bot 4 🤖",
-      "gamesPlayed": 2,
-      "wins": 0,
-      "totalScore": 8000,
+      "gamesPlayed": 3,
+      "wins": 1,
+      "totalScore": 18500,
       "rolesPlayed": {
         "CITIZEN": 1,
-        "ARCHITECT": 1
+        "ARCHITECT": 2
       }
     },
     "Bot 5 🤖": {
       "name": "Bot 5 🤖",
-      "gamesPlayed": 2,
+      "gamesPlayed": 3,
       "wins": 2,
-      "totalScore": 20500,
+      "totalScore": 27500,
       "rolesPlayed": {
-        "DETECTIVE": 2
+        "DETECTIVE": 2,
+        "CITIZEN": 1
       }
     },
     "Bot 6 🤖": {
       "name": "Bot 6 🤖",
-      "gamesPlayed": 2,
+      "gamesPlayed": 3,
       "wins": 0,
-      "totalScore": 14500,
+      "totalScore": 21000,
       "rolesPlayed": {
         "SPY": 1,
-        "ACCOMPLICE": 1
+        "ACCOMPLICE": 1,
+        "LAWYER": 1
       }
     },
     "Bot 7 🤖": {
       "name": "Bot 7 🤖",
-      "gamesPlayed": 2,
+      "gamesPlayed": 3,
       "wins": 0,
-      "totalScore": 13000,
+      "totalScore": 19000,
       "rolesPlayed": {
         "LAWYER": 1,
-        "CITIZEN": 1
+        "CITIZEN": 1,
+        "ACCOMPLICE": 1
       }
     }
   },
@@ -781,6 +784,52 @@
         }
       ],
       "timestamp": "2026-01-02T03:34:40.272Z"
+    },
+    {
+      "roomCode": "LDWA",
+      "players": [
+        {
+          "name": "المتدرب",
+          "score": 6500,
+          "role": "SPY"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 4500,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 5000,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 2500,
+          "role": "TRICKSTER"
+        },
+        {
+          "name": "Bot 4 🤖",
+          "score": 10500,
+          "role": "ARCHITECT"
+        },
+        {
+          "name": "Bot 5 🤖",
+          "score": 7000,
+          "role": "CITIZEN"
+        },
+        {
+          "name": "Bot 6 🤖",
+          "score": 6500,
+          "role": "LAWYER"
+        },
+        {
+          "name": "Bot 7 🤖",
+          "score": 6000,
+          "role": "ACCOMPLICE"
+        }
+      ],
+      "timestamp": "2026-02-01T12:30:24.553Z"
     }
   ]
 }

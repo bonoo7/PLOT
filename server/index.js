@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const path = require('path');
 const cors = require('cors');
 const db = require('./database');
+require('dotenv').config();  // تحميل متغيرات البيئة
 
 const app = express();
 app.use(cors());
@@ -33,32 +34,46 @@ const rooms = {};
 // Scenarios Data
 const scenarios = require('./scenarios');
 
-function getRoleName(role) {
-    const names = {
-        'WITNESS': 'الشاهد',
-        'ARCHITECT': 'المهندس',
-        'DETECTIVE': 'المحقق',
-        'SPY': 'الجاسوس',
-        'ACCOMPLICE': 'المتواطئ',
-        'LAWYER': 'المحامي',
-        'TRICKSTER': 'المخادع',
-        'CITIZEN': 'مواطن'
-    };
-    return names[role] || role;
+// Roles System (NEW)
+const { 
+    TEAMS, 
+    ROLE_TYPES, 
+    ROLES, 
+    getRoleInfo, 
+    getRolesForPlayerCount,
+    getTeamMembers 
+} = require('./roles');
+
+// Bot AI Engine (NEW)
+const { 
+    generateBotAnswer, 
+    analyzeSuspicion,
+    generateBotVote,
+    generateQualityVote, // 🆕 التصويت على جودة السيناريو
+    shouldUseAbility 
+} = require('./botAI');
+
+// DeepSeek AI Integration
+const { testConnection } = require('./deepseekAI');
+
+function getRoleName(roleId) {
+    const roleInfo = getRoleInfo(roleId);
+    return roleInfo ? roleInfo.nameAr : roleId;
 }
 
-function getRoleDescription(role) {
-    const descs = {
-        'WITNESS': 'أنت الوحيد الذي يعرف الحقيقة. اكتب تبريراً مقنعاً دون أن تكشف نفسك.',
-        'ARCHITECT': 'لديك كلمات مبعثرة. ابنِ كذبة متماسكة لتبدو كأنك تعرف القصة.',
-        'DETECTIVE': 'مهمتك كشف الشاهد والمهندس. راقب الإجابات بدقة.',
-        'SPY': 'حاول معرفة القصة ونسخها.',
-        'ACCOMPLICE': 'أنت تعرف الشاهد. مهمتك حمايته وتضليل المحقق.',
-        'LAWYER': 'لديك موكل. دافع عنه وتأكد من عدم حصوله على أصوات اتهام.',
-        'TRICKSTER': 'أدخل الكلمة الدخيلة في إجابتك بشكل مضحك.',
-        'CITIZEN': 'حاول أن تبدو بريئاً.'
-    };
-    return descs[role] || '';
+function getRoleDescription(roleId) {
+    const roleInfo = getRoleInfo(roleId);
+    return roleInfo ? roleInfo.description : '';
+}
+
+function getRoleGoal(roleId) {
+    const roleInfo = getRoleInfo(roleId);
+    return roleInfo ? roleInfo.goal : '';
+}
+
+function getRoleTeam(roleId) {
+    const roleInfo = getRoleInfo(roleId);
+    return roleInfo ? roleInfo.team : TEAMS.NEUTRAL;
 }
 
 function generateRoomCode() {
@@ -103,44 +118,31 @@ function startDraftingPhase(roomCode) {
         }
     }, 1000);
 
-    // Handle Bots
-    room.players.forEach(p => {
+    // 🎁 قدرة المزور - التركيب الذكي: كلمة رابعة بعد 60 ثانية
+    const forger = room.players.find(p => p.role === ROLE_TYPES.FORGER || p.role === 'ARCHITECT');
+    if (forger && room.currentScenario.keywords.length >= 4) {
+        setTimeout(() => {
+            const fourthKeyword = room.currentScenario.keywords[3];
+            io.to(forger.id).emit('forgerBonus', { keyword: fourthKeyword });
+            console.log(`✨ قدرة المزور: تم إرسال الكلمة الرابعة "${fourthKeyword}" لـ ${forger.name}`);
+        }, 30000); // بعد 30 ثانية (معدّل من 60 لأن المدة الكلية 90)
+    }
+
+    // Handle Bots - مع تأخير متدرج لتجنب Rate Limit
+    room.players.forEach((p, index) => {
         if (p.isBot) {
-            simulateBotDrafting(room, p);
+            // تأخير متدرج: كل بوت يبدأ بعد الآخر بـ 2 ثانية
+            setTimeout(() => {
+                simulateBotDrafting(room, p);
+            }, index * 2000); // 0s, 2s, 4s, 6s, etc.
         }
     });
 }
 
-function simulateBotDrafting(room, bot) {
-    let targetText = "";
-
-    if (bot.role === 'WITNESS') {
-        targetText = room.currentScenario.story;
-    } else if (bot.role === 'ARCHITECT') {
-        targetText = `أعتقد أن القصة تتعلق بـ ${room.currentScenario.keywords.join(' و ')}... ربما حدث شيء غريب!`;
-    } else if (bot.role === 'DETECTIVE') {
-        const clues = room.currentScenario.keywords.slice(0, 2).join(' و ');
-        targetText = `بناءً على التحليل، أرى أدلة واضحة على ${clues}. يجب التحقيق أكثر!`;
-    } else if (bot.role === 'SPY') {
-        targetText = `أنا أتابع الأمور بحذر... شيء غريب يحدث هنا. سأراقب بعناية! 👁️`;
-    } else if (bot.role === 'ACCOMPLICE') {
-        targetText = `أنا متفق مع كل شيء قيل هنا. لا شيء مريب... أعتقد!`;
-    } else if (bot.role === 'LAWYER') {
-        targetText = `من الناحية القانونية، لا توجد أدلة واضحة حتى الآن. يجب احترام حقوق الجميع!`;
-    } else if (bot.role === 'TRICKSTER') {
-        targetText = `بصراحة، رأيت ${room.currentScenario.tricksterWord} يطير في السماء وكان المنظر مضحكاً جداً! 😄`;
-    } else {
-        // CITIZEN - المواطن العادي
-        const excuses = [
-            "كنت نائماً وقت الحادث ولا أعرف شيئاً.",
-            "سمعت ضجة كبيرة ولكن لم أرَ التفاصيل.",
-            "أظن أن الفاعل هرب من النافذة الخلفية.",
-            "لا علاقة لي بهذا الأمر، أنا بريء!",
-            "كنت في مكان آخر تماماً، لم أشهد شيئاً."
-        ];
-        targetText = excuses[Math.floor(Math.random() * excuses.length)];
-    }
-
+async function simulateBotDrafting(room, bot) {
+    // استخدام محرك الذكاء الجديد (DeepSeek AI) لتوليد إجابة ذكية
+    const targetText = await generateBotAnswer(bot.role, room.currentScenario, []);
+    
     // Simulate typing
     let charIndex = 0;
     const typingSpeed = 50 + Math.random() * 100; // Random speed
@@ -166,25 +168,9 @@ function simulateBotDrafting(room, bot) {
 }
 
 function startPresentationPhase(roomCode) {
-    const room = rooms[roomCode];
-    if (!room) return;
-
-    room.state = 'PRESENTATION';
-    io.to(roomCode).emit('startPresentation');
-
-    // Send answers to host
-    const answersList = room.players.map(p => ({
-        playerId: p.id,
-        playerName: p.name,
-        answer: room.answers[p.id] || "لم يكتب شيئاً..."
-    }));
-
-    io.to(room.hostId).emit('receiveAnswers', answersList);
-
-    // Start Voting Phase after 10 seconds of reading answers
-    setTimeout(() => {
-        startVotingPhase(roomCode);
-    }, 10000);
+    // ❌ تم إلغاء مرحلة العرض القديمة
+    // الانتقال مباشرة إلى التصويت على الجودة
+    startVotingPhase(roomCode);
 }
 
 function checkVotingComplete(roomCode) {
@@ -196,53 +182,259 @@ function checkVotingComplete(roomCode) {
     }
 }
 
+// ============================================
+// 🎬 PHASE 1: QUALITY VOTING (بدون أسماء)
+// ============================================
 function startVotingPhase(roomCode) {
+    startQualityVoting(roomCode);
+}
+
+function startQualityVoting(roomCode) {
     const room = rooms[roomCode];
     if (!room) return;
 
-    room.state = 'VOTING';
-    room.votes = {}; // { playerId: { quality: targetId, identity: targetId } }
+    room.state = 'QUALITY_VOTING';
+    room.qualityVotes = {}; // { playerId: scenarioIndex }
+    room.culpritVotes = {}; // سيتم ملؤها في المرحلة الثانية
 
-    // Send answers list to players for voting (WITH NAMES as requested)
-    const anonymousAnswers = room.players.map(p => ({
-        id: p.id,
-        answer: room.answers[p.id] || "...",
-        name: p.name // Added name for visibility in voting
+    // إرسال السيناريوهات بدون أسماء
+    const anonymousScenarios = room.players.map((p, index) => ({
+        index: index,
+        answer: room.answers[p.id] || "لم يكتب شيئاً...",
+        // ❌ بدون name
     }));
 
-    // Send players list for identity vote
-    const playersList = room.players.map(p => ({
-        id: p.id,
-        name: p.name
-    }));
-
-    io.to(roomCode).emit('startVoting', {
-        answers: anonymousAnswers,
-        players: playersList
+    io.to(roomCode).emit('qualityVotingStarted', {
+        scenarios: anonymousScenarios
     });
 
-    // Handle Bots Voting
+    // البوتات تصوت على الجودة
     room.players.forEach(p => {
         if (p.isBot) {
             setTimeout(() => {
-                // Bot votes randomly
-                // Quality Vote: Random player who is NOT self
-                const otherPlayers = room.players.filter(op => op.id !== p.id);
-                const qualityTarget = otherPlayers[Math.floor(Math.random() * otherPlayers.length)].id;
-
-                // Identity Vote: Random player
-                const identityTarget = room.players[Math.floor(Math.random() * room.players.length)].id;
-
-                room.votes[p.id] = { quality: qualityTarget, identity: identityTarget };
-                checkVotingComplete(roomCode);
-            }, 5000 + Math.random() * 10000); // Vote after 5-15 seconds
+                const qualityVote = generateQualityVote(
+                    room.players.map(player => room.answers[player.id] || '')
+                );
+                room.qualityVotes[p.id] = qualityVote;
+                
+                // 🆕 إرسال للهوست أن البوت صوّت
+                io.to(room.host).emit('voteReceived', {
+                    phase: 'QUALITY',
+                    playerName: p.name,
+                    totalVotes: Object.keys(room.qualityVotes).length,
+                    totalPlayers: room.players.length
+                });
+                
+                checkQualityVotingComplete(roomCode);
+            }, 3000 + Math.random() * 7000); // 3-10 ثواني
         }
     });
+}
+
+function checkQualityVotingComplete(roomCode) {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    if (Object.keys(room.qualityVotes).length === room.players.length) {
+        startDramaticReveal(roomCode);
+    }
+}
+
+// ============================================
+// 🎭 DRAMATIC REVEAL (العرض التشويقي)
+// ============================================
+function startDramaticReveal(roomCode) {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    room.state = 'DRAMATIC_REVEAL';
+
+    // تحليل النتائج: عدد الأصوات لكل سيناريو
+    const voteCounts = {}; // { scenarioIndex: count }
+    const voteDetails = {}; // { scenarioIndex: [voterNames] }
+
+    room.players.forEach((player, index) => {
+        voteCounts[index] = 0;
+        voteDetails[index] = [];
+    });
+
+    Object.entries(room.qualityVotes).forEach(([voterId, scenarioIndex]) => {
+        voteCounts[scenarioIndex]++;
+        const voter = room.players.find(p => p.id === voterId);
+        if (voter) {
+            voteDetails[scenarioIndex].push(voter.name);
+        }
+    });
+
+    // ترتيب السيناريوهات حسب عدد الأصوات (من الأعلى للأسفل)
+    const sortedScenarios = room.players
+        .map((player, index) => ({
+            index: index,
+            playerId: player.id,
+            playerName: player.name,
+            answer: room.answers[player.id] || "لم يكتب شيئاً...",
+            voteCount: voteCounts[index],
+            voters: voteDetails[index]
+        }))
+        .sort((a, b) => b.voteCount - a.voteCount);
+
+    // فصل السيناريوهات التي حصلت على أصوات عن التي لم تحصل
+    const scenariosWithVotes = sortedScenarios.filter(s => s.voteCount > 0);
+    const scenariosWithoutVotes = sortedScenarios.filter(s => s.voteCount === 0);
+
+    // إرسال بداية العرض
+    io.to(roomCode).emit('dramaticRevealStarted', {
+        totalScenarios: scenariosWithVotes.length + (scenariosWithoutVotes.length > 0 ? 1 : 0)
+    });
+
+    // العرض التدريجي
+    let currentDelay = 0;
+
+    scenariosWithVotes.forEach((scenario, idx) => {
+        // Step 1: عرض السيناريو (3 ثواني)
+        setTimeout(() => {
+            io.to(roomCode).emit('revealStep', {
+                step: 'SCENARIO',
+                data: {
+                    index: scenario.index,
+                    answer: scenario.answer,
+                    position: idx + 1,
+                    total: scenariosWithVotes.length
+                }
+            });
+        }, currentDelay);
+        currentDelay += 3000;
+
+        // Step 2: عرض الأصوات (2.5 ثانية)
+        setTimeout(() => {
+            io.to(roomCode).emit('revealStep', {
+                step: 'VOTERS',
+                data: {
+                    index: scenario.index,
+                    voters: scenario.voters,
+                    voteCount: scenario.voteCount
+                }
+            });
+        }, currentDelay);
+        currentDelay += 2500;
+
+        // Step 3: كشف الكاتب (2 ثانية)
+        setTimeout(() => {
+            io.to(roomCode).emit('revealStep', {
+                step: 'AUTHOR',
+                data: {
+                    index: scenario.index,
+                    authorName: scenario.playerName
+                }
+            });
+        }, currentDelay);
+        currentDelay += 2000;
+    });
+
+    // عرض السيناريوهات بدون أصوات (إن وُجدت)
+    if (scenariosWithoutVotes.length > 0) {
+        setTimeout(() => {
+            io.to(roomCode).emit('revealStep', {
+                step: 'NO_VOTES',
+                data: {
+                    scenarios: scenariosWithoutVotes.map(s => ({
+                        index: s.index,
+                        authorName: s.playerName,
+                        answer: s.answer
+                    }))
+                }
+            });
+        }, currentDelay);
+        currentDelay += 3000;
+    }
+
+    // بعد انتهاء العرض: بدء المرحلة الثانية
+    setTimeout(() => {
+        startCulpritVoting(roomCode);
+    }, currentDelay + 1000);
+}
+
+// ============================================
+// 🔍 PHASE 2: CULPRIT VOTING (مع أسماء)
+// ============================================
+function startCulpritVoting(roomCode) {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    room.state = 'CULPRIT_VOTING';
+
+    // إرسال السيناريوهات مع الأسماء
+    const scenariosWithAuthors = room.players.map((p, index) => ({
+        index: index,
+        playerId: p.id,
+        playerName: p.name,
+        answer: room.answers[p.id] || "لم يكتب شيئاً..."
+    }));
+
+    io.to(roomCode).emit('culpritVotingStarted', {
+        scenarios: scenariosWithAuthors
+    });
+
+    // البوتات تصوت على الجاني
+    room.players.forEach(p => {
+        if (p.isBot) {
+            setTimeout(() => {
+                const answersData = room.players.map(player => ({
+                    id: player.id,
+                    name: player.name,
+                    role: player.role,
+                    team: player.team,
+                    answer: room.answers[player.id] || ''
+                }));
+                
+                const culpritVote = generateBotVote(
+                    p.role,
+                    p.team,
+                    room.players,
+                    answersData,
+                    room.currentScenario,
+                    'medium'
+                );
+                
+                room.culpritVotes[p.id] = culpritVote.identity;
+                
+                // 🆕 إرسال للهوست أن البوت صوّت
+                io.to(room.host).emit('voteReceived', {
+                    phase: 'CULPRIT',
+                    playerName: p.name,
+                    totalVotes: Object.keys(room.culpritVotes).length,
+                    totalPlayers: room.players.length
+                });
+                
+                checkCulpritVotingComplete(roomCode);
+            }, 3000 + Math.random() * 7000); // 3-10 ثواني
+        }
+    });
+}
+
+function checkCulpritVotingComplete(roomCode) {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    const votesReceived = Object.keys(room.culpritVotes).length;
+    const totalPlayers = room.players.length;
+    
+    console.log(`🔍 Culprit Voting: ${votesReceived}/${totalPlayers} votes received`);
+    
+    if (votesReceived === totalPlayers) {
+        console.log(`✅ All votes received, ending round...`);
+        endRound(roomCode);
+    }
 }
 
 function calculateScores(room) {
     const scores = {};
     const breakdown = {};  // تفصيل النقاط لكل لاعب
+    const teamScores = {
+        [TEAMS.CRIME]: 0,
+        [TEAMS.INVESTIGATION]: 0,
+        [TEAMS.NEUTRAL]: 0
+    };
 
     // Initialize for all players
     room.players.forEach(p => {
@@ -250,141 +442,227 @@ function calculateScores(room) {
         breakdown[p.id] = [];
     });
 
-    const witness = room.players.find(p => p.role === 'WITNESS');
-    const architect = room.players.find(p => p.role === 'ARCHITECT');
-    const detective = room.players.find(p => p.role === 'DETECTIVE');
-    const accomplice = room.players.find(p => p.role === 'ACCOMPLICE');
-    const lawyer = room.players.find(p => p.role === 'LAWYER');
-    const spy = room.players.find(p => p.role === 'SPY');
-    const trickster = room.players.find(p => p.role === 'TRICKSTER');
+    // Find key roles using new role IDs (with fallback to old ones)
+    const culprit = room.players.find(p => p.role === ROLE_TYPES.CULPRIT || p.role === 'WITNESS');
+    const forger = room.players.find(p => p.role === ROLE_TYPES.FORGER || p.role === 'ARCHITECT');
+    const chiefDetective = room.players.find(p => p.role === ROLE_TYPES.CHIEF_DETECTIVE || p.role === 'DETECTIVE');
+    const infiltrator = room.players.find(p => p.role === ROLE_TYPES.INFILTRATOR || p.role === 'SPY');
+    const accomplice = room.players.find(p => p.role === ROLE_TYPES.ACCOMPLICE || p.role === 'ACCOMPLICE');
+    const lawyer = room.players.find(p => p.role === ROLE_TYPES.LAWYER || p.role === 'LAWYER');
+    const saboteur = room.players.find(p => p.role === ROLE_TYPES.SABOTEUR || p.role === 'TRICKSTER');
 
-    // Count votes
-    const qualityVotes = {}; // targetId -> count
-    const identityVotes = {}; // targetId -> count
-
-    Object.values(room.votes).forEach(vote => {
-        if (vote.quality) {
-            qualityVotes[vote.quality] = (qualityVotes[vote.quality] || 0) + 1;
-        }
-        if (vote.identity) {
-            identityVotes[vote.identity] = (identityVotes[vote.identity] || 0) + 1;
-        }
+    // ============================================
+    // 1. نقاط أصوات الجودة (Quality Votes)
+    // ============================================
+    // حساب عدد الأصوات لكل سيناريو
+    const qualityVoteCounts = {}; // { scenarioIndex: count }
+    
+    room.players.forEach((player, index) => {
+        qualityVoteCounts[index] = 0;
     });
 
-    // Find player with most identity votes (The Accused)
-    let maxIdentityVotes = 0;
-    let accusedId = null;
-    for (const [id, count] of Object.entries(identityVotes)) {
-        if (count > maxIdentityVotes) {
-            maxIdentityVotes = count;
-            accusedId = id;
-        } else if (count === maxIdentityVotes) {
-            accusedId = null; // Tie means no single accused
-        }
-    }
+    Object.values(room.qualityVotes).forEach(scenarioIndex => {
+        qualityVoteCounts[scenarioIndex]++;
+    });
 
-    // 1. Logic Vote Points (+1000 per vote)
-    for (const [targetId, count] of Object.entries(qualityVotes)) {
+    // منح النقاط لكل لاعب حسب عدد أصوات الجودة
+    room.players.forEach((player, index) => {
+        const count = qualityVoteCounts[index] || 0;
         if (count > 0) {
-            const points = count * 1000;
-            scores[targetId] += points;
-            breakdown[targetId].push(`✅ نقاط الإقناع: +${points} (حصل على ${count} أصوات × 1000)`);
-        }
-    }
-
-    // 2. Deduction Points
-    const witnessVotes = qualityVotes[witness?.id] || 0;
-
-    // Detective finds Witness (+2500)
-    if (detective && room.votes[detective.id]?.identity === witness?.id) {
-        scores[detective.id] += 2500;
-        breakdown[detective.id].push(`💡 كشف الشاهد بشكل صحيح: +2500`);
-    }
-
-    // ✅ FIX: Detective penalty for wrong guess (-500)
-    if (detective && room.votes[detective.id]?.identity !== witness?.id) {
-        scores[detective.id] -= 500;
-        breakdown[detective.id].push(`⚠️ اختيار خاطئ للشاهد: -500`);
-    }
-
-    // Others find Witness (+500)
-    room.players.forEach(p => {
-        if (p.role !== 'DETECTIVE' && p.role !== 'WITNESS' && room.votes[p.id]?.identity === witness?.id) {
-            scores[p.id] += 500;
-            breakdown[p.id].push(`💡 اختيار الشاهد بشكل صحيح: +500`);
+            const points = count * 200; // 200 نقطة لكل صوت جودة
+            scores[player.id] += points;
+            breakdown[player.id].push(`✨ جودة السيناريو: +${points} (${count} × 200)`);
         }
     });
 
-    // 3. Deception Points
-    // Architect beats Witness in quality votes (+1500)
-    const architectVotes = qualityVotes[architect?.id] || 0;
-    if (architect && witness && architectVotes > witnessVotes) {
-        scores[architect.id] += 1500;
-        breakdown[architect.id].push(`🎭 التفوق على الشاهد: +1500 (حصل على ${architectVotes} أصوات مقابل ${witnessVotes} للشاهد)`);
-    }
-
-    // Witness survives (less than 50% found him)
-    const witnessFoundCount = identityVotes[witness?.id] || 0;
-    const witnessSurvived = witness && witnessFoundCount < (room.players.length / 2);
-
-    if (witnessSurvived) {
-        scores[witness.id] += 2000;
-        breakdown[witness.id].push(`✅ نجح في الهروب دون اكتشاف: +2000 (${witnessFoundCount} أصوات فقط)`);
-    }
-
-    // ✅ FIX: Witness penalty when discovered by Detective (-50%)
-    if (detective && room.votes[detective.id]?.identity === witness?.id && witness) {
-        const witnessRoundScore = scores[witness.id];
-        const penalty = Math.floor(witnessRoundScore * 0.5);
-        scores[witness.id] = penalty;
-        breakdown[witness.id].push(`❌ تم اكتشاف الهوية من المحقق: -50% من النقاط (خسر ${witnessRoundScore - penalty} نقطة)`);
-    }
-
-    // Accomplice Bonus: If Witness wins quality vote OR survives
-    if (accomplice && witness) {
-        const maxQualityVotes = Math.max(...Object.values(qualityVotes), 0);
-        const witnessWonQuality = witnessVotes === maxQualityVotes && witnessVotes > 0;
-
-        if (witnessSurvived || witnessWonQuality) {
-            scores[accomplice.id] += 1500;
-            breakdown[accomplice.id].push(`🤝 حماية الشاهد بنجاح: +1500 (الشاهد نجا/فاز)`);
-        }
-    }
-
-    // ✅ FIX: Lawyer bonus corrected from +1500 to +2000
-    // Lawyer Bonus: If Client is NOT the Accused (most voted)
-    if (lawyer && lawyer.lawyerClient) {
-        if (lawyer.lawyerClient !== accusedId) {
-            scores[lawyer.id] += 2000;
-            breakdown[lawyer.id].push(`⚖️ نجح في حماية الموكل: +2000 (الموكل لم يكن الأكثر اتهاماً)`);
-        }
-    }
-
-    // ✅ FIX: SPY bonus (was MISSING) - Quality votes close to Witness (difference ≤ 1)
-    const spyVotes = qualityVotes[spy?.id] || 0;
-    if (spy && Math.abs(spyVotes - witnessVotes) <= 1 && spyVotes > 0) {
-        scores[spy.id] += 1500;
-        breakdown[spy.id].push(`🕵️ تقليد ممتاز للشاهد: +1500 (${spyVotes} أصوات مقابل ${witnessVotes} للشاهد)`);
-    }
-
-    // ✅ FIX: Trickster bonus (was MISSING) - Uses trap word with at least 1 quality vote
-    const tricksterVotes = qualityVotes[trickster?.id] || 0;
-    if (trickster && tricksterVotes > 0) {
-        scores[trickster.id] += 1500;
-        breakdown[trickster.id].push(`😈 كلمة الفخ ناجحة: +1500 (حصل على ${tricksterVotes} أصوات)`);
-    }
-
-    // ✅ FIX: Citizen bonus corrected from +500 to +1000
-    // Citizen: Votes for Witness correctly gets +1000 (instead of +500)
+    // نقاط الكتابة في الوقت المناسب (+100 لكل من أرسل)
     room.players.forEach(p => {
-        if (p.role === 'CITIZEN' && room.votes[p.id]?.identity === witness?.id) {
-            scores[p.id] -= 500;
-            scores[p.id] += 1000;
-            // البحث عن السطر الذي يحتوي على +500 وتعديله
-            const idx = breakdown[p.id].findIndex(item => item.includes('+500'));
-            if (idx !== -1) {
-                breakdown[p.id][idx] = `👤 استنتاج صحيح (مواطن): +1000`;
+        if (room.answers[p.id]) {
+            scores[p.id] += 100;
+            breakdown[p.id].push(`⏰ كتابة في الوقت: +100`);
+        }
+    });
+
+    // ============================================
+    // 2. تحليل أصوات الجاني (Culprit Votes)
+    // ============================================
+    const culpritVoteCounts = {}; // { playerId: count }
+    
+    room.players.forEach(p => {
+        culpritVoteCounts[p.id] = 0;
+    });
+
+    Object.values(room.culpritVotes).forEach(playerId => {
+        culpritVoteCounts[playerId]++;
+    });
+
+    // تحديد من حصل على أكثر الأصوات
+    const totalPlayers = room.players.length;
+    const culpritVotes = culpritVoteCounts[culprit?.id] || 0;
+    const culpritCaught = culprit && culpritVotes >= (totalPlayers / 2); // 50% أو أكثر
+
+    // ============================================
+    // 3. منطق فوز/خسارة الفرق
+    // ============================================
+    let crimeTeamWon = false;
+    let investigationTeamWon = false;
+
+    // تحديد الفريق الفائز (بناءً على الأغلبية)
+    if (culpritCaught) {
+        investigationTeamWon = true;
+        breakdown[culprit.id] = breakdown[culprit.id] || [];
+        breakdown[culprit.id].push(`🚨 تم القبض عليك من المحقق!`);
+    } else if (!culpritCaught) {
+        crimeTeamWon = true;
+        breakdown[culprit.id] = breakdown[culprit.id] || [];
+        breakdown[culprit.id].push(`✅ نجوت من الاتهام!`);
+    }
+
+    // ============================================
+    // 4. مكافآت ومعاقبات الفرق
+    // ============================================
+    if (crimeTeamWon) {
+        const crimeMembers = room.players.filter(p => {
+            const roleInfo = getRoleInfo(p.role);
+            return roleInfo && roleInfo.team === TEAMS.CRIME;
+        });
+
+        // مكافأة جماعية للفريق (+2500 لكل عضو)
+        crimeMembers.forEach(p => {
+            scores[p.id] += 2500;
+            breakdown[p.id].push(`🔴 فوز فريق الجريمة: +2500`);
+            teamScores[TEAMS.CRIME] += 2500;
+        });
+
+        // مكافأة الجاني (إضافية)
+        if (culprit) {
+            scores[culprit.id] += 500;
+            breakdown[culprit.id].push(`🎭 الجاني نجا: +500 إضافية`);
+        }
+
+        // مكافأة المزور إذا تفوق على الجاني (في Quality Votes)
+        const culpritQualityVotes = qualityVoteCounts[room.players.findIndex(p => p.id === culprit?.id)] || 0;
+        const forgerIndex = room.players.findIndex(p => p.id === forger?.id);
+        const forgerQualityVotes = qualityVoteCounts[forgerIndex] || 0;
+        
+        if (forger && forgerQualityVotes >= culpritQualityVotes && forgerQualityVotes > 0) {
+            scores[forger.id] += 2000;
+            breakdown[forger.id].push(`🧩 المزور تفوق: +2000 (${forgerQualityVotes} أصوات)`);
+            
+            // مكافأة للفريق
+            crimeMembers.forEach(p => {
+                if (p.id !== forger.id) {
+                    scores[p.id] += 500;
+                    breakdown[p.id].push(`🧩 المزور نجح: +500`);
+                }
+            });
+        }
+    } else if (investigationTeamWon) {
+        // عقوبة فريق الجريمة
+        const crimeMembers = room.players.filter(p => {
+            const roleInfo = getRoleInfo(p.role);
+            return roleInfo && roleInfo.team === TEAMS.CRIME;
+        });
+
+        // الجاني يخسر 60%
+        if (culprit) {
+            const culpritScore = scores[culprit.id];
+            const penalty = Math.floor(culpritScore * 0.6);
+            scores[culprit.id] -= penalty;
+            breakdown[culprit.id].push(`❌ تم القبض عليك: -60% (-${penalty} نقطة)`);
+        }
+
+        // الشريك يخسر 30%
+        if (accomplice) {
+            const accompliceScore = scores[accomplice.id];
+            const penalty = Math.floor(accompliceScore * 0.3);
+            scores[accomplice.id] -= penalty;
+            breakdown[accomplice.id].push(`⚠️ فشل في حماية الجاني: -30% (-${penalty} نقطة)`);
+        }
+    }
+
+    // ============================================
+    // 5. مكافآت فريق التحقيق
+    // ============================================
+    if (investigationTeamWon) {
+        const investigationMembers = room.players.filter(p => {
+            const roleInfo = getRoleInfo(p.role);
+            return roleInfo && roleInfo.team === TEAMS.INVESTIGATION;
+        });
+
+        // مكافأة جماعية للفريق (+2000 لكل عضو)
+        investigationMembers.forEach(p => {
+            scores[p.id] += 2000;
+            breakdown[p.id].push(`🔵 فوز فريق التحقيق: +2000`);
+            teamScores[TEAMS.INVESTIGATION] += 2000;
+        });
+
+        // مكافأة المحقق الرئيسي إذا صوّت للجاني الصحيح (+500)
+        if (chiefDetective && room.culpritVotes[chiefDetective.id] === culprit?.id) {
+            scores[chiefDetective.id] += 500;
+            breakdown[chiefDetective.id].push(`🎯 المحقق صوّت صح: +500 إضافية`);
+        }
+    } else if (crimeTeamWon) {
+        // لا عقوبة على المحقق (الأغلبية هي من فشلت)
+    }
+
+    // نقاط استنتاج عامة (لجميع اللاعبين الذين صوّتوا صح)
+    room.players.forEach(p => {
+        if (room.culpritVotes[p.id] === culprit?.id) {
+            // لا نعطي نقاط إضافية هنا لأن الفوز الجماعي يعطي مكافأة للفريق
+            // لكن يمكن إضافة نقاط صغيرة للتشجيع
+            if (p.id !== chiefDetective?.id) { // المحقق أخذ مكافأته
+                scores[p.id] += 100;
+                breakdown[p.id].push(`✅ صوّت للجاني الصحيح: +100`);
             }
+        }
+    });
+
+    // ============================================
+    // 6. مكافآت خاصة للأدوار
+    // ============================================
+
+    // المحامي - حماية الموكل
+    if (lawyer && lawyer.lawyerClient) {
+        const clientVotes = culpritVoteCounts[lawyer.lawyerClient] || 0;
+        if (clientVotes === 0 || !culpritCaught) {
+            scores[lawyer.id] += 1500;
+            breakdown[lawyer.id].push(`⚖️ حماية الموكل: +1500`);
+        }
+    }
+
+    // المخترق - تقليد الجاني (Quality Votes)
+    const infiltratorIndex = room.players.findIndex(p => p.id === infiltrator?.id);
+    const culpritIndex = room.players.findIndex(p => p.id === culprit?.id);
+    
+    const infiltratorVotes = qualityVoteCounts[infiltratorIndex] || 0;
+    const culpritQualityVotes = qualityVoteCounts[culpritIndex] || 0;
+    
+    if (infiltrator && Math.abs(infiltratorVotes - culpritQualityVotes) <= 1 && infiltratorVotes > 0) {
+        scores[infiltrator.id] += 1500;
+        breakdown[infiltrator.id].push(`🕵️ تقليد ممتاز: +1500 (${infiltratorVotes} أصوات)`);
+    }
+
+    // المخرب - الفوضى الإبداعية (Quality Votes)
+    const saboteurIndex = room.players.findIndex(p => p.id === saboteur?.id);
+    const saboteurVotes = qualityVoteCounts[saboteurIndex] || 0;
+    
+    if (saboteur && saboteurVotes >= 2) {
+        scores[saboteur.id] += 3000;
+        breakdown[saboteur.id].push(`😈 الفوضى الناجحة: +3000 (${saboteurVotes} أصوات)`);
+        
+        // مكافأة إضافية إذا لم يكتشف
+        if (identityVotes[saboteur.id] === 0) {
+            scores[saboteur.id] += 1500;
+            breakdown[saboteur.id].push(`😈 لم يكتشف: +1500`);
+        }
+    }
+
+    // استخدام القدرات بنجاح (+300)
+    room.players.forEach(p => {
+        if (room.abilitiesUsed && room.abilitiesUsed[p.id]) {
+            scores[p.id] += 300;
+            breakdown[p.id].push(`⚡ استخدام قدرة: +300`);
         }
     });
 
@@ -396,18 +674,36 @@ function calculateScores(room) {
         }
     });
 
-    return { scores, breakdown };
+    return { 
+        scores, 
+        breakdown,
+        teamScores,
+        crimeTeamWon,
+        investigationTeamWon,
+        culpritCaught // تم تعريفه في السطر 475
+    };
 }
 
 function endRound(roomCode) {
     const room = rooms[roomCode];
     if (!room) return;
 
-    const { scores: roundScores, breakdown } = calculateScores(room);
+    const { scores: roundScores, breakdown, teamScores, crimeTeamWon, investigationTeamWon, culpritCaught } = calculateScores(room);
 
     // Update total scores
     room.players.forEach(p => {
         p.score += (roundScores[p.id] || 0);
+    });
+
+    // حساب أعضاء الفرق
+    const crimeMembers = room.players.filter(p => {
+        const roleInfo = getRoleInfo(p.role);
+        return roleInfo && roleInfo.team === TEAMS.CRIME;
+    });
+    
+    const investigationMembers = room.players.filter(p => {
+        const roleInfo = getRoleInfo(p.role);
+        return roleInfo && roleInfo.team === TEAMS.INVESTIGATION;
     });
 
     const results = room.players.map(p => {
@@ -417,16 +713,31 @@ function endRound(roomCode) {
             playerBreakdown = ["لم يحصل على نقاط إضافية"];
         }
 
+        const roleInfo = getRoleInfo(p.role);
+
         return {
             name: p.name,
             role: getRoleName(p.role),
+            roleId: p.role,
+            team: roleInfo ? roleInfo.team : TEAMS.NEUTRAL,
+            teamName: roleInfo && roleInfo.team === TEAMS.CRIME ? 'فريق الجريمة' : 
+                     roleInfo && roleInfo.team === TEAMS.INVESTIGATION ? 'فريق التحقيق' : 'محايد',
             roundScore: roundScores[p.id] || 0,
             totalScore: p.score,
             breakdown: playerBreakdown
         };
     }).sort((a, b) => b.totalScore - a.totalScore);
 
-    io.to(roomCode).emit('roundResults', { results });
+    // إرسال النتائج مع معلومات الفريق
+    io.to(roomCode).emit('roundResults', { 
+        results,
+        teamScores,
+        crimeTeamWon,
+        investigationTeamWon,
+        culpritCaught,
+        crimeMembers: crimeMembers.map(p => ({ name: p.name, score: p.score })),
+        investigationMembers: investigationMembers.map(p => ({ name: p.name, score: p.score }))
+    });
     room.state = 'RESULTS';
 }
 
@@ -807,22 +1118,12 @@ io.on('connection', (socket) => {
 
         room.usedScenarios.push(room.currentScenario.id);
 
-        // Assign Roles
+        // Assign Roles (NEW SYSTEM - Teams)
         let shuffledPlayers = [...room.players].sort(() => 0.5 - Math.random());
-        const roles = ['WITNESS', 'ARCHITECT', 'DETECTIVE'];
-
-        // Add more roles if players > 3
-        if (shuffledPlayers.length > 3) roles.push('SPY');
-        if (shuffledPlayers.length > 4) roles.push('ACCOMPLICE');
-        if (shuffledPlayers.length > 5) roles.push('LAWYER');
-        if (shuffledPlayers.length > 6) roles.push('TRICKSTER');
-
-        while (roles.length < shuffledPlayers.length) {
-            roles.push('CITIZEN');
-        }
-
-        // Define shuffledRoles variable outside to be accessible later
-        let shuffledRoles = [];
+        const rolesForCount = getRolesForPlayerCount(shuffledPlayers.length);
+        
+        // Shuffle roles
+        let shuffledRoles = [...rolesForCount].sort(() => 0.5 - Math.random());
 
         // Handle Tutorial Forced Role
         if (room.isTutorial && room.tutorialData) {
@@ -838,15 +1139,12 @@ io.on('connection', (socket) => {
                 targetPlayer.role = role;
 
                 // Remove that role from available roles
-                const roleIndex = roles.indexOf(role);
+                const roleIndex = shuffledRoles.indexOf(role);
                 if (roleIndex !== -1) {
-                    roles.splice(roleIndex, 1);
+                    shuffledRoles.splice(roleIndex, 1);
                 } else {
-                    roles.shift();
+                    shuffledRoles.shift();
                 }
-
-                // Shuffle remaining roles
-                shuffledRoles = roles.sort(() => 0.5 - Math.random());
 
                 // Assign roles to others
                 shuffledPlayers.forEach((player, index) => {
@@ -857,65 +1155,104 @@ io.on('connection', (socket) => {
                 shuffledPlayers.push(targetPlayer);
             } else {
                 // Fallback if player not found
-                shuffledRoles = roles.sort(() => 0.5 - Math.random());
                 shuffledPlayers.forEach((player, index) => {
                     player.role = shuffledRoles[index];
                 });
             }
         } else {
-            // Standard Shuffle
-            shuffledRoles = roles.sort(() => 0.5 - Math.random());
+            // Standard Assignment
             shuffledPlayers.forEach((player, index) => {
                 player.role = shuffledRoles[index];
             });
         }
 
-        // Find Witness for Accomplice logic
-        // Note: shuffledRoles might not contain the forced role if it was removed from the list
-        // So we should look at the players list instead to find the witness
-        const witnessPlayer = shuffledPlayers.find(p => p.role === 'WITNESS');
+        // Find special roles for relationship logic
+        const culpritPlayer = shuffledPlayers.find(p => p.role === ROLE_TYPES.CULPRIT);
+        const accomplicePlayer = shuffledPlayers.find(p => p.role === ROLE_TYPES.ACCOMPLICE);
+        const lawyerPlayer = shuffledPlayers.find(p => p.role === ROLE_TYPES.LAWYER);
 
-        // Assign and send data
+        // Assign Lawyer's Client (if Lawyer exists)
+        if (lawyerPlayer) {
+            // Pick a random player from Crime team (excluding Lawyer himself)
+            const crimeTeamMembers = shuffledPlayers.filter(p => {
+                const roleInfo = getRoleInfo(p.role);
+                return roleInfo && roleInfo.team === TEAMS.CRIME && p.id !== lawyerPlayer.id;
+            });
+            
+            if (crimeTeamMembers.length > 0) {
+                const client = crimeTeamMembers[Math.floor(Math.random() * crimeTeamMembers.length)];
+                lawyerPlayer.lawyerClient = client.id;
+            }
+        }
+
+        // Assign and send role data
         shuffledPlayers.forEach((player) => {
             const role = player.role;
-
-            // Logic for Lawyer's Client (Random player who is NOT the Lawyer)
-            let lawyerClientName = null;
-            if (role === 'LAWYER') {
-                const potentialClients = shuffledPlayers.filter(p => p.id !== player.id);
-                const client = potentialClients[Math.floor(Math.random() * potentialClients.length)];
-                player.lawyerClient = client.id; // Store client ID on lawyer player object
-                lawyerClientName = client.name;
+            const roleInfo = getRoleInfo(role);
+            
+            if (!roleInfo) {
+                console.error(`Role info not found for: ${role}`);
+                return;
             }
 
             let roleData = {
                 role: role,
-                roleName: getRoleName(role),
-                description: getRoleDescription(role),
+                roleName: roleInfo.nameAr,
+                roleNameEn: roleInfo.nameEn,
+                description: roleInfo.description,
+                goal: roleInfo.goal,
+                team: roleInfo.team,
+                teamName: roleInfo.team === TEAMS.CRIME ? 'فريق الجريمة' : 
+                         roleInfo.team === TEAMS.INVESTIGATION ? 'فريق التحقيق' : 'محايد',
+                emoji: roleInfo.emoji,
+                ability: roleInfo.ability,
                 info: null,
                 round: room.currentRound,
                 totalRounds: room.totalRounds,
                 isTutorial: room.isTutorial
             };
 
-            if (role === 'WITNESS') {
+            // Assign role-specific information
+            if (role === ROLE_TYPES.CULPRIT) {
                 roleData.info = room.currentScenario.story;
-            } else if (role === 'ARCHITECT') {
+            } else if (role === ROLE_TYPES.FORGER) {
                 roleData.info = `كلماتك المفتاحية: ${room.currentScenario.keywords.join(' - ')}`;
-            } else if (role === 'DETECTIVE') {
+            } else if (role === ROLE_TYPES.CHIEF_DETECTIVE || role === ROLE_TYPES.ANALYST || role === ROLE_TYPES.OFFICER) {
                 roleData.info = `عنوان القضية: ${room.currentScenario.title}`;
-            } else if (role === 'ACCOMPLICE') {
-                roleData.info = `الشاهد هو: ${witnessPlayer ? witnessPlayer.name : 'غير معروف'}. ساعده!`;
-            } else if (role === 'LAWYER') {
-                roleData.info = `موكلك هو: ${lawyerClientName}. دافع عنه!`;
-            } else if (role === 'TRICKSTER') {
+            } else if (role === ROLE_TYPES.ACCOMPLICE) {
+                roleData.info = `الجاني هو: ${culpritPlayer ? culpritPlayer.name : 'غير معروف'}. احمه!`;
+                roleData.targetPlayer = culpritPlayer ? culpritPlayer.name : null;
+            } else if (role === ROLE_TYPES.LAWYER) {
+                const clientPlayer = shuffledPlayers.find(p => p.id === player.lawyerClient);
+                roleData.info = `موكلك هو: ${clientPlayer ? clientPlayer.name : 'غير معروف'}. دافع عنه!`;
+                roleData.targetPlayer = clientPlayer ? clientPlayer.name : null;
+            } else if (role === ROLE_TYPES.SABOTEUR) {
                 roleData.info = `كلمتك الدخيلة: ${room.currentScenario.tricksterWord}`;
+            } else if (role === ROLE_TYPES.WITNESS) {
+                roleData.info = "لا توجد معلومات إضافية. راقب وحلل.";
             } else {
                 roleData.info = "انتظر التعليمات...";
             }
 
             io.to(player.id).emit('roleAssigned', roleData);
         });
+
+        // 😈 قدرة المخرب - الفوضى الإبداعية: رؤية جميع الأدوار لمدة 2 ثانية
+        const saboteur = shuffledPlayers.find(p => p.role === ROLE_TYPES.SABOTEUR || p.role === 'TRICKSTER');
+        if (saboteur && room.currentRound === 1) {
+            // فقط في الجولة الأولى
+            const allRoles = shuffledPlayers.map(p => ({
+                name: p.name,
+                role: getRoleName(p.role),
+                emoji: getRoleInfo(p.role)?.emoji || '❓'
+            }));
+            
+            io.to(saboteur.id).emit('saboteurReveal', { 
+                roles: allRoles, 
+                duration: 2000  // 2 ثانية
+            });
+            console.log(`😈 قدرة المخرب: كشف الأدوار لـ ${saboteur.name}`);
+        }
 
         // Notify Host
         io.to(roomCode).emit('gameStarted', {
@@ -992,6 +1329,12 @@ io.on('connection', (socket) => {
         const room = rooms[roomCode];
         if (room && room.state === 'DRAFTING') {
             room.answers[socket.id] = answer;
+
+            // 👮 قدرة الضابط - تتبع وقت الإرسال
+            if (!room.submissionTimes) {
+                room.submissionTimes = {};
+            }
+            room.submissionTimes[socket.id] = Date.now();
 
             // Notify host
             const player = room.players.find(p => p.id === socket.id);
@@ -1074,22 +1417,116 @@ io.on('connection', (socket) => {
                 type: 'INTERROGATION',
                 content: `تحليل الإجابة:\nنسبة الدقة: ${accuracy}%\nالمصداقية: ${accuracy > 50 ? 'عالية' : 'منخفضة'}`
             });
+        } else if ((player.role === ROLE_TYPES.OFFICER || player.role === 'OFFICER') && abilityType === 'OBSERVATION') {
+            // 👮 قدرة الضابط - الملاحظة الدقيقة
+            if (!room.submissionTimes) {
+                socket.emit('abilityResult', {
+                    type: 'OBSERVATION',
+                    content: 'لا توجد بيانات عن أوقات الإرسال بعد.'
+                });
+                return;
+            }
+
+            // حساب الأوقات النسبية
+            const times = Object.entries(room.submissionTimes);
+            if (times.length === 0) {
+                socket.emit('abilityResult', {
+                    type: 'OBSERVATION',
+                    content: 'لم يرسل أحد إجابته بعد.'
+                });
+                return;
+            }
+
+            const earliestTime = Math.min(...times.map(([_, time]) => time));
+            
+            const timingData = times.map(([playerId, timestamp]) => {
+                const playerObj = room.players.find(p => p.id === playerId);
+                const relativeTime = Math.floor((timestamp - earliestTime) / 1000);
+                return {
+                    name: playerObj ? playerObj.name : 'غير معروف',
+                    time: relativeTime
+                };
+            }).sort((a, b) => a.time - b.time);
+
+            const timingText = timingData.map((data, idx) => {
+                const emoji = idx === 0 ? '⚡' : idx === 1 ? '🏃' : idx === 2 ? '🚶' : '🐌';
+                return `${emoji} ${data.name}: ${data.time === 0 ? 'فوراً' : `+${data.time}ث`}`;
+            }).join('\n');
+
+            socket.emit('abilityResult', {
+                type: 'OBSERVATION',
+                content: `⏱️ أوقات الإرسال:\n\n${timingText}\n\n💡 ملاحظة: الجاني عادةً يرسل سريعاً لأنه يعرف القصة!`
+            });
         }
     });
 
-    socket.on('submitVote', ({ roomCode, qualityVote, identityVote }) => {
+    // ============================================
+    // المرحلة الأولى: Quality Voting
+    // ============================================
+    socket.on('submitQualityVote', ({ roomCode, scenarioIndex }) => {
         const room = rooms[roomCode];
-        if (room && room.state === 'VOTING') {
-            // Prevent self-voting for quality
-            if (qualityVote === socket.id) {
+        if (room && room.state === 'QUALITY_VOTING') {
+            const player = room.players.find(p => p.id === socket.id);
+            if (!player) return;
+
+            // منع التصويت لنفسك
+            const playerIndex = room.players.findIndex(p => p.id === socket.id);
+            if (scenarioIndex === playerIndex) {
                 socket.emit('error', 'لا يمكنك التصويت لنفسك!');
                 return;
             }
 
-            room.votes[socket.id] = { quality: qualityVote, identity: identityVote };
+            room.qualityVotes[socket.id] = scenarioIndex;
+            
+            // 🆕 إرسال للهوست أن اللاعب صوّت
+            io.to(room.host).emit('voteReceived', {
+                phase: 'QUALITY',
+                playerName: player.name,
+                totalVotes: Object.keys(room.qualityVotes).length,
+                totalPlayers: room.players.length
+            });
+            
+            checkQualityVotingComplete(roomCode);
+        }
+    });
 
-            // Check if all voted
-            checkVotingComplete(roomCode);
+    // ============================================
+    // المرحلة الثانية: Culprit Voting
+    // ============================================
+    socket.on('submitCulpritVote', ({ roomCode, playerId }) => {
+        const room = rooms[roomCode];
+        if (room && room.state === 'CULPRIT_VOTING') {
+            const player = room.players.find(p => p.id === socket.id);
+            if (!player) return;
+            
+            room.culpritVotes[socket.id] = playerId;
+            
+            // 🆕 إرسال للهوست أن اللاعب صوّت
+            io.to(room.host).emit('voteReceived', {
+                phase: 'CULPRIT',
+                playerName: player.name,
+                totalVotes: Object.keys(room.culpritVotes).length,
+                totalPlayers: room.players.length
+            });
+            
+            checkCulpritVotingComplete(roomCode);
+        }
+    });
+
+    // ============================================
+    // OLD submitVote (للتوافقية المؤقتة - سيتم إزالته)
+    // ============================================
+    socket.on('submitVote', ({ roomCode, qualityVote, identityVote }) => {
+        // هذا للتوافقية مع الكود القديم - سيتم إزالته بعد تحديث Client
+        const room = rooms[roomCode];
+        if (room) {
+            if (room.state === 'QUALITY_VOTING') {
+                room.qualityVotes[socket.id] = qualityVote;
+                checkQualityVotingComplete(roomCode);
+            } else if (room.state === 'CULPRIT_VOTING') {
+                room.culpritVotes[socket.id] = identityVote;
+                checkCulpritVotingComplete(roomCode);
+            }
         }
     });
 
@@ -1128,6 +1565,17 @@ io.on('connection', (socket) => {
 });
 
 const PORT = process.env.PORT || 3000;
-server.listen(PORT, () => {
-    console.log(`Server running on port ${PORT}`);
+server.listen(PORT, async () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+    
+    // اختبار الاتصال بـ GitHub Models AI
+    console.log('🔍 Testing GitHub Models AI connection...');
+    const isConnected = await testConnection();
+    
+    if (isConnected) {
+        console.log('✅ GitHub Models AI: متصل وجاهز للاستخدام');
+        console.log('🤖 البوتات ستستخدم الذكاء الصناعي (GPT-4o-mini) لتوليد إجابات واقعية');
+    } else {
+        console.log('⚠️ GitHub Models AI: غير متصل - سيتم استخدام القوالب الافتراضية');
+    }
 });

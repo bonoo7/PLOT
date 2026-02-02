@@ -18,10 +18,14 @@ if (Platform.OS !== 'web') {
   }
 }
 
-// Replace with your computer's local IP address
+// Server URL from environment variables
+const DEV_SERVER_IP = process.env.EXPO_PUBLIC_DEV_SERVER_IP || '192.168.8.9';
+const DEV_SERVER_PORT = process.env.EXPO_PUBLIC_DEV_SERVER_PORT || 3000;
+const PROD_SERVER_URL = process.env.EXPO_PUBLIC_PROD_SERVER_URL || 'http://localhost:3000';
+
 const SOCKET_URL = Platform.OS === 'web'
-  ? 'http://localhost:3000'  // ✅ تصحيح: الخادم يعمل على 3000، ليس 8081
-  : (__DEV__ ? 'http://192.168.8.9:3000' : 'http://localhost:3000');
+  ? PROD_SERVER_URL
+  : (__DEV__ ? `http://${DEV_SERVER_IP}:${DEV_SERVER_PORT}` : PROD_SERVER_URL);
 
 console.log('🌐 SOCKET_URL:', SOCKET_URL, 'Platform:', Platform.OS);
 
@@ -78,11 +82,24 @@ export default function App() {
   const [votingData, setVotingData] = useState(null);
   const [selectedQuality, setSelectedQuality] = useState(null);
   const [selectedIdentity, setSelectedIdentity] = useState(null);
+  const [selectedCulprit, setSelectedCulprit] = useState(null); // 🆕 للمرحلة الثانية
+  
+  // 🎭 العرض الدرامي
+  const [revealData, setRevealData] = useState({
+    step: null, // 'SCENARIO', 'VOTERS', 'AUTHOR', 'NO_VOTES'
+    data: null,
+    completed: []  // قائمة السيناريوهات التي تم عرضها
+  });
+  
+  // 🆕 التصويتات الحية للهوست
+  const [liveVotes, setLiveVotes] = useState([]); // ['أحمد', 'سارة', 'خالد']
+  
   const [isLeader, setIsLeader] = useState(false);
   const [abilityUsed, setAbilityUsed] = useState(false);
   const [players, setPlayers] = useState([]);
   const [answers, setAnswers] = useState([]);
   const [results, setResults] = useState([]);
+  const [teamResults, setTeamResults] = useState(null); // ✅ معلومات الفريق الجديدة
   const [leaderboard, setLeaderboard] = useState([]);
   const [round, setRound] = useState(0);
   const [totalRounds, setTotalRounds] = useState(3);
@@ -209,30 +226,146 @@ export default function App() {
       setSubmittedPlayers(prev => [...prev, playerName]);
     });
 
+    // ============================================
+    // ❌ OLD startPresentation - تم إلغاؤها
+    // ============================================
     newSocket.on('startPresentation', () => {
-      if (userRoleRef.current === 'HOST') {
-        setScreen('HOST_PRESENTATION');
-      } else {
-        setScreen('PRESENTATION');
-      }
+      // تم إلغاء هذه المرحلة - الانتقال مباشرة للتصويت
+      // لا يجب أن يصل هذا Event
+      console.log('⚠️ startPresentation received - this should not happen');
     });
 
     newSocket.on('receiveAnswers', (answersList) => {
+      // تم إلغاء استخدامها - كانت تُستخدم لعرض الإجابات مع الأسماء
+      console.log('⚠️ receiveAnswers received - this is deprecated');
       setAnswers(answersList);
     });
 
+    // ============================================
+    // ❌ OLD startVoting - تم استبدالها
+    // ============================================
     newSocket.on('startVoting', (data) => {
-      setVotingData(data);
+      // تم استبدالها بـ qualityVotingStarted و culpritVotingStarted
+      // لا يجب أن يصل هذا Event
+      console.log('⚠️ startVoting received - this should not happen');
+    });
+
+    // ============================================
+    // 🆕 المرحلة الأولى: Quality Voting
+    // ============================================
+    newSocket.on('qualityVotingStarted', ({ scenarios }) => {
+      setVotingData({ scenarios });
+      setSelectedQuality(null);
       setIsSubmitted(false);
+      setLiveVotes([]); // 🆕 تنظيف التصويتات الحية
+      
+      // فصل المضيف عن اللاعبين
       if (userRoleRef.current === 'HOST') {
-        setScreen('HOST_VOTING');
+        setScreen('HOST_QUALITY_VOTING'); // المضيف ينتظر فقط
       } else {
-        setScreen('VOTING');
+        setScreen('QUALITY_VOTING'); // اللاعبون يصوتون
       }
     });
 
-    newSocket.on('roundResults', ({ results: resultsList }) => {
+    // ============================================
+    // 🆕 العرض الدرامي
+    // ============================================
+    newSocket.on('dramaticRevealStarted', ({ totalScenarios }) => {
+      setRevealData({
+        step: null,
+        data: null,
+        completed: [],
+        total: totalScenarios
+      });
+      
+      // فقط المضيف يعرض، اللاعبون ينتظرون
+      if (userRoleRef.current === 'HOST') {
+        setScreen('HOST_DRAMATIC_REVEAL');
+      } else {
+        setScreen('WAITING_REVEAL'); // اللاعبون ينتظرون
+      }
+    });
+
+    newSocket.on('revealStep', ({ step, data }) => {
+      setRevealData(prev => {
+        // حفظ البيانات المتراكمة
+        let newData = { ...prev };
+        
+        newData.step = step;
+        newData.data = data;
+        
+        // حفظ البيانات في state منفصل للعرض المتراكم
+        if (step === 'SCENARIO') {
+          newData.currentScenario = data.answer;
+          newData.currentPosition = data.position;
+          newData.currentTotal = data.total;
+          // إعادة تعيين البيانات الأخرى
+          newData.currentVoters = [];
+          newData.currentVoteCount = 0;
+          newData.currentAuthor = null;
+        } else if (step === 'VOTERS') {
+          newData.currentVoters = data.voters;
+          newData.currentVoteCount = data.voteCount;
+        } else if (step === 'AUTHOR') {
+          newData.currentAuthor = data.authorName;
+          newData.completed = [...prev.completed, data.index];
+        }
+        
+        return newData;
+      });
+    });
+
+    // ============================================
+    // 🆕 المرحلة الثانية: Culprit Voting
+    // ============================================
+    newSocket.on('culpritVotingStarted', ({ scenarios }) => {
+      setVotingData({ scenarios });
+      setSelectedCulprit(null);
+      setIsSubmitted(false);
+      setLiveVotes([]); // 🆕 تنظيف التصويتات الحية
+      
+      // فصل المضيف عن اللاعبين
+      if (userRoleRef.current === 'HOST') {
+        setScreen('HOST_CULPRIT_VOTING'); // المضيف ينتظر فقط
+      } else {
+        setScreen('CULPRIT_VOTING'); // اللاعبون يصوتون
+      }
+    });
+    
+    // ============================================
+    // 🆕 التصويتات الحية للهوست
+    // ============================================
+    newSocket.on('voteReceived', ({ phase, playerName, totalVotes, totalPlayers }) => {
+      // فقط المضيف يستقبل هذا
+      if (userRoleRef.current === 'HOST') {
+        setLiveVotes(prev => {
+          // تجنب التكرار
+          if (prev.includes(playerName)) return prev;
+          return [...prev, playerName];
+        });
+        console.log(`✅ [${phase}] ${playerName} صوّت (${totalVotes}/${totalPlayers})`);
+      }
+    });
+
+    newSocket.on('roundResults', ({ 
+      results: resultsList, 
+      teamScores, 
+      crimeTeamWon, 
+      investigationTeamWon, 
+      culpritCaught,
+      crimeMembers,
+      investigationMembers
+    }) => {
       setResults(resultsList);
+      // حفظ معلومات الفريق في state جديد
+      setTeamResults({
+        teamScores,
+        crimeTeamWon,
+        investigationTeamWon,
+        culpritCaught,
+        crimeMembers,
+        investigationMembers
+      });
       if (userRoleRef.current === 'HOST') {
         setScreen('HOST_RESULTS');
       } else {
@@ -257,7 +390,36 @@ export default function App() {
       } else if (data.type === 'INTERROGATION') {
         Alert.alert('نتيجة الاستجواب', data.content);
         setAbilityUsed(true);
+      } else if (data.type === 'OBSERVATION') {
+        Alert.alert('👮 الملاحظة الدقيقة', data.content);
+        setAbilityUsed(true);
       }
+    });
+
+    // 🎁 قدرة المزور - الكلمة الرابعة
+    newSocket.on('forgerBonus', ({ keyword }) => {
+      Alert.alert(
+        '✨ مكافأة المزور!',
+        `حصلت على كلمة إضافية:\n\n"${keyword}"\n\nاستخدمها لتحسين سيناريوك!`,
+        [{ text: 'رائع!' }]
+      );
+    });
+
+    // 😈 قدرة المخرب - الفوضى الإبداعية
+    newSocket.on('saboteurReveal', ({ roles, duration }) => {
+      const rolesList = roles.map(r => `${r.emoji} ${r.name} - ${r.role}`).join('\n');
+      
+      Alert.alert(
+        '😈 الفوضى الإبداعية!',
+        `سترى جميع الأدوار لمدة ثانيتين:\n\n${rolesList}`,
+        [{ text: 'فهمت!', onPress: () => {
+          // سيختفي التنبيه تلقائياً بعد ثانيتين
+          setTimeout(() => {
+            // يمكن إضافة إشعار اختفاء هنا إذا لزم الأمر
+          }, duration);
+        }}],
+        { cancelable: false }
+      );
     });
 
     newSocket.on('error', (msg) => {
@@ -419,7 +581,8 @@ export default function App() {
   };
 
   const handleInterrogate = (targetId) => {
-    if (roleData?.role === 'DETECTIVE' && !abilityUsed) {
+    // دعم الأدوار الجديدة والقديمة
+    if ((roleData?.role === 'CHIEF_DETECTIVE' || roleData?.role === 'DETECTIVE') && !abilityUsed) {
       socket.emit('useAbility', { roomCode, abilityType: 'INTERROGATION', targetId });
     }
   };
@@ -494,9 +657,23 @@ export default function App() {
             <View style={styles.modalContent}>
               <Text style={styles.modalTitle}>اختر دورك للتدريب</Text>
               <ScrollView style={{ maxHeight: 300, width: '100%' }}>
-                {['WITNESS', 'ARCHITECT', 'DETECTIVE', 'SPY', 'ACCOMPLICE', 'LAWYER', 'TRICKSTER', 'CITIZEN'].map(role => (
-                  <TouchableOpacity activeOpacity={0.7} key={role} onPress={() => handleStartTutorial(role)} style={styles.modalButton}>
-                    <Text style={styles.modalButtonText}>{role}</Text>
+                {[
+                  { id: 'CULPRIT', name: '🎭 الجاني', team: '🔴' },
+                  { id: 'FORGER', name: '🧩 المزور', team: '🔴' },
+                  { id: 'INFILTRATOR', name: '🕵️ المخترق', team: '🔴' },
+                  { id: 'ACCOMPLICE', name: '🤝 الشريك', team: '🔴' },
+                  { id: 'LAWYER', name: '⚖️ المحامي', team: '🔴' },
+                  { id: 'CHIEF_DETECTIVE', name: '🔍 المحقق الرئيسي', team: '🔵' },
+                  { id: 'ANALYST', name: '🕵️‍♀️ المحلل', team: '🔵' },
+                  { id: 'OFFICER', name: '🎖️ الضابط', team: '🔵' },
+                  { id: 'WITNESS', name: '👤 الشاهد المحايد', team: '🔵' },
+                  { id: 'SABOTEUR', name: '😈 المخرب', team: '⚪' }
+                ].map(role => (
+                  <TouchableOpacity activeOpacity={0.7} key={role.id} onPress={() => handleStartTutorial(role.id)} style={styles.modalButton}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                      <Text style={styles.modalButtonText}>{role.name}</Text>
+                      <Text style={{ fontSize: 16 }}>{role.team}</Text>
+                    </View>
                   </TouchableOpacity>
                 ))}
                 <TouchableOpacity activeOpacity={0.7} onPress={() => handleStartTutorial(null)} style={[styles.modalButton, { backgroundColor: '#ddd' }]}>
@@ -646,30 +823,33 @@ export default function App() {
     );
   }
 
+  // ============================================
+  // ❌ OLD HOST_PRESENTATION - تم استبدالها
+  // ============================================
   if (screen === 'HOST_PRESENTATION') {
+    // الآن يتم الانتقال مباشرة لـ HOST_QUALITY_VOTING
     return (
-      <GlobalLayout title="التقارير الواردة" showStamp={false}>
-        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%', paddingBottom: 20 }}>
-          <View style={styles.answersList}>
-            {answers.map((item, index) => (
-              <View key={index} style={styles.answerCardSquare}>
-                <View style={{ flex: 1, justifyContent: 'center', width: '100%' }}>
-                  <Text style={styles.answerText} numberOfLines={8} adjustsFontSizeToFit>"{item.answer}"</Text>
-                </View>
-                <Text style={styles.answerAuthor}>- {item.playerName}</Text>
-              </View>
-            ))}
-          </View>
-        </ScrollView>
+      <GlobalLayout title="⏳ جاري التحضير..." showStamp={false}>
+        <View style={{ alignItems: 'center', marginVertical: 30 }}>
+          <Text style={[styles.title, { fontSize: 24 }]}>
+            ⏳ جاري الانتقال للتصويت...
+          </Text>
+        </View>
       </GlobalLayout>
     );
   }
 
+  // ============================================
+  // ❌ OLD HOST_VOTING - تم استبدالها بـ HOST_QUALITY_VOTING و HOST_CULPRIT_VOTING
+  // ============================================
   if (screen === 'HOST_VOTING') {
+    // الآن تم الفصل إلى مرحلتين
     return (
-      <GlobalLayout title="مرحلة التصويت" showStamp={false}>
-        <View style={{ alignItems: 'center', marginVertical: 20 }}>
-          <Text style={styles.subtitle}>العملاء يقومون بالتصويت الآن...</Text>
+      <GlobalLayout title="⏳ التصويت" showStamp={false}>
+        <View style={{ alignItems: 'center', marginVertical: 30 }}>
+          <Text style={[styles.title, { fontSize: 24 }]}>
+            ⏳ جاري التصويت...
+          </Text>
         </View>
       </GlobalLayout>
     );
@@ -814,12 +994,26 @@ export default function App() {
               <View style={styles.modalContent}>
                 <Text style={styles.modalTitle}>اختر دورك للتدريب</Text>
                 <ScrollView style={{ maxHeight: 300, width: '100%' }}>
-                  {['WITNESS', 'ARCHITECT', 'DETECTIVE', 'SPY', 'ACCOMPLICE', 'LAWYER', 'TRICKSTER', 'CITIZEN'].map(role => (
-                    <TouchableOpacity activeOpacity={0.7} key={role} onPress={() => handleStartTutorial(role)} style={styles.modalButton}>
-                      <Text style={styles.modalButtonText}>{role}</Text>
+                  {[
+                    { id: 'CULPRIT', name: '🎭 الجاني', team: '🔴' },
+                    { id: 'FORGER', name: '🧩 المزور', team: '🔴' },
+                    { id: 'INFILTRATOR', name: '🕵️ المخترق', team: '🔴' },
+                    { id: 'ACCOMPLICE', name: '🤝 الشريك', team: '🔴' },
+                    { id: 'LAWYER', name: '⚖️ المحامي', team: '🔴' },
+                    { id: 'CHIEF_DETECTIVE', name: '🔍 المحقق الرئيسي', team: '🔵' },
+                    { id: 'ANALYST', name: '🕵️‍♀️ المحلل', team: '🔵' },
+                    { id: 'OFFICER', name: '🎖️ الضابط', team: '🔵' },
+                    { id: 'WITNESS', name: '👤 الشاهد المحايد', team: '🔵' },
+                    { id: 'SABOTEUR', name: '😈 المخرب', team: '⚪' }
+                  ].map(role => (
+                    <TouchableOpacity activeOpacity={0.7} key={role.id} onPress={() => handleStartTutorialAsHost(role.id)} style={styles.modalButton}>
+                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                        <Text style={styles.modalButtonText}>{role.name}</Text>
+                        <Text style={{ fontSize: 16 }}>{role.team}</Text>
+                      </View>
                     </TouchableOpacity>
                   ))}
-                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleStartTutorial(null)} style={[styles.modalButton, { backgroundColor: '#ddd' }]}>
+                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleStartTutorialAsHost(null)} style={[styles.modalButton, { backgroundColor: '#ddd' }]}>
                     <Text style={styles.modalButtonText}>عشوائي</Text>
                   </TouchableOpacity>
                 </ScrollView>
@@ -835,19 +1029,102 @@ export default function App() {
   }
 
   if (screen === 'GAME' && roleData) {
+    // تحديد ألوان الفريق
+    const teamColor = roleData.team === 'CRIME' ? theme.colors.accentRed : 
+                      roleData.team === 'INVESTIGATION' ? '#1E90FF' : 
+                      '#9370DB'; // Purple for neutral
+    
+    const teamIcon = roleData.team === 'CRIME' ? '🔴' : 
+                     roleData.team === 'INVESTIGATION' ? '🔵' : 
+                     '⚪';
+    
     return (
       <GlobalLayout title="هوية العميل" showStamp={true} stampText="سري للغاية">
-        <View style={{ alignItems: 'center', marginBottom: 15, width: '100%' }}>
-          <RoleAvatar role={roleData.role} size={100} />
-        </View>
+        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%', paddingBottom: 20 }}>
+          {/* شارة الفريق */}
+          <View style={{
+            backgroundColor: teamColor,
+            paddingHorizontal: 15,
+            paddingVertical: 8,
+            borderRadius: 20,
+            marginBottom: 10,
+            flexDirection: 'row',
+            alignItems: 'center',
+            shadowColor: '#000',
+            shadowOffset: { width: 0, height: 2 },
+            shadowOpacity: 0.3,
+            shadowRadius: 3,
+            elevation: 3
+          }}>
+            <Text style={{ fontSize: 16, marginRight: 5 }}>{teamIcon}</Text>
+            <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 14 }}>
+              {roleData.teamName || 'فريق غير معروف'}
+            </Text>
+          </View>
 
-        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%' }}>
-          <Text style={[styles.roleTitle, { color: theme.colors.accentRed, textAlign: 'center' }]}>{roleData.roleName}</Text>
+          {/* صورة الدور */}
+          <View style={{ alignItems: 'center', marginBottom: 10 }}>
+            <RoleAvatar role={roleData.role} size={100} />
+          </View>
+
+          {/* اسم الدور مع الإيموجي */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
+            {roleData.emoji && <Text style={{ fontSize: 24, marginLeft: 8 }}>{roleData.emoji}</Text>}
+            <Text style={[styles.roleTitle, { color: teamColor, textAlign: 'center' }]}>
+              {roleData.roleName}
+            </Text>
+          </View>
+
+          {/* الوصف */}
           <Text style={styles.roleDesc}>{roleData.description}</Text>
 
+          {/* الهدف */}
+          {roleData.goal && (
+            <View style={[styles.infoBox, { backgroundColor: 'rgba(255, 215, 0, 0.1)', borderColor: '#DAA520', borderWidth: 1, marginTop: 10 }]}>
+              <Text style={[styles.infoLabel, { color: '#B8860B' }]}>🎯 هدفك:</Text>
+              <Text style={[styles.infoText, { color: '#333' }]}>{roleData.goal}</Text>
+            </View>
+          )}
+
+          {/* المعلومات السرية */}
           <View style={styles.infoBox}>
-            <Text style={styles.infoLabel}>معلومات سرية:</Text>
+            <Text style={styles.infoLabel}>🔒 معلومات سرية:</Text>
             <Text style={styles.infoText}>{roleData.info}</Text>
+          </View>
+
+          {/* القدرة الخاصة */}
+          {roleData.ability && (
+            <View style={[styles.infoBox, { backgroundColor: 'rgba(138, 43, 226, 0.1)', borderColor: '#8A2BE2', borderWidth: 1, marginTop: 10 }]}>
+              <Text style={[styles.infoLabel, { color: '#8A2BE2' }]}>⚡ القدرة الخاصة:</Text>
+              <Text style={[styles.infoText, { fontWeight: 'bold', color: '#4B0082', marginBottom: 5 }]}>
+                {roleData.ability.name}
+              </Text>
+              <Text style={[styles.infoText, { fontSize: 12, color: '#666', fontStyle: 'italic' }]}>
+                {roleData.ability.description}
+              </Text>
+              {roleData.ability.usage && (
+                <Text style={[styles.infoText, { fontSize: 11, color: '#999', marginTop: 5 }]}>
+                  📌 {roleData.ability.usage}
+                </Text>
+              )}
+            </View>
+          )}
+
+          {/* معلومات اللاعب المستهدف (للشريك والمحامي) */}
+          {roleData.targetPlayer && (
+            <View style={{ marginTop: 10, padding: 10, backgroundColor: 'rgba(255, 69, 0, 0.1)', borderRadius: 5, width: '100%' }}>
+              <Text style={{ textAlign: 'center', fontWeight: 'bold', color: '#FF4500' }}>
+                👤 اللاعب المستهدف: {roleData.targetPlayer}
+              </Text>
+            </View>
+          )}
+
+          {/* معلومات الجولة */}
+          <View style={{ marginTop: 15, padding: 8, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 5, width: '100%' }}>
+            <Text style={{ textAlign: 'center', fontSize: 12, color: '#666' }}>
+              الجولة {roleData.round} من {roleData.totalRounds}
+              {roleData.isTutorial ? ' (تدريب)' : ''}
+            </Text>
           </View>
         </ScrollView>
       </GlobalLayout>
@@ -855,6 +1132,13 @@ export default function App() {
   }
 
   if (screen === 'DRAFTING') {
+    const teamColor = roleData?.team === 'CRIME' ? theme.colors.accentRed : 
+                      roleData?.team === 'INVESTIGATION' ? '#1E90FF' : 
+                      '#9370DB';
+    const teamIcon = roleData?.team === 'CRIME' ? '🔴' : 
+                     roleData?.team === 'INVESTIGATION' ? '🔵' : 
+                     '⚪';
+    
     return (
       <GlobalLayout title="تقرير المهمة" showStamp={isSubmitted} stampText="تم الإرسال">
         <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%' }}>
@@ -862,7 +1146,12 @@ export default function App() {
             <View style={{ flex: 1 }}>
               <View style={{ width: '100%', padding: 10, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 5 }}>
                 <Text style={{ textAlign: 'right', fontWeight: 'bold', color: theme.colors.accentRed }}>{gameTitle}</Text>
-                <Text style={{ textAlign: 'right', fontWeight: 'bold' }}>أنت: {roleData?.roleName}</Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 5 }}>
+                  <Text style={{ fontSize: 12, marginLeft: 5 }}>{teamIcon}</Text>
+                  <Text style={{ textAlign: 'right', fontWeight: 'bold' }}>
+                    أنت: {roleData?.emoji} {roleData?.roleName}
+                  </Text>
+                </View>
                 <RedactedText text={roleData?.info} />
               </View>
             </View>
@@ -882,11 +1171,24 @@ export default function App() {
                 value={answer}
                 onChangeText={handleDraftChange}
                 multiline
-                maxLength={140}
+                maxLength={500}
                 placeholderTextColor="#666"
               />
-              <Text style={{ alignSelf: 'flex-end', marginRight: '10%' }}>{answer.length}/140</Text>
+              <Text style={{ alignSelf: 'flex-end', marginRight: '10%', color: answer.length > 450 ? '#B22222' : '#666' }}>
+                {answer.length}/500 حرف
+              </Text>
 
+              {/* زر القدرة الخاصة - تحديث للأدوار الجديدة */}
+              {roleData?.role === 'INFILTRATOR' && (roleData?.round >= 2 || roleData?.isTutorial) && !abilityUsed && (
+                <TouchableOpacity activeOpacity={0.7}
+                  style={[styles.button, { backgroundColor: theme.colors.accentYellow, marginBottom: 10 }]}
+                  onPress={handleUseAbility}
+                >
+                  <Text style={[styles.buttonText, { color: theme.colors.text }]}>👁️ عين الصقر</Text>
+                </TouchableOpacity>
+              )}
+              
+              {/* دعم للتوافق مع الدور القديم SPY */}
               {roleData?.role === 'SPY' && (roleData?.round >= 2 || roleData?.isTutorial) && !abilityUsed && (
                 <TouchableOpacity activeOpacity={0.7}
                   style={[styles.button, { backgroundColor: theme.colors.accentYellow, marginBottom: 10 }]}
@@ -908,21 +1210,470 @@ export default function App() {
     );
   }
 
+  // ============================================
+  // ❌ PRESENTATION - تم إلغاؤها (الانتقال مباشرة للتصويت)
+  // ============================================
   if (screen === 'PRESENTATION') {
     return (
-      <GlobalLayout title="وقت المواجهة" showStamp={false}>
-        {/* Avatar floating top right is hard with this layout, putting it inline or removing it for now. 
-              Actually, putting it at top of scroll. */}
-        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%' }}>
-          <View style={{ marginBottom: 20 }}>
-            <RoleAvatar role={roleData?.role} size={80} showLabel={false} />
+      <GlobalLayout title="⏳ جاري التحضير..." showStamp={false}>
+        <View style={{ alignItems: 'center', marginVertical: 20 }}>
+          <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
+        </View>
+        <Text style={styles.subtitle}>جاري الانتقال للتصويت...</Text>
+      </GlobalLayout>
+    );
+  }
+
+  // ============================================
+  // 🆕 HOST: QUALITY_VOTING (المضيف ينتظر)
+  // ============================================
+  if (screen === 'HOST_QUALITY_VOTING') {
+    return (
+      <GlobalLayout title="📊 التصويت على الجودة" showStamp={false}>
+        <View style={{ alignItems: 'center', marginVertical: 30 }}>
+          <Text style={[styles.title, { fontSize: 24, marginBottom: 20 }]}>
+            ⏳ اللاعبون يصوّتون...
+          </Text>
+          <Text style={[styles.subtitle, { textAlign: 'center' }]}>
+            يصوّت اللاعبون على أفضل سيناريو{'\n'}(بدون معرفة الكاتب)
+          </Text>
+          
+          {/* 🆕 التصويتات الحية */}
+          <View style={{ marginTop: 30, width: '90%' }}>
+            <Text style={[styles.sectionTitle, { textAlign: 'center', marginBottom: 15 }]}>
+              📊 التصويتات الحية: {liveVotes.length}/{votingData?.scenarios.length || 0}
+            </Text>
+            
+            <View style={{ backgroundColor: '#f9f9f9', borderRadius: 10, padding: 15 }}>
+              {votingData?.scenarios.map((scenario, index) => {
+                const playerName = scenario.playerName || `اللاعب ${index + 1}`;
+                const hasVoted = liveVotes.includes(playerName);
+                
+                return (
+                  <View key={index} style={{ 
+                    flexDirection: 'row', 
+                    alignItems: 'center', 
+                    paddingVertical: 8,
+                    borderBottomWidth: index < votingData.scenarios.length - 1 ? 1 : 0,
+                    borderBottomColor: '#e0e0e0'
+                  }}>
+                    <Text style={{ fontSize: 24, marginRight: 10 }}>
+                      {hasVoted ? '✅' : '⏳'}
+                    </Text>
+                    <Text style={{ 
+                      fontSize: 16, 
+                      color: hasVoted ? '#2F4F4F' : '#999',
+                      fontWeight: hasVoted ? 'bold' : 'normal'
+                    }}>
+                      {playerName}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+            
+            {liveVotes.length === 0 && (
+              <Text style={{ textAlign: 'center', color: '#888', marginTop: 15, fontSize: 14 }}>
+                ⏳ بانتظار التصويتات...
+              </Text>
+            )}
           </View>
-          <Text style={styles.subtitle}>انظر للشاشة الرئيسية</Text>
+          
+          {votingData && (
+            <View style={{ marginTop: 30, width: '90%' }}>
+              <Text style={[styles.sectionTitle, { textAlign: 'center', marginBottom: 15 }]}>
+                📋 السيناريوهات:
+              </Text>
+              {votingData.scenarios.map((scenario, index) => (
+                <View key={index} style={[styles.voteButton, { backgroundColor: '#f5f5f5', marginBottom: 10 }]}>
+                  <Text style={{ fontWeight: 'bold', fontSize: 14, color: '#666' }}>
+                    السيناريو #{index + 1}
+                  </Text>
+                  <Text style={[styles.voteText, { fontSize: 14, color: '#666' }]}>
+                    "{scenario.answer}"
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      </GlobalLayout>
+    );
+  }
+
+  // ============================================
+  // 🆕 PLAYER: WAITING_REVEAL (اللاعبون ينتظرون)
+  // ============================================
+  if (screen === 'WAITING_REVEAL') {
+    return (
+      <GlobalLayout title="🎭 النتائج" showStamp={false}>
+        <View style={{ alignItems: 'center', marginVertical: 30 }}>
+          <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
+          <Text style={[styles.title, { fontSize: 24, marginTop: 20, marginBottom: 20 }]}>
+            ⏳ جاري الكشف...
+          </Text>
+          <Text style={[styles.subtitle, { textAlign: 'center' }]}>
+            انظر إلى الشاشة الرئيسية{'\n'}لمشاهدة النتائج التشويقية!
+          </Text>
+        </View>
+      </GlobalLayout>
+    );
+  }
+
+  // ============================================
+  // 🆕 HOST: DRAMATIC_REVEAL (العرض التشويقي المتراكم)
+  // ============================================
+  if (screen === 'HOST_DRAMATIC_REVEAL') {
+    // استخدام state محلي لتخزين البيانات المتراكمة
+    const currentScenario = revealData.data?.answer || revealData.currentScenario;
+    const currentPosition = revealData.data?.position || revealData.currentPosition;
+    const currentTotal = revealData.data?.total || revealData.total;
+    const currentVoters = revealData.data?.voters || revealData.currentVoters || [];
+    const currentVoteCount = revealData.data?.voteCount || revealData.currentVoteCount || 0;
+    const currentAuthor = revealData.data?.authorName || revealData.currentAuthor;
+
+    return (
+      <GlobalLayout title="🎭 عرض النتائج" showStamp={false}>
+        <ScrollView
+          style={{ width: '100%', flex: 1 }}
+          contentContainerStyle={{ alignItems: 'center', paddingVertical: 30 }}
+        >
+          {revealData.step === null && (
+            <View style={{ alignItems: 'center' }}>
+              <Text style={[styles.title, { fontSize: 28 }]}>⏳ جاري الكشف عن النتائج...</Text>
+            </View>
+          )}
+
+          {/* العرض المتراكم - يبدأ من SCENARIO وما بعده */}
+          {(revealData.step === 'SCENARIO' || revealData.step === 'VOTERS' || revealData.step === 'AUTHOR') && (
+            <View style={{ width: '90%', alignItems: 'center' }}>
+              {/* 1. السيناريو - يظهر دائماً */}
+              <Text style={[styles.sectionTitle, { fontSize: 24, marginBottom: 15 }]}>
+                السيناريو #{currentPosition} من {currentTotal}
+              </Text>
+              <View style={[styles.voteButton, { backgroundColor: '#f0f8ff', borderWidth: 3, borderColor: theme.colors.primary, padding: 20, marginBottom: 20 }]}>
+                <Text style={[styles.voteText, { fontSize: 18, color: '#000' }]}>
+                  "{currentScenario}"
+                </Text>
+              </View>
+
+              {/* 2. الأصوات - تظهر من VOTERS فصاعداً */}
+              {(revealData.step === 'VOTERS' || revealData.step === 'AUTHOR') && (
+                <View style={{ width: '100%', alignItems: 'center', marginBottom: 20 }}>
+                  <Text style={[styles.sectionTitle, { fontSize: 22, marginBottom: 10 }]}>
+                    👥 صوّت له:
+                  </Text>
+                  {currentVoters.map((voterName, idx) => (
+                    <Text key={idx} style={{ fontSize: 20, color: theme.colors.accentGreen, marginVertical: 3 }}>
+                      ✓ {voterName}
+                    </Text>
+                  ))}
+                  <Text style={[styles.title, { fontSize: 28, marginTop: 10, color: theme.colors.accentGreen }]}>
+                    ({currentVoteCount} {currentVoteCount === 1 ? 'صوت' : 'أصوات'}) 🏆
+                  </Text>
+                </View>
+              )}
+
+              {/* 3. الكاتب - يظهر فقط في AUTHOR */}
+              {revealData.step === 'AUTHOR' && (
+                <View style={{ width: '100%', alignItems: 'center', marginTop: 10 }}>
+                  <Text style={{ fontSize: 22, color: '#888', marginBottom: 10 }}>
+                    ✍️ الكاتب:
+                  </Text>
+                  <Text style={[styles.title, { fontSize: 40, color: theme.colors.accentYellow }]}>
+                    {currentAuthor} 🎉
+                  </Text>
+                </View>
+              )}
+
+              {/* رسائل الانتظار */}
+              {revealData.step === 'SCENARIO' && (
+                <Text style={{ color: '#888', fontSize: 18, marginTop: 15 }}>
+                  ⏳ من صوّت له؟
+                </Text>
+              )}
+              {revealData.step === 'VOTERS' && (
+                <Text style={{ color: '#888', fontSize: 18, marginTop: 15 }}>
+                  ⏳ من كتبه؟
+                </Text>
+              )}
+            </View>
+          )}
+
+          {/* السيناريوهات بدون أصوات */}
+          {revealData.step === 'NO_VOTES' && revealData.data && (
+            <View style={{ width: '90%', alignItems: 'center' }}>
+              <Text style={[styles.sectionTitle, { fontSize: 22, marginBottom: 20 }]}>
+                📋 سيناريوهات لم تحصل على أصوات:
+              </Text>
+              {revealData.data.scenarios.map((scenario, idx) => (
+                <View key={idx} style={[styles.voteButton, { backgroundColor: '#f5f5f5', marginBottom: 10 }]}>
+                  <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#666' }}>
+                    ✍️ {scenario.authorName}
+                  </Text>
+                  <Text style={[styles.voteText, { fontSize: 15, color: '#666' }]}>
+                    "{scenario.answer}"
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
         </ScrollView>
       </GlobalLayout>
     );
   }
 
+  // ============================================
+  // 🆕 HOST: CULPRIT_VOTING (المضيف ينتظر)
+  // ============================================
+  if (screen === 'HOST_CULPRIT_VOTING') {
+    return (
+      <GlobalLayout title="🔍 التصويت على الجاني" showStamp={false}>
+        <View style={{ alignItems: 'center', marginVertical: 30 }}>
+          <Text style={[styles.title, { fontSize: 24, marginBottom: 20 }]}>
+            ⏳ اللاعبون يصوّتون...
+          </Text>
+          <Text style={[styles.subtitle, { textAlign: 'center' }]}>
+            يصوّت اللاعبون على الجاني الحقيقي
+          </Text>
+          
+          {/* 🆕 التصويتات الحية */}
+          <View style={{ marginTop: 30, width: '90%' }}>
+            <Text style={[styles.sectionTitle, { textAlign: 'center', marginBottom: 15 }]}>
+              🔍 التصويتات الحية: {liveVotes.length}/{votingData?.scenarios.length || 0}
+            </Text>
+            
+            <View style={{ backgroundColor: '#f9f9f9', borderRadius: 10, padding: 15 }}>
+              {votingData?.scenarios.map((scenario) => {
+                const hasVoted = liveVotes.includes(scenario.playerName);
+                
+                return (
+                  <View key={scenario.playerId} style={{ 
+                    flexDirection: 'row', 
+                    alignItems: 'center', 
+                    paddingVertical: 8,
+                    borderBottomWidth: votingData.scenarios.indexOf(scenario) < votingData.scenarios.length - 1 ? 1 : 0,
+                    borderBottomColor: '#e0e0e0'
+                  }}>
+                    <Text style={{ fontSize: 24, marginRight: 10 }}>
+                      {hasVoted ? '✅' : '⏳'}
+                    </Text>
+                    <Text style={{ 
+                      fontSize: 16, 
+                      color: hasVoted ? '#2F4F4F' : '#999',
+                      fontWeight: hasVoted ? 'bold' : 'normal'
+                    }}>
+                      {scenario.playerName}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+            
+            {liveVotes.length === 0 && (
+              <Text style={{ textAlign: 'center', color: '#888', marginTop: 15, fontSize: 14 }}>
+                ⏳ بانتظار التصويتات...
+              </Text>
+            )}
+          </View>
+          
+          {votingData && (
+            <View style={{ marginTop: 30, width: '90%' }}>
+              <Text style={[styles.sectionTitle, { textAlign: 'center', marginBottom: 15 }]}>
+                👥 اللاعبون:
+              </Text>
+              {votingData.scenarios.map((scenario) => (
+                <View key={scenario.playerId} style={[styles.voteButton, { backgroundColor: '#f5f5f5', marginBottom: 10 }]}>
+                  <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#666' }}>
+                    👤 {scenario.playerName}
+                  </Text>
+                  <Text style={[styles.voteText, { fontSize: 14, color: '#666' }]}>
+                    "{scenario.answer}"
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+      </GlobalLayout>
+    );
+  }
+
+  // ============================================
+  // 🆕 SCREEN: QUALITY_VOTING (المرحلة الأولى - اللاعبون)
+  // ============================================
+  if (screen === 'QUALITY_VOTING' && votingData) {
+    if (isSubmitted) {
+      return (
+        <GlobalLayout title="✨ أفضل سيناريو" showStamp={true} stampText="تم التصويت">
+          <View style={{ alignItems: 'center', marginVertical: 20 }}>
+            <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
+          </View>
+          <Text style={styles.subtitle}>⏳ بانتظار باقي اللاعبين...</Text>
+        </GlobalLayout>
+      );
+    }
+
+    return (
+      <GlobalLayout title="✨ أفضل سيناريو" showStamp={false}>
+        <ScrollView
+          style={{ width: '100%', flex: 1 }}
+          contentContainerStyle={{ alignItems: 'center', paddingBottom: 40 }}
+        >
+          <View style={{ marginBottom: 15 }}>
+            <RoleAvatar role={roleData?.role} size={50} showLabel={false} />
+          </View>
+
+          <Text style={[styles.sectionTitle, { textAlign: 'center', marginBottom: 5 }]}>
+            صوّت لأفضل سيناريو
+          </Text>
+          <Text style={{ color: '#888', fontSize: 14, textAlign: 'center', marginBottom: 20 }}>
+            (لا يمكنك معرفة من كتب كل سيناريو)
+          </Text>
+
+          <View style={{ width: '90%' }}>
+            {votingData.scenarios.map((scenario, index) => {
+              const isOwnScenario = index === votingData.scenarios.findIndex(
+                (_, i) => votingData.scenarios[i] === votingData.scenarios.find((s, si) => si === index)
+              );
+              
+              return (
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  key={index}
+                  style={[
+                    styles.voteButton,
+                    selectedQuality === index && styles.selectedVote,
+                  ]}
+                  onPress={() => setSelectedQuality(index)}
+                >
+                  <Text style={[styles.voteLabel, { marginBottom: 5, fontWeight: 'bold' }]}>
+                    السيناريو #{index + 1}
+                  </Text>
+                  <Text style={styles.voteText}>"{scenario.answer}"</Text>
+                  {selectedQuality === index && (
+                    <Text style={{ color: theme.colors.accentGreen, fontSize: 16, marginTop: 5 }}>
+                      ✓ تم الاختيار
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={[
+              styles.button,
+              !selectedQuality && { backgroundColor: '#ccc' }
+            ]}
+            onPress={() => {
+              if (selectedQuality !== null) {
+                socket.emit('submitQualityVote', { roomCode, scenarioIndex: selectedQuality });
+                setIsSubmitted(true);
+              } else {
+                Alert.alert('تنبيه', 'اختر سيناريو أولاً!');
+              }
+            }}
+            disabled={selectedQuality === null}
+          >
+            <Text style={styles.buttonText}>✅ إرسال التصويت</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </GlobalLayout>
+    );
+  }
+
+  // ============================================
+  // ❌ OLD DRAMATIC_REVEAL للاعبين - تم استبدالها بـ WAITING_REVEAL
+  // ============================================
+  // (تم نقلها للمضيف فقط في HOST_DRAMATIC_REVEAL)
+
+  // ============================================
+  // 🆕 SCREEN: CULPRIT_VOTING (المرحلة الثانية - اللاعبون)
+  // ============================================
+  if (screen === 'CULPRIT_VOTING' && votingData) {
+    if (isSubmitted) {
+      return (
+        <GlobalLayout title="🔍 من الجاني؟" showStamp={true} stampText="تم التصويت">
+          <View style={{ alignItems: 'center', marginVertical: 20 }}>
+            <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
+          </View>
+          <Text style={styles.subtitle}>⏳ بانتظار النتائج...</Text>
+        </GlobalLayout>
+      );
+    }
+
+    return (
+      <GlobalLayout title="🔍 من الجاني؟" showStamp={false}>
+        <ScrollView
+          style={{ width: '100%', flex: 1 }}
+          contentContainerStyle={{ alignItems: 'center', paddingBottom: 40 }}
+        >
+          <View style={{ marginBottom: 15 }}>
+            <RoleAvatar role={roleData?.role} size={50} showLabel={false} />
+          </View>
+
+          <Text style={[styles.sectionTitle, { textAlign: 'center', marginBottom: 5 }]}>
+            من هو الجاني الحقيقي؟
+          </Text>
+          <Text style={{ color: '#888', fontSize: 14, textAlign: 'center', marginBottom: 20 }}>
+            (الآن يمكنك رؤية من كتب كل سيناريو)
+          </Text>
+
+          <View style={{ width: '90%' }}>
+            {votingData.scenarios.map((scenario) => (
+              <TouchableOpacity
+                activeOpacity={0.7}
+                key={scenario.playerId}
+                style={[
+                  styles.voteButton,
+                  selectedCulprit === scenario.playerId && styles.selectedVote,
+                ]}
+                onPress={() => setSelectedCulprit(scenario.playerId)}
+              >
+                <Text style={[styles.voteLabel, { marginBottom: 5, fontWeight: 'bold', fontSize: 16 }]}>
+                  👤 {scenario.playerName}
+                </Text>
+                <Text style={[styles.voteText, { fontSize: 14 }]}>
+                  "{scenario.answer}"
+                </Text>
+                {selectedCulprit === scenario.playerId && (
+                  <Text style={{ color: theme.colors.accentRed, fontSize: 16, marginTop: 5 }}>
+                    ✓ المشتبه به
+                  </Text>
+                )}
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <TouchableOpacity
+            activeOpacity={0.7}
+            style={[
+              styles.button,
+              { backgroundColor: theme.colors.accentRed },
+              !selectedCulprit && { backgroundColor: '#ccc' }
+            ]}
+            onPress={() => {
+              if (selectedCulprit) {
+                socket.emit('submitCulpritVote', { roomCode, playerId: selectedCulprit });
+                setIsSubmitted(true);
+              } else {
+                Alert.alert('تنبيه', 'اختر مشتبهاً به أولاً!');
+              }
+            }}
+            disabled={!selectedCulprit}
+          >
+            <Text style={styles.buttonText}>🚨 تقديم الاتهام</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </GlobalLayout>
+    );
+  }
+
+  // ============================================
+  // OLD VOTING SCREEN (للتوافقية المؤقتة)
+  // ============================================
   if (screen === 'VOTING' && votingData) {
     if (isSubmitted) {
       return (
@@ -945,10 +1696,23 @@ export default function App() {
             <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
           </View>
 
-          {roleData?.role === 'DETECTIVE' && (roleData?.round >= 2 || roleData?.isTutorial) && !abilityUsed && (
-            <Text style={{ color: theme.colors.accentRed, fontWeight: 'bold', marginBottom: 10 }}>
+          {/* دعم للأدوار الجديدة والقديمة */}
+          {(roleData?.role === 'CHIEF_DETECTIVE' || roleData?.role === 'DETECTIVE') && (roleData?.round >= 2 || roleData?.isTutorial) && !abilityUsed && (
+            <Text style={{ color: theme.colors.accentRed, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' }}>
               🕵️ يمكنك الضغط مطولاً على إجابة لاستجواب صاحبها
             </Text>
+          )}
+
+          {/* قدرة الضابط */}
+          {(roleData?.role === 'OFFICER' || roleData?.role === 'OFFICER') && (roleData?.round >= 2 || roleData?.isTutorial) && !abilityUsed && (
+            <TouchableOpacity activeOpacity={0.7}
+              style={[styles.button, { backgroundColor: '#4169E1', marginBottom: 15, width: '90%' }]}
+              onPress={() => {
+                socket.emit('useAbility', { roomCode, abilityType: 'OBSERVATION' });
+              }}
+            >
+              <Text style={styles.buttonText}>⏱️ الملاحظة الدقيقة</Text>
+            </TouchableOpacity>
           )}
 
           <View style={{ width: '90%' }}>
@@ -966,7 +1730,8 @@ export default function App() {
                   else Alert.alert('تنبيه', 'لا يمكنك التصويت لنفسك!');
                 }}
                 onLongPress={() => {
-                  if (roleData?.role === 'DETECTIVE' && (roleData?.round >= 2 || roleData?.isTutorial) && !abilityUsed && item.id !== socket.id) {
+                  // دعم الأدوار الجديدة والقديمة
+                  if ((roleData?.role === 'CHIEF_DETECTIVE' || roleData?.role === 'DETECTIVE') && (roleData?.round >= 2 || roleData?.isTutorial) && !abilityUsed && item.id !== socket.id) {
                     Alert.alert(
                       'استجواب',
                       'هل تريد استجواب هذا المشتبه به؟',
@@ -1010,12 +1775,124 @@ export default function App() {
   }
 
   if (screen === 'RESULTS') {
+    const myResult = results.find(r => r.name === playerName);
+    const myTeam = myResult?.team;
+    const myTeamColor = myTeam === 'CRIME' ? theme.colors.accentRed : 
+                        myTeam === 'INVESTIGATION' ? '#1E90FF' : '#9370DB';
+    
     return (
       <GlobalLayout title="النتائج" showStamp={false}>
-        <View style={{ alignItems: 'center', marginVertical: 20 }}>
-          <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
-        </View>
-        <Text style={styles.subtitle}>انظر للشاشة الرئيسية</Text>
+        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%', paddingBottom: 20 }}>
+          {/* صورة الدور */}
+          <View style={{ alignItems: 'center', marginVertical: 15 }}>
+            <RoleAvatar role={roleData?.role} size={70} showLabel={false} />
+          </View>
+
+          {/* إعلان فوز الفريق */}
+          {teamResults && (teamResults.crimeTeamWon || teamResults.investigationTeamWon) && (
+            <View style={{
+              backgroundColor: teamResults.crimeTeamWon ? 'rgba(178, 34, 34, 0.15)' : 'rgba(30, 144, 255, 0.15)',
+              borderColor: teamResults.crimeTeamWon ? theme.colors.accentRed : '#1E90FF',
+              borderWidth: 2,
+              borderRadius: 10,
+              padding: 15,
+              marginBottom: 15,
+              width: '90%',
+              alignItems: 'center'
+            }}>
+              <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 5 }}>
+                {teamResults.crimeTeamWon ? '🔴' : '🔵'}
+              </Text>
+              <Text style={{ fontSize: 18, fontWeight: 'bold', textAlign: 'center', color: '#333' }}>
+                {teamResults.crimeTeamWon ? '🎉 فاز فريق الجريمة!' : '🎉 فاز فريق التحقيق!'}
+              </Text>
+              {teamResults.culpritCaught && (
+                <Text style={{ fontSize: 12, color: '#666', marginTop: 5, textAlign: 'center' }}>
+                  🚨 تم القبض على الجاني!
+                </Text>
+              )}
+            </View>
+          )}
+
+          {/* نتيجتك الشخصية */}
+          {myResult && (
+            <View style={{
+              backgroundColor: 'rgba(255, 215, 0, 0.1)',
+              borderColor: myTeamColor,
+              borderWidth: 2,
+              borderRadius: 8,
+              padding: 12,
+              marginBottom: 15,
+              width: '90%'
+            }}>
+              <Text style={{ fontSize: 16, fontWeight: 'bold', textAlign: 'center', color: '#333', marginBottom: 8 }}>
+                📊 نتيجتك
+              </Text>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                <Text style={{ fontSize: 14, color: '#666' }}>دورك:</Text>
+                <Text style={{ fontSize: 14, fontWeight: 'bold', color: myTeamColor }}>
+                  {myResult.role}
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
+                <Text style={{ fontSize: 14, color: '#666' }}>نقاط هذه الجولة:</Text>
+                <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.accentRed }}>
+                  {myResult.roundScore > 0 ? '+' : ''}{myResult.roundScore}
+                </Text>
+              </View>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                <Text style={{ fontSize: 14, color: '#666' }}>المجموع الكلي:</Text>
+                <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#2F4F4F' }}>
+                  {myResult.totalScore}
+                </Text>
+              </View>
+              
+              {/* تفصيل النقاط */}
+              {myResult.breakdown && myResult.breakdown.length > 0 && (
+                <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#ddd' }}>
+                  <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#666', marginBottom: 5 }}>
+                    📝 تفصيل النقاط:
+                  </Text>
+                  {myResult.breakdown.map((item, idx) => (
+                    <Text key={idx} style={{ fontSize: 11, color: '#555', marginBottom: 3 }}>
+                      • {item}
+                    </Text>
+                  ))}
+                </View>
+              )}
+            </View>
+          )}
+
+          {/* معلومات الفريق */}
+          {teamResults && myTeam && myTeam !== 'NEUTRAL' && (
+            <View style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.8)',
+              borderRadius: 8,
+              padding: 12,
+              marginBottom: 15,
+              width: '90%'
+            }}>
+              <Text style={{ fontSize: 14, fontWeight: 'bold', textAlign: 'center', color: '#333', marginBottom: 8 }}>
+                {myTeam === 'CRIME' ? '🔴 فريقك (الجريمة)' : '🔵 فريقك (التحقيق)'}
+              </Text>
+              {(myTeam === 'CRIME' ? teamResults.crimeMembers : teamResults.investigationMembers)?.map((member, idx) => (
+                <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
+                  <Text style={{ fontSize: 12, color: '#666' }}>
+                    {member.name === playerName ? '👤 ' : ''}
+                    {member.name}
+                  </Text>
+                  <Text style={{ fontSize: 12, fontWeight: 'bold', color: myTeamColor }}>
+                    {member.score}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <Text style={[styles.subtitle, { marginTop: 10 }]}>
+            انتظر المضيف للجولة التالية...
+          </Text>
+        </ScrollView>
       </GlobalLayout>
     );
   }

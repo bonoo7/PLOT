@@ -7,8 +7,7 @@ const GlobalLayout = ({ children, title, showStamp = false, stampText = "سري 
     const isWeb = Platform.OS === 'web';
 
     // Dynamic Sizing
-    const maxFolderWidth = isWeb ? 1000 : 90; // Web: reduced width, Mobile: 90%
-    const folderHeight = isWeb ? '85%' : '85%'; // Reduced height for all modes
+    const maxFolderWidth = isWeb ? 1000 : '90%'; // Web: fixed width, Mobile: 90%
 
     return (
         <View style={styles.container}>
