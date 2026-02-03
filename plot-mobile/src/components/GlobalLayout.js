@@ -1,18 +1,25 @@
 import { View, Text, StyleSheet, Image, Platform, ImageBackground, useWindowDimensions, StatusBar } from 'react-native';
 import { theme } from '../styles/theme';
+import { spacing, fonts, moderateScale, isSmallScreen, getContainerPadding } from '../styles/responsive';
 
 const GlobalLayout = ({ children, title, showStamp = false, stampText = "سري للغاية" }) => {
     const { width, height } = useWindowDimensions();
     const isLandscape = width > height;
     const isWeb = Platform.OS === 'web';
+    const isMobile = Platform.OS !== 'web';
+    const isSmall = isSmallScreen();
 
-    // Dynamic Sizing
-    const maxFolderWidth = isWeb ? 1000 : '90%'; // Web: fixed width, Mobile: 90%
+    // Dynamic Sizing responsive
+    const maxFolderWidth = isWeb ? 1000 : '95%';
+    const folderHeight = isLandscape ? '85%' : (isWeb ? '90%' : '80%');
+    const tabWidth = isSmall ? 150 : (isLandscape ? 250 : 180);
+    const titleFontSize = isWeb ? fonts.title : (isLandscape ? fonts.xlarge : fonts.large);
+    const stampSize = isWeb ? 120 : (isSmall ? 80 : 100);
 
     return (
         <View style={styles.container}>
             {/* Hide Status Bar on Mobile for Full Screen effect */}
-            {!isWeb && <StatusBar hidden />}
+            {isMobile && <StatusBar hidden />}
 
             {/* Main Desk Background */}
             <ImageBackground
@@ -27,15 +34,13 @@ const GlobalLayout = ({ children, title, showStamp = false, stampText = "سري 
                 <View style={[
                     styles.folderWrapper,
                     {
-                        // Web: Fixed max. Mobile Landscape: 80% (wide enough). Mobile Portrait: 85% (show bg).
-                        maxWidth: isWeb ? maxFolderWidth : (isLandscape ? '80%' : '85%'),
-                        // Web/Landscape: 85% height. Portrait: 80% to show desk top/bottom.
-                        height: isLandscape ? '85%' : (isWeb ? '90%' : '75%'),
-                        paddingHorizontal: isWeb ? 0 : 5
+                        maxWidth: maxFolderWidth,
+                        height: folderHeight,
+                        paddingHorizontal: isMobile ? spacing.xs : 0,
                     }
                 ]}>
                     {/* Folder Tab */}
-                    <View style={[styles.folderTab, { width: isLandscape ? 250 : 180, marginBottom: -2 }]}>
+                    <View style={[styles.folderTab, { width: tabWidth, marginBottom: -2 }]}>
                         <Text style={styles.tabText}>CASE FILE #892</Text>
                     </View>
 
@@ -47,11 +52,11 @@ const GlobalLayout = ({ children, title, showStamp = false, stampText = "سري 
                         resizeMode="cover"
                     >
                         {/* Header Area */}
-                        <View style={[styles.header, { marginBottom: isLandscape ? 15 : 10 }]}>
+                        <View style={[styles.header, { marginBottom: spacing.m }]}>
                             <View style={styles.headerLine} />
                             <Text style={[
                                 styles.headerTitle,
-                                { fontSize: isWeb ? 32 : (isLandscape ? 22 : 18) }
+                                { fontSize: titleFontSize }
                             ]}>{title || "ملف العملية"}</Text>
                             <View style={styles.headerLine} />
                         </View>
@@ -61,9 +66,9 @@ const GlobalLayout = ({ children, title, showStamp = false, stampText = "سري 
                             <View style={[
                                 styles.stampContainer,
                                 {
-                                    width: isWeb ? 120 : 100,
-                                    height: isWeb ? 80 : 60,
-                                    left: isWeb ? 40 : 20
+                                    width: stampSize,
+                                    height: stampSize * 0.67,
+                                    left: isWeb ? 40 : (isSmall ? 10 : 20)
                                 }
                             ]}>
                                 <Image
@@ -104,30 +109,30 @@ const styles = StyleSheet.create({
     },
     darkOverlay: {
         ...StyleSheet.absoluteFillObject,
-        backgroundColor: 'rgba(0,0,0,0.4)', // Slightly darker
+        backgroundColor: 'rgba(0,0,0,0.4)',
     },
     folderWrapper: {
         width: '100%',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 10 },
+        shadowOffset: { width: 0, height: moderateScale(10) },
         shadowOpacity: 0.6,
-        shadowRadius: 15,
+        shadowRadius: moderateScale(15),
         elevation: 10,
     },
     folderTab: {
         backgroundColor: '#d6c68b',
-        height: 30,
-        borderTopLeftRadius: 8,
-        borderTopRightRadius: 8,
-        marginLeft: '5%', // Relative margin
+        height: moderateScale(30),
+        borderTopLeftRadius: moderateScale(8),
+        borderTopRightRadius: moderateScale(8),
+        marginLeft: '5%',
         justifyContent: 'center',
-        paddingHorizontal: 15,
+        paddingHorizontal: spacing.m,
         zIndex: 1,
         marginBottom: -1,
     },
     tabText: {
         fontFamily: theme.fonts.main,
-        fontSize: 10,
+        fontSize: fonts.tiny,
         color: '#5c5236',
         fontWeight: 'bold',
         letterSpacing: 1,
@@ -135,32 +140,32 @@ const styles = StyleSheet.create({
     folderContainer: {
         flex: 1,
         width: '100%',
-        padding: 12,
+        padding: spacing.m,
         overflow: 'hidden',
         borderRadius: 4,
     },
     header: {
         flexDirection: 'row',
         alignItems: 'center',
-        marginTop: 5,
+        marginTop: spacing.xs,
         justifyContent: 'center',
     },
     headerLine: {
         height: 2,
-        backgroundColor: '#2F4F4F',
+        backgroundColor: theme.colors.text,
         flex: 1,
         opacity: 0.6,
     },
     headerTitle: {
-        fontFamily: theme.fonts.heading,
+        fontFamily: theme.fonts.bold,
         fontWeight: 'bold',
         color: '#1a1a1a',
-        marginHorizontal: 10,
+        marginHorizontal: spacing.m,
         textTransform: 'uppercase',
     },
     stampContainer: {
         position: 'absolute',
-        top: 15,
+        top: spacing.m,
         transform: [{ rotate: '-15deg' }],
         zIndex: 10,
         opacity: 0.85,
@@ -173,19 +178,19 @@ const styles = StyleSheet.create({
         flex: 1,
         width: '100%',
         alignItems: 'center',
-        justifyContent: 'center', // ✅ Center vertically for menu
+        justifyContent: 'center',
     },
     footer: {
-        marginTop: 5,
+        marginTop: spacing.xs,
         borderTopWidth: 1,
         borderTopColor: 'rgba(47, 79, 79, 0.2)',
-        paddingTop: 5,
+        paddingTop: spacing.xs,
         alignItems: 'center',
-        marginBottom: 5,
+        marginBottom: spacing.xs,
     },
     footerText: {
         fontFamily: theme.fonts.main,
-        fontSize: 8,
+        fontSize: fonts.tiny,
         color: '#555',
         opacity: 0.7,
         letterSpacing: 1,

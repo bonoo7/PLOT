@@ -24,8 +24,11 @@ const server = http.createServer(app);
 const io = new Server(server, {
     cors: {
         origin: "*",
-        methods: ["GET", "POST"]
-    }
+        methods: ["GET", "POST"],
+        credentials: true
+    },
+    transports: ['websocket', 'polling'],
+    upgrade: true,
 });
 
 // Game State
@@ -104,7 +107,13 @@ function startDraftingPhase(roomCode) {
     room.drafts = {}; // Reset drafts
     const duration = 90; // seconds
 
-    io.to(roomCode).emit('startDrafting', { duration });
+    // إرسال قائمة اللاعبين الذين ينتظرون (جميع اللاعبين في البداية)
+    const waitingFor = room.players.map(p => p.id);
+    
+    io.to(roomCode).emit('startDrafting', { 
+        duration,
+        waitingFor 
+    });
 
     // Start Timer
     let timeLeft = duration;
@@ -742,7 +751,17 @@ function endRound(roomCode) {
 }
 
 io.on('connection', (socket) => {
-    console.log('A user connected:', socket.id);
+    console.log('✅ User connected:', socket.id, 'from', socket.handshake.address);
+    console.log('📊 Total connections:', io.engine.clientsCount);
+    
+    // Handle connection errors
+    socket.on('error', (error) => {
+        console.error('❌ Socket error:', socket.id, error);
+    });
+    
+    socket.on('connect_error', (error) => {
+        console.error('❌ Connection error:', socket.id, error);
+    });
 
     // Host creates a room
     socket.on('createRoom', () => {
@@ -867,9 +886,9 @@ io.on('connection', (socket) => {
                 room.players.push(player);
                 socket.join(roomCode.toUpperCase());
 
-                // Fill with Bots (Total 8 players)
+                // Fill with 3 Bots (Total 4 players - minimum for game)
                 let botCount = 0;
-                while (room.players.length < 8) {
+                while (room.players.length < 4) {
                     botCount++;
                     const botId = `bot_${Date.now()}_${botCount}`;
                     room.players.push({
@@ -882,6 +901,8 @@ io.on('connection', (socket) => {
                         isBot: true
                     });
                 }
+                
+                console.log(`✅ Training Mode: Added ${botCount} bots. Total players: ${room.players.length}`);
             } else {
                 room.players.push(player);
                 socket.join(roomCode.toUpperCase());

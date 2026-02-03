@@ -1,12 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { registerRootComponent } from 'expo';
-import { StyleSheet, Text, View, TextInput, TouchableOpacity, Alert, I18nManager, ScrollView, Modal, Image, ImageBackground, Animated, LayoutAnimation, UIManager, Platform, useWindowDimensions } from 'react-native';
+import { 
+  StyleSheet, 
+  View, 
+  Text,
+  StatusBar,
+  SafeAreaView,
+  Platform,
+  I18nManager,
+  Alert
+} from 'react-native';
 import io from 'socket.io-client';
+import { registerRootComponent } from 'expo';
 import { theme } from './src/styles/theme';
-import RoleAvatar from './components/RoleAvatar';
-import BackgroundWatermark from './components/BackgroundWatermark';
-import RedactedText from './components/RedactedText';
-import GlobalLayout from './src/components/GlobalLayout'; // ✅ New Import
+import { RoleSelectScreen } from './src/screens/RoleSelectScreen_v2';
+import { LoginScreen, LobbyScreen } from './src/screens/PlayerScreens_v2';
+import { HostSetupScreen, HostLobbyScreen } from './src/screens/HostScreens_v2';
+import { TrainingRoleSelectScreen, TrainingJoinScreen } from './src/screens/TrainingScreens';
+import { GameScreen, DraftingScreen } from './src/screens/GameScreens';
+import { QualityVotingScreen, CulpritVotingScreen, WaitingRevealScreen, EndScreen, PlayerDramaticRevealScreen } from './src/screens/VotingScreens';
+import { HostGameScreen, HostVotingScreen, HostResultsScreen, HostGameIntroScreen, HostDraftingScreen, HostDramaticRevealScreen } from './src/screens/HostGameScreens';
+import GlobalLayout from './src/components/GlobalLayout';
 
 // Force RTL
 if (Platform.OS !== 'web') {
@@ -18,8 +31,8 @@ if (Platform.OS !== 'web') {
   }
 }
 
-// Server URL from environment variables
-const DEV_SERVER_IP = process.env.EXPO_PUBLIC_DEV_SERVER_IP || '192.168.8.9';
+// Server configuration
+const DEV_SERVER_IP = process.env.EXPO_PUBLIC_DEV_SERVER_IP || '192.168.8.19';
 const DEV_SERVER_PORT = process.env.EXPO_PUBLIC_DEV_SERVER_PORT || 3000;
 const PROD_SERVER_URL = process.env.EXPO_PUBLIC_PROD_SERVER_URL || 'http://localhost:3000';
 
@@ -27,2383 +40,738 @@ const SOCKET_URL = Platform.OS === 'web'
   ? PROD_SERVER_URL
   : (__DEV__ ? `http://${DEV_SERVER_IP}:${DEV_SERVER_PORT}` : PROD_SERVER_URL);
 
-console.log('🌐 SOCKET_URL:', SOCKET_URL, 'Platform:', Platform.OS);
+console.log('🌐 Socket URL:', SOCKET_URL);
 
-export default function App() {
-  console.log('App rendering, Platform:', Platform.OS);
+// الشاشات الممكنة
+const SCREENS = {
+  ROLE_SELECT: 'ROLE_SELECT',
+  
+  // شاشات التدريب
+  TRAINING_ROLE_SELECT: 'TRAINING_ROLE_SELECT',
+  TRAINING_JOIN: 'TRAINING_JOIN',
+  
+  // شاشات المضيف
+  HOST_SETUP: 'HOST_SETUP',
+  HOST_LOBBY: 'HOST_LOBBY',
+  HOST_GAME_INTRO: 'HOST_GAME_INTRO',
+  HOST_GAME: 'HOST_GAME',
+  HOST_DRAFTING: 'HOST_DRAFTING',
+  HOST_DRAMATIC_REVEAL: 'HOST_DRAMATIC_REVEAL',
+  HOST_QUALITY_VOTING: 'HOST_QUALITY_VOTING',
+  HOST_CULPRIT_VOTING: 'HOST_CULPRIT_VOTING',
+  HOST_RESULTS: 'HOST_RESULTS',
+  HOST_END: 'HOST_END',
+  
+  // شاشات اللاعب
+  LOGIN: 'LOGIN',
+  LOBBY: 'LOBBY',
+  GAME: 'GAME',
+  DRAFTING: 'DRAFTING',
+  QUALITY_VOTING: 'QUALITY_VOTING',
+  PLAYER_DRAMATIC_REVEAL: 'PLAYER_DRAMATIC_REVEAL',
+  CULPRIT_VOTING: 'CULPRIT_VOTING',
+  WAITING: 'WAITING',
+  END: 'END',
+};
 
-  const { width, height } = useWindowDimensions();
-  const isLandscape = width > height;
-
-  // Responsive Styles
-  const responsiveStyles = {
-    paperContainer: {
-      width: isLandscape ? (width > 1000 ? '50%' : '70%') : '100%',
-      maxWidth: 800,
-      alignSelf: 'center',
-    },
-    menuContent: {
-      flexDirection: isLandscape ? 'row' : 'column',
-      flexWrap: 'wrap',
-      justifyContent: 'center',
-      alignItems: 'center',
-      width: '100%',
-    },
-    fileButtonContainer: {
-      // In landscape: 28% to safely fit 3 items with margins. Portrait: 100% full width.
-      width: isLandscape ? '28%' : '100%',
-      margin: isLandscape ? '2%' : 0,
-      marginBottom: 20,
-    }
-  };
-
-  useEffect(() => {
-    if (Platform.OS === 'android') {
-      if (UIManager.setLayoutAnimationEnabledExperimental && !global.nativeFabricUIManager) {
-        UIManager.setLayoutAnimationEnabledExperimental(true);
-      }
-    }
-  }, []);
-
+function App() {
+  // Socket state
   const socketRef = useRef(null);
   const [socket, setSocket] = useState(null);
-  const [screen, setScreen] = useState('ROLE_SELECT');
-  const [userRole, setUserRole] = useState(null);
+  const [connecting, setConnecting] = useState(false);
+  
+  // Screen & role state
+  const [screen, setScreen] = useState(SCREENS.ROLE_SELECT);
+  const [userRole, setUserRole] = useState(null); // 'HOST' or 'PLAYER'
+  
+  // Training state
+  const [selectedTrainingRole, setSelectedTrainingRole] = useState(null);
+  
+  // Player state
   const [playerName, setPlayerName] = useState('');
   const [roomCode, setRoomCode] = useState('');
+  
+  // Host state
   const [generatedRoomCode, setGeneratedRoomCode] = useState('');
-  const [hostCodeInput, setHostCodeInput] = useState('');  // ✅ للتحقق من كود المضيف
-  const [showHostCodeModal, setShowHostCodeModal] = useState(false);  // ✅ لعرض نموذج كود المضيف
+  
+  // Game state
+  const [players, setPlayers] = useState([]);
   const [roleData, setRoleData] = useState(null);
-  const [gameTitle, setGameTitle] = useState('');
+  const [gameData, setGameData] = useState(null);
+  const [scenario, setScenario] = useState('');
+  const [currentRound, setCurrentRound] = useState(1);
+  const [totalRounds, setTotalRounds] = useState(3);
   const [answer, setAnswer] = useState('');
   const [timeLeft, setTimeLeft] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [votingData, setVotingData] = useState(null);
-  const [selectedQuality, setSelectedQuality] = useState(null);
-  const [selectedIdentity, setSelectedIdentity] = useState(null);
-  const [selectedCulprit, setSelectedCulprit] = useState(null); // 🆕 للمرحلة الثانية
   
-  // 🎭 العرض الدرامي
-  const [revealData, setRevealData] = useState({
-    step: null, // 'SCENARIO', 'VOTERS', 'AUTHOR', 'NO_VOTES'
-    data: null,
-    completed: []  // قائمة السيناريوهات التي تم عرضها
-  });
+  // Voting state
+  const [scenarios, setScenarios] = useState([]);
+  const [selectedScenario, setSelectedScenario] = useState(null);
+  const [selectedCulprit, setSelectedCulprit] = useState(null);
+  const [hasVoted, setHasVoted] = useState(false);
+  const [liveVotes, setLiveVotes] = useState([]);
+  const [waitingFor, setWaitingFor] = useState([]);
   
-  // 🆕 التصويتات الحية للهوست
-  const [liveVotes, setLiveVotes] = useState([]); // ['أحمد', 'سارة', 'خالد']
+  // Results state
+  const [roundResults, setRoundResults] = useState(null);
   
-  const [isLeader, setIsLeader] = useState(false);
-  const [abilityUsed, setAbilityUsed] = useState(false);
-  const [players, setPlayers] = useState([]);
-  const [answers, setAnswers] = useState([]);
-  const [results, setResults] = useState([]);
-  const [teamResults, setTeamResults] = useState(null); // ✅ معلومات الفريق الجديدة
-  const [leaderboard, setLeaderboard] = useState([]);
-  const [round, setRound] = useState(0);
-  const [totalRounds, setTotalRounds] = useState(3);
-  const [submittedPlayers, setSubmittedPlayers] = useState([]);
-  const [tutorialModalVisible, setTutorialModalVisible] = useState(false);
-  const [isTutorialFlow, setIsTutorialFlow] = useState(false);
-  const [socketConnected, setSocketConnected] = useState(false);
-  const [desiredTutorialRole, setDesiredTutorialRole] = useState(null); // ✅ حالة جديدة لتخزين الدور المطلوب للتدريب
-
-  // Ref to access current state inside socket callbacks
+  // Dramatic Reveal state
+  const [revealedScenarios, setRevealedScenarios] = useState([]);
+  const [currentReveal, setCurrentReveal] = useState(null);
+  
+  // Socket connection
   useEffect(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-  }, [screen]);
-
-  const userRoleRef = React.useRef(userRole);
-  const isTutorialFlowRef = React.useRef(isTutorialFlow);
-
-  useEffect(() => {
-    userRoleRef.current = userRole;
-  }, [userRole]);
-
-  useEffect(() => {
-    isTutorialFlowRef.current = isTutorialFlow;
-  }, [isTutorialFlow]);
-
-  useEffect(() => {
+    if (socket || socketRef.current) return;
+    
+    console.log('🔌 Connecting to socket...');
     const newSocket = io(SOCKET_URL, {
+      transports: ['websocket', 'polling'],
       reconnection: true,
+      reconnectionAttempts: 5,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      reconnectionAttempts: 5
     });
-
+    
+    newSocket.on('connect', () => {
+      console.log('✅ Socket connected');
+      setConnecting(false);
+    });
+    
+    newSocket.on('disconnect', () => {
+      console.log('❌ Socket disconnected');
+    });
+    
+    newSocket.on('connect_error', (error) => {
+      console.error('❌ Connection error:', error);
+      setConnecting(false);
+      Alert.alert('خطأ', 'فشل الاتصال بالخادم');
+    });
+    
     socketRef.current = newSocket;
     setSocket(newSocket);
-
-    newSocket.on('connect', () => {
-      console.log('✅ Connected to server');
-      setSocketConnected(true);
-    });
-
-    newSocket.on('connect_error', (error) => {
-      console.log('❌ Connection error:', error);
-      setSocketConnected(false);
-      Alert.alert('خطأ في الاتصال', `لا يمكن الاتصال بالخادم على ${SOCKET_URL}\n\nخطأ: ${error.message}`);
-    });
-
-    newSocket.on('roomCreated', (code) => {
-      console.log('🎪 Room created with code:', code, 'User role:', userRoleRef.current);
-      setRoomCode(code);
-      if (userRoleRef.current === 'HOST') {
-        console.log('🎪 Setting screen to HOST_LOBBY');
-        setScreen('HOST_LOBBY');
-      } else if (isTutorialFlowRef.current) {
-        setTutorialModalVisible(true);
+    
+    return () => {
+      if (newSocket) {
+        newSocket.disconnect();
       }
+    };
+  }, []);
+  
+  // Socket event listeners
+  useEffect(() => {
+    if (!socket) return;
+    
+    // HOST events
+    socket.on('roomCreated', (roomCode) => {
+      console.log('🏠 Room created:', roomCode);
+      setGeneratedRoomCode(roomCode);
+      setConnecting(false);
+      setScreen(SCREENS.HOST_LOBBY);
     });
-
-    newSocket.on('joinedRoom', (data) => {
-      console.log('✅ Joined room:', data);
-      if (userRoleRef.current === 'PLAYER') {
-        setScreen('LOBBY');
-        // Do not reopen modal, role is already selected
-      }
-      if (data.isLeader) {
-        setIsLeader(true);
-      }
+    
+    socket.on('playerJoined', (players) => {
+      console.log('👥 Player joined:', players.length);
+      setPlayers(players || []);
     });
-
-    newSocket.on('playerJoined', (playersList) => {
-      setPlayers(playersList);
-    });
-
-    newSocket.on('gameStarted', (data) => {
-      if (data.roomCode) setRoomCode(data.roomCode);
-      setGameTitle(data.title);
-      setRound(data.round);
-      setTotalRounds(data.totalRounds);
-      setAnswer('');
-      setIsSubmitted(false);
-      setSelectedQuality(null);
-      setSelectedIdentity(null);
-      setAbilityUsed(false);
-      setSubmittedPlayers([]);
-
-      if (userRoleRef.current === 'HOST') {
-        setScreen('HOST_GAME');
-      }
-      // Player screen is set by roleAssigned
-    });
-
-    // ✅ معالج التدريب - إرسال كود المدير
-    newSocket.on('tutorialStarted', (data) => {
-      console.log('🎓 Tutorial started:', data);
+    
+    // PLAYER events
+    socket.on('joinedRoom', (data) => {
+      console.log('✅ Joined room:', data.roomCode);
       setRoomCode(data.roomCode);
-      setGeneratedRoomCode(data.hostCode);
-      // سيتم الانتقال إلى GAME بعد roleAssigned
+      setConnecting(false);
+      setScreen(SCREENS.LOBBY);
     });
-
-    newSocket.on('roleAssigned', (data) => {
-      setRoleData(data);
-      if (userRoleRef.current === 'PLAYER') {
-        setScreen('GAME');
-      }
-    });
-
-    newSocket.on('startDrafting', ({ duration }) => {
-      setTimeLeft(duration);
-      setIsSubmitted(false);
-      setAnswer('');
-      setSubmittedPlayers([]);
-      if (userRoleRef.current === 'HOST') {
-        setScreen('HOST_DRAFTING');
-      } else {
-        setScreen('DRAFTING');
-      }
-    });
-
-    newSocket.on('timerUpdate', (time) => {
-      setTimeLeft(time);
-    });
-
-    newSocket.on('playerSubmitted', ({ playerName }) => {
-      setSubmittedPlayers(prev => [...prev, playerName]);
-    });
-
-    // ============================================
-    // ❌ OLD startPresentation - تم إلغاؤها
-    // ============================================
-    newSocket.on('startPresentation', () => {
-      // تم إلغاء هذه المرحلة - الانتقال مباشرة للتصويت
-      // لا يجب أن يصل هذا Event
-      console.log('⚠️ startPresentation received - this should not happen');
-    });
-
-    newSocket.on('receiveAnswers', (answersList) => {
-      // تم إلغاء استخدامها - كانت تُستخدم لعرض الإجابات مع الأسماء
-      console.log('⚠️ receiveAnswers received - this is deprecated');
-      setAnswers(answersList);
-    });
-
-    // ============================================
-    // ❌ OLD startVoting - تم استبدالها
-    // ============================================
-    newSocket.on('startVoting', (data) => {
-      // تم استبدالها بـ qualityVotingStarted و culpritVotingStarted
-      // لا يجب أن يصل هذا Event
-      console.log('⚠️ startVoting received - this should not happen');
-    });
-
-    // ============================================
-    // 🆕 المرحلة الأولى: Quality Voting
-    // ============================================
-    newSocket.on('qualityVotingStarted', ({ scenarios }) => {
-      setVotingData({ scenarios });
-      setSelectedQuality(null);
-      setIsSubmitted(false);
-      setLiveVotes([]); // 🆕 تنظيف التصويتات الحية
+    
+    socket.on('gameStarted', (data) => {
+      console.log('🎮 Game started:', data);
       
-      // فصل المضيف عن اللاعبين
-      if (userRoleRef.current === 'HOST') {
-        setScreen('HOST_QUALITY_VOTING'); // المضيف ينتظر فقط
-      } else {
-        setScreen('QUALITY_VOTING'); // اللاعبون يصوتون
-      }
-    });
-
-    // ============================================
-    // 🆕 العرض الدرامي
-    // ============================================
-    newSocket.on('dramaticRevealStarted', ({ totalScenarios }) => {
-      setRevealData({
-        step: null,
-        data: null,
-        completed: [],
-        total: totalScenarios
-      });
+      // Store scenario and round info
+      if (data.title) setScenario(data.title);
+      if (data.round) setCurrentRound(data.round);
+      if (data.totalRounds) setTotalRounds(data.totalRounds);
       
-      // فقط المضيف يعرض، اللاعبون ينتظرون
-      if (userRoleRef.current === 'HOST') {
-        setScreen('HOST_DRAMATIC_REVEAL');
+      // Navigate to appropriate screen
+      if (userRole === 'HOST') {
+        setScreen(SCREENS.HOST_GAME_INTRO);
       } else {
-        setScreen('WAITING_REVEAL'); // اللاعبون ينتظرون
-      }
-    });
-
-    newSocket.on('revealStep', ({ step, data }) => {
-      setRevealData(prev => {
-        // حفظ البيانات المتراكمة
-        let newData = { ...prev };
-        
-        newData.step = step;
-        newData.data = data;
-        
-        // حفظ البيانات في state منفصل للعرض المتراكم
-        if (step === 'SCENARIO') {
-          newData.currentScenario = data.answer;
-          newData.currentPosition = data.position;
-          newData.currentTotal = data.total;
-          // إعادة تعيين البيانات الأخرى
-          newData.currentVoters = [];
-          newData.currentVoteCount = 0;
-          newData.currentAuthor = null;
-        } else if (step === 'VOTERS') {
-          newData.currentVoters = data.voters;
-          newData.currentVoteCount = data.voteCount;
-        } else if (step === 'AUTHOR') {
-          newData.currentAuthor = data.authorName;
-          newData.completed = [...prev.completed, data.index];
-        }
-        
-        return newData;
-      });
-    });
-
-    // ============================================
-    // 🆕 المرحلة الثانية: Culprit Voting
-    // ============================================
-    newSocket.on('culpritVotingStarted', ({ scenarios }) => {
-      setVotingData({ scenarios });
-      setSelectedCulprit(null);
-      setIsSubmitted(false);
-      setLiveVotes([]); // 🆕 تنظيف التصويتات الحية
-      
-      // فصل المضيف عن اللاعبين
-      if (userRoleRef.current === 'HOST') {
-        setScreen('HOST_CULPRIT_VOTING'); // المضيف ينتظر فقط
-      } else {
-        setScreen('CULPRIT_VOTING'); // اللاعبون يصوتون
+        // Player will receive roleAssigned next
+        setScreen(SCREENS.GAME);
       }
     });
     
-    // ============================================
-    // 🆕 التصويتات الحية للهوست
-    // ============================================
-    newSocket.on('voteReceived', ({ phase, playerName, totalVotes, totalPlayers }) => {
-      // فقط المضيف يستقبل هذا
-      if (userRoleRef.current === 'HOST') {
-        setLiveVotes(prev => {
-          // تجنب التكرار
-          if (prev.includes(playerName)) return prev;
-          return [...prev, playerName];
-        });
-        console.log(`✅ [${phase}] ${playerName} صوّت (${totalVotes}/${totalPlayers})`);
-      }
+    socket.on('roleAssigned', (roleData) => {
+      console.log('🎭 Role assigned:', roleData);
+      setRoleData(roleData);
+      // Stay on GAME screen to show role
     });
-
-    newSocket.on('roundResults', ({ 
-      results: resultsList, 
-      teamScores, 
-      crimeTeamWon, 
-      investigationTeamWon, 
-      culpritCaught,
-      crimeMembers,
-      investigationMembers
-    }) => {
-      setResults(resultsList);
-      // حفظ معلومات الفريق في state جديد
-      setTeamResults({
-        teamScores,
-        crimeTeamWon,
-        investigationTeamWon,
-        culpritCaught,
-        crimeMembers,
-        investigationMembers
-      });
-      if (userRoleRef.current === 'HOST') {
-        setScreen('HOST_RESULTS');
-      } else {
-        setScreen('RESULTS');
-      }
-    });
-
-    newSocket.on('gameEnded', ({ results: resultsList, leaderboard: leaderboardData }) => {
-      setResults(resultsList);
-      setLeaderboard(leaderboardData || []);
-      if (userRoleRef.current === 'HOST') {
-        setScreen('HOST_END');
-      } else {
-        setScreen('END');
-      }
-    });
-
-    newSocket.on('abilityResult', (data) => {
-      if (data.type === 'EAGLE_EYE') {
-        Alert.alert('عين الصقر', `نص الشاهد:\n\n"${data.content}"`);
-        setAbilityUsed(true);
-      } else if (data.type === 'INTERROGATION') {
-        Alert.alert('نتيجة الاستجواب', data.content);
-        setAbilityUsed(true);
-      } else if (data.type === 'OBSERVATION') {
-        Alert.alert('👮 الملاحظة الدقيقة', data.content);
-        setAbilityUsed(true);
-      }
-    });
-
-    // 🎁 قدرة المزور - الكلمة الرابعة
-    newSocket.on('forgerBonus', ({ keyword }) => {
-      Alert.alert(
-        '✨ مكافأة المزور!',
-        `حصلت على كلمة إضافية:\n\n"${keyword}"\n\nاستخدمها لتحسين سيناريوك!`,
-        [{ text: 'رائع!' }]
-      );
-    });
-
-    // 😈 قدرة المخرب - الفوضى الإبداعية
-    newSocket.on('saboteurReveal', ({ roles, duration }) => {
-      const rolesList = roles.map(r => `${r.emoji} ${r.name} - ${r.role}`).join('\n');
+    
+    socket.on('startDrafting', (data) => {
+      console.log('📝 Drafting started');
+      setScenario(data.scenario || scenario);
+      setTimeLeft(data.duration || 300);
+      setIsSubmitted(false);
+      setAnswer('');
       
-      Alert.alert(
-        '😈 الفوضى الإبداعية!',
-        `سترى جميع الأدوار لمدة ثانيتين:\n\n${rolesList}`,
-        [{ text: 'فهمت!', onPress: () => {
-          // سيختفي التنبيه تلقائياً بعد ثانيتين
-          setTimeout(() => {
-            // يمكن إضافة إشعار اختفاء هنا إذا لزم الأمر
-          }, duration);
-        }}],
-        { cancelable: false }
-      );
-    });
-
-    newSocket.on('error', (msg) => {
-      console.log('❌ Socket error:', msg);
-      Alert.alert('خطأ', msg);
-    });
-
-    return () => newSocket.close();
-  }, []);
-
-  const generateRoomCode = () => {
-    const code = Math.random().toString(36).substring(2, 6).toUpperCase();
-    return code;
-  };
-
-  const handleSelectHostRole = () => {
-    setUserRole('HOST');
-    const newCode = generateRoomCode();
-    setGeneratedRoomCode(newCode);
-    setRoomCode(newCode);
-    setScreen('HOST_SETUP');
-  };
-
-  const handleSelectPlayerRole = () => {
-    setUserRole('PLAYER');
-    setScreen('LOGIN');
-  };
-
-  const handleCreateRoom = () => {
-    const currentSocket = socketRef.current;
-    console.log('🎪 handleCreateRoom called, socketConnected:', socketConnected, 'socket.connected:', currentSocket?.connected);
-
-    if (!currentSocket) {
-      Alert.alert('خطأ', 'Socket لم يتم إنشاؤه بعد');
-      return;
-    }
-
-    // إذا كان متصل - أرسل مباشرة
-    if (currentSocket.connected) {
-      console.log('🎪 Socket connected, emitting createRoom');
-      currentSocket.emit('createRoom');
-      return;
-    }
-
-    // إذا لم يكن متصل - انتظر قليلاً
-    console.log('⏳ Socket not connected yet, waiting...');
-    Alert.alert('جارٍ الاتصال', 'يرجى الانتظار أثناء الاتصال بالخادم...');
-
-    let attempts = 0;
-    const checkConnection = setInterval(() => {
-      attempts++;
-      console.log('⏳ Attempt', attempts, 'connected:', currentSocket.connected);
-
-      if (currentSocket.connected) {
-        clearInterval(checkConnection);
-        console.log('🎪 Connected after wait, emitting createRoom');
-        currentSocket.emit('createRoom');
-      } else if (attempts > 10) { // 5 seconds max wait
-        clearInterval(checkConnection);
-        Alert.alert('خطأ في الاتصال', `لا يمكن الاتصال بالخادم على ${SOCKET_URL}\n\nالحل:\n1. تأكد من تشغيل الخادم (npm start)\n2. تحقق من رقم IP الصحيح`);
+      if (userRole === 'HOST') {
+        setScreen(SCREENS.HOST_DRAFTING);
+        setWaitingFor(data.waitingFor || players.map(p => p.id));
+      } else {
+        setScreen(SCREENS.DRAFTING);
       }
-    }, 500);
+    });
+    
+    socket.on('timerUpdate', (timeLeft) => {
+      setTimeLeft(timeLeft);
+    });
+    
+    socket.on('playerSubmitted', (data) => {
+      console.log('✓ Player submitted:', data.playerName);
+      setWaitingFor(prev => prev.filter(id => id !== data.playerId));
+    });
+    
+    socket.on('qualityVotingStarted', (data) => {
+      console.log('🗳️ Quality voting started');
+      setScenarios(data.scenarios || []);
+      setHasVoted(false);
+      setSelectedScenario(null);
+      
+      if (userRole === 'HOST') {
+        setScreen(SCREENS.HOST_QUALITY_VOTING);
+        setLiveVotes([]);
+      } else {
+        setScreen(SCREENS.QUALITY_VOTING);
+      }
+    });
+    
+    socket.on('dramaticRevealStarted', (data) => {
+      console.log('🎬 Dramatic reveal started');
+      setRevealedScenarios([]);
+      setCurrentReveal(null);
+      
+      if (userRole === 'HOST') {
+        setScreen(SCREENS.HOST_DRAMATIC_REVEAL);
+      } else {
+        setScreen(SCREENS.PLAYER_DRAMATIC_REVEAL);
+      }
+    });
+    
+    socket.on('revealStep', (data) => {
+      console.log('🎭 Reveal step:', data.step || data.type);
+      
+      // Update current reveal and add to revealed list
+      const step = data.step || data.type; // دعم كلا الاسمين
+      
+      if (step === 'SCENARIO' || step === 'scenario') {
+        setCurrentReveal({ 
+          text: data.data.answer || data.data.text,
+          index: data.data.index,
+          position: data.data.position,
+          total: data.data.total
+        });
+      } else if (step === 'VOTERS' || step === 'votes') {
+        setCurrentReveal(prev => ({ 
+          ...prev, 
+          voters: data.data.voters,
+          voteCount: data.data.voteCount
+        }));
+      } else if (step === 'AUTHOR' || step === 'author') {
+        setCurrentReveal(prev => {
+          const complete = { 
+            ...prev, 
+            author: data.data.authorName || data.data.author 
+          };
+          // Add to revealed scenarios
+          setRevealedScenarios(prev => [...prev, complete]);
+          return complete;
+        });
+      } else if (step === 'NO_VOTES') {
+        // السيناريوهات بدون أصوات
+        const noVoteScenarios = data.data.scenarios || [];
+        setRevealedScenarios(prev => [...prev, ...noVoteScenarios.map(s => ({
+          text: s.answer,
+          author: s.authorName,
+          voteCount: 0,
+          voters: []
+        }))]);
+      }
+    });
+    
+    socket.on('culpritVotingStarted', (data) => {
+      console.log('🔍 Culprit voting started');
+      setScenarios(data.scenarios || []);
+      setHasVoted(false);
+      setSelectedCulprit(null);
+      
+      if (userRole === 'HOST') {
+        setScreen(SCREENS.HOST_CULPRIT_VOTING);
+        setLiveVotes([]);
+      } else {
+        setScreen(SCREENS.CULPRIT_VOTING);
+      }
+    });
+    
+    socket.on('voteReceived', (data) => {
+      console.log('📊 Vote received:', data);
+      setLiveVotes(prev => [...prev, data]);
+    });
+    
+    socket.on('roundResults', (data) => {
+      console.log('🏆 Round results');
+      setRoundResults(data);
+      if (userRole === 'HOST') {
+        setScreen(SCREENS.HOST_RESULTS);
+      } else {
+        setScreen(SCREENS.WAITING);
+      }
+    });
+    
+    socket.on('startPresentation', () => {
+      console.log('🎭 Presentation started');
+      setScreen(SCREENS.WAITING);
+    });
+    
+    socket.on('error', (message) => {
+      console.error('❌ Socket error:', message);
+      setConnecting(false);
+      Alert.alert('خطأ', message || 'حدث خطأ غير متوقع');
+    });
+    
+    socket.on('connect_error', (error) => {
+      console.error('❌ Connection error:', error);
+      setConnecting(false);
+      Alert.alert('خطأ في الاتصال', 'فشل الاتصال بالخادم. تأكد من تشغيل الخادم.');
+    });
+    
+    return () => {
+      socket.off('roomCreated');
+      socket.off('playerJoined');
+      socket.off('joinedRoom');
+      socket.off('gameStarted');
+      socket.off('roleAssigned');
+      socket.off('startDrafting');
+      socket.off('timerUpdate');
+      socket.off('playerSubmitted');
+      socket.off('qualityVotingStarted');
+      socket.off('culpritVotingStarted');
+      socket.off('voteReceived');
+      socket.off('roundResults');
+      socket.off('startPresentation');
+      socket.off('dramaticRevealStarted');
+      socket.off('revealStep');
+      socket.off('error');
+      socket.off('connect_error');
+    };
+  }, [socket, userRole]);
+  
+  // Handlers
+  const handleSelectHost = () => {
+    setUserRole('HOST');
+    setScreen(SCREENS.HOST_SETUP);
   };
-
-  const handleJoin = () => {
-    if (!playerName || !roomCode) {
-      Alert.alert('تنبيه', 'الرجاء إدخال الاسم ورمز الغرفة');
+  
+  const handleSelectPlayer = () => {
+    setUserRole('PLAYER');
+    setScreen(SCREENS.LOGIN);
+  };
+  
+  const handleSelectTraining = () => {
+    setUserRole('PLAYER');
+    setScreen(SCREENS.TRAINING_ROLE_SELECT);
+  };
+  
+  const handleTrainingRoleSelect = (roleId) => {
+    setSelectedTrainingRole(roleId);
+    setScreen(SCREENS.TRAINING_JOIN);
+  };
+  
+  const handleTrainingJoin = () => {
+    if (!socket || !playerName.trim() || !roomCode.trim()) {
+      Alert.alert('خطأ', 'يرجى إدخال الاسم ورمز الغرفة');
       return;
     }
-    const currentSocket = socketRef.current;
-    if (!currentSocket) {
+    console.log('📤 Emitting joinRoom event with desired role:', selectedTrainingRole);
+    setConnecting(true);
+    socket.emit('joinRoom', {
+      roomCode: roomCode.trim().toUpperCase(),
+      playerName: playerName.trim(),
+      desiredRole: selectedTrainingRole, // إرسال الدور المطلوب
+    });
+  };
+  
+  const handleBackFromTraining = () => {
+    if (screen === SCREENS.TRAINING_JOIN) {
+      setScreen(SCREENS.TRAINING_ROLE_SELECT);
+      setSelectedTrainingRole(null);
+    } else {
+      setScreen(SCREENS.ROLE_SELECT);
+      setUserRole(null);
+    }
+  };
+  
+  const handleCreateRoom = () => {
+    if (!socket) {
       Alert.alert('خطأ', 'لم يتم الاتصال بالخادم بعد');
       return;
     }
-
-    // ✅ إرسال الدور المطلوب في حال التدريب
-    const joinPayload = {
-      roomCode,
-      playerName
-    };
-
-    if (isTutorialFlow && desiredTutorialRole) {
-      joinPayload.desiredRole = desiredTutorialRole;
-    }
-
-    currentSocket.emit('joinRoom', joinPayload);
+    console.log('📤 Emitting createRoom event');
+    setConnecting(true);
+    socket.emit('createRoom'); // تم تصحيح اسم الحدث
   };
-
-  const handleStartGame = () => {
-    socket.emit('startGame');
-  };
-
-  // ✅ التحقق من كود المضيف
-  const handleVerifyHostCode = () => {
-    if (hostCodeInput.trim() === generatedRoomCode) {
-      setShowHostCodeModal(false);
-      setHostCodeInput('');
-      // يمكن إضافة منطق إضافي هنا إذا لزم الأمر
-      Alert.alert('✅ تحقق النجح', `كود المضيف صحيح! الكود: ${generatedRoomCode}`);
-    } else {
-      Alert.alert('❌ خطأ', 'كود المضيف غير صحيح!');
-      setHostCodeInput('');
-    }
-  };
-
-  const handleSelectTraining = () => {
-    setUserRole('PLAYER');
-    setIsTutorialFlow(true);
-    setPlayerName('المتدرب');
-    setTutorialModalVisible(true);
-  };
-
-  const handleStartTutorial = (role = null) => {
-    // ✅ بدلاً من إرسال الأمر للسيرفر مباشرة، ننتقل لصفحة الدخول
-    setDesiredTutorialRole(role);
-    setTutorialModalVisible(false);
-    setScreen('LOGIN');
-
-    // socket.emit('startTutorial', role); // ❌ Disabled
-  };
-
-  const handleFillBots = () => {
-    socket.emit('fillBots');
-  };
-
-  const handleNextRound = () => {
-    socket.emit('nextRound');
-  };
-
-  const handleRestart = () => {
-    socket.emit('startGame');
-  };
-
-  // QR Code Component - simple display without library
-  const handleBackToRoleSelect = () => {
-    setScreen('ROLE_SELECT');
-    setUserRole(null);
-    setIsTutorialFlow(false);
-    setPlayerName('');
-    setRoomCode('');
-    setGeneratedRoomCode('');
-  };
-
-  const handleSubmitAnswer = () => {
-    if (!answer.trim()) return;
-    socket.emit('submitAnswer', { roomCode, answer });
-    setIsSubmitted(true);
-  };
-
-  const handleDraftChange = (text) => {
-    setAnswer(text);
-    socket.emit('updateDraft', { roomCode, draft: text });
-  };
-
-  const handleUseAbility = () => {
-    if (roleData?.role === 'SPY') {
-      socket.emit('useAbility', { roomCode, abilityType: 'EAGLE_EYE' });
-    }
-  };
-
-  const handleInterrogate = (targetId) => {
-    // دعم الأدوار الجديدة والقديمة
-    if ((roleData?.role === 'CHIEF_DETECTIVE' || roleData?.role === 'DETECTIVE') && !abilityUsed) {
-      socket.emit('useAbility', { roomCode, abilityType: 'INTERROGATION', targetId });
-    }
-  };
-
-  const handleSubmitVote = () => {
-    if (!selectedQuality || !selectedIdentity) {
-      Alert.alert('تنبيه', 'يجب اختيار أفضل إجابة وتخمين الشاهد');
+  
+  const handleJoinRoom = () => {
+    if (!socket || !playerName.trim() || !roomCode.trim()) {
+      Alert.alert('خطأ', 'يرجى إدخال الاسم ورمز الغرفة');
       return;
     }
-    socket.emit('submitVote', {
+    console.log('📤 Emitting joinRoom event');
+    setConnecting(true);
+    socket.emit('joinRoom', {
+      roomCode: roomCode.trim().toUpperCase(),
+      playerName: playerName.trim(),
+    });
+  };
+  
+  const handleStartGame = () => {
+    if (!socket) return;
+    console.log('📤 Emitting startGame event');
+    socket.emit('startGame');
+  };
+  
+  const handleRoleReady = () => {
+    // Player is ready after seeing their role - just wait for startDrafting event
+    console.log('✅ Player ready');
+  };
+  
+  const handleSubmitAnswer = () => {
+    if (!socket || !answer.trim() || isSubmitted) return;
+    console.log('📤 Emitting submitAnswer event');
+    socket.emit('submitAnswer', {
       roomCode,
-      qualityVote: selectedQuality,
-      identityVote: selectedIdentity
+      answer: answer.trim(),
     });
     setIsSubmitted(true);
   };
-
-  // --- SCREENS ---
-
-  if (screen === 'ROLE_SELECT') {
-    return (
-      <GlobalLayout title="تصنيف العملاء" showStamp={false}>
-        <View style={{ flex: 1, width: '100%', justifyContent: 'center', alignItems: 'center' }}>
-          <ScrollView
-            showsVerticalScrollIndicator={false}
-            style={{ width: '100%' }}
-            contentContainerStyle={[responsiveStyles.menuContent, { paddingVertical: 10, flexGrow: 1, justifyContent: 'center' }]}
-          >
-            <TouchableOpacity activeOpacity={0.7}
-              style={[styles.fileButtonContainer, responsiveStyles.fileButtonContainer]}
-              onPress={handleSelectHostRole}
-            >
-              <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="contain">
-                <View style={styles.fileContent}>
-                  <Text style={styles.roleButtonTextBlack}>مدير اللعبة</Text>
-                  <Text style={styles.roleButtonSubtextBlack}>أنشئ غرفة وأدر اللعبة</Text>
-                </View>
-                <View style={styles.stampContainerSmall}>
-                  <Text style={styles.stampSmall}>سري للغاية</Text>
-                </View>
-              </ImageBackground>
-            </TouchableOpacity>
-
-            <TouchableOpacity activeOpacity={0.7}
-              style={[styles.fileButtonContainer, responsiveStyles.fileButtonContainer]}
-              onPress={handleSelectPlayerRole}
-            >
-              <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="contain">
-                <View style={styles.fileContent}>
-                  <Text style={styles.roleButtonTextBlack}>لاعب</Text>
-                  <Text style={styles.roleButtonSubtextBlack}>انضم إلى غرفة موجودة</Text>
-                </View>
-              </ImageBackground>
-            </TouchableOpacity>
-
-            <TouchableOpacity activeOpacity={0.7}
-              style={[styles.fileButtonContainer, responsiveStyles.fileButtonContainer]}
-              onPress={handleSelectTraining}
-            >
-              <ImageBackground source={require("./assets/file.png")} style={styles.fileButtonBackground} resizeMode="contain">
-                <View style={styles.fileContent}>
-                  <Text style={styles.roleButtonTextBlack}>تدريب فردي</Text>
-                  <Text style={styles.roleButtonSubtextBlack}>العب ضد الروبوتات</Text>
-                </View>
-              </ImageBackground>
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-
-        <Modal visible={tutorialModalVisible} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>اختر دورك للتدريب</Text>
-              <ScrollView style={{ maxHeight: 300, width: '100%' }}>
-                {[
-                  { id: 'CULPRIT', name: '🎭 الجاني', team: '🔴' },
-                  { id: 'FORGER', name: '🧩 المزور', team: '🔴' },
-                  { id: 'INFILTRATOR', name: '🕵️ المخترق', team: '🔴' },
-                  { id: 'ACCOMPLICE', name: '🤝 الشريك', team: '🔴' },
-                  { id: 'LAWYER', name: '⚖️ المحامي', team: '🔴' },
-                  { id: 'CHIEF_DETECTIVE', name: '🔍 المحقق الرئيسي', team: '🔵' },
-                  { id: 'ANALYST', name: '🕵️‍♀️ المحلل', team: '🔵' },
-                  { id: 'OFFICER', name: '🎖️ الضابط', team: '🔵' },
-                  { id: 'WITNESS', name: '👤 الشاهد المحايد', team: '🔵' },
-                  { id: 'SABOTEUR', name: '😈 المخرب', team: '⚪' }
-                ].map(role => (
-                  <TouchableOpacity activeOpacity={0.7} key={role.id} onPress={() => handleStartTutorial(role.id)} style={styles.modalButton}>
-                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                      <Text style={styles.modalButtonText}>{role.name}</Text>
-                      <Text style={{ fontSize: 16 }}>{role.team}</Text>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-                <TouchableOpacity activeOpacity={0.7} onPress={() => handleStartTutorial(null)} style={[styles.modalButton, { backgroundColor: '#ddd' }]}>
-                  <Text style={styles.modalButtonText}>عشوائي</Text>
-                </TouchableOpacity>
-              </ScrollView>
-              <TouchableOpacity activeOpacity={0.7} onPress={() => setTutorialModalVisible(false)} style={styles.cancelButton}>
-                <Text style={styles.cancelButtonText}>إلغاء</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-      </GlobalLayout>
-    );
-  }
-
-  if (screen === 'HOST_SETUP') {
-    return (
-      <GlobalLayout title="إعدادات المدير" showStamp={false}>
-        <Image source={require("./assets/paperClip.png")} style={styles.paperClip} resizeMode="contain" />
-        <Image source={require("./assets/tape.png")} style={styles.tape} resizeMode="contain" />
-
-        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%' }}>
-          <View style={{ backgroundColor: 'rgba(255,255,255,0.5)', padding: 15, borderRadius: 8, marginBottom: 30, width: '80%', borderWidth: 1, borderColor: '#aaa' }}>
-            <Text style={{ fontSize: 14, color: '#666', marginBottom: 8, textAlign: 'right', fontWeight: 'bold' }}>
-              📡 حالة الاتصال:
-            </Text>
-            {socketConnected ? (
-              <Text style={{ fontSize: 16, fontWeight: 'bold', color: theme.colors.accentRed, textAlign: 'right' }}>
-                ✅ مفعل وجاهز
-              </Text>
-            ) : (
-              <>
-                <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#B22222', textAlign: 'right' }}>
-                  ❌ غير متصل
-                </Text>
-                <Text style={{ fontSize: 12, color: '#2F4F4F', marginTop: 5, textAlign: 'right' }}>
-                  الخادم: {SOCKET_URL}
-                </Text>
-              </>
-            )}
-          </View>
-
-          <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleCreateRoom}>
-            <Text style={styles.buttonText}>إنشاء الغرفة (Create Room)</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity activeOpacity={0.7}
-            style={[styles.button, { backgroundColor: '#2F4F4F', marginTop: 15 }]}
-            onPress={handleBackToRoleSelect}
-          >
-            <Text style={styles.buttonText}>رجوع</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </GlobalLayout>
-    );
-  }
-
-  if (screen === 'HOST_LOBBY') {
-    return (
-      <GlobalLayout title="غرفة العمليات" showStamp={true}>
-        <ScrollView contentContainerStyle={{ alignItems: 'center', paddingBottom: 20, width: '100%' }}>
-          <Text style={styles.screenLabel}>رمز الغرفة</Text>
-          <View style={styles.roomCodeBox}>
-            <Text style={styles.roomCode}>{roomCode}</Text>
-          </View>
-
-          <Text style={styles.screenLabel}>العملاء المتصلون ({players.length})</Text>
-          <View style={styles.playerList}>
-            {players.map((p, i) => (
-              <View key={i} style={styles.playerCard}>
-                <Text style={styles.playerCardText}>{p.name}</Text>
-              </View>
-            ))}
-          </View>
-
-          <TouchableOpacity activeOpacity={0.7}
-            style={[styles.button, { opacity: players.length >= 3 ? 1 : 0.5 }]}
-            onPress={handleStartGame}
-            disabled={players.length < 3}
-          >
-            <Text style={styles.buttonText}>بدء المهمة</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity activeOpacity={0.7}
-            style={[styles.button, { marginTop: 10, backgroundColor: '#2F4F4F' }]}
-            onPress={handleFillBots}
-          >
-            <Text style={styles.buttonText}>🤖 تعبئة بوتات</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity activeOpacity={0.7}
-            style={[styles.button, { marginTop: 10, backgroundColor: '#E1AD01' }]}
-            onPress={() => setShowHostCodeModal(true)}
-          >
-            <Text style={styles.buttonText}>🔐 التحقق من كود المضيف</Text>
-          </TouchableOpacity>
-        </ScrollView>
-
-        {/* Modal stays outside or inside? Inside is fine if absolute positioned, but GlobalLayout has overflow hidden... 
-            Actually Modals in React Native are native and sit on top. So it's fine. 
-        */}
-        <Modal visible={showHostCodeModal} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>🔐 التحقق من كود المضيف</Text>
-              <Text style={{ fontSize: 12, color: '#2F4F4F', textAlign: 'center', marginBottom: 15 }}>
-                أدخل كود المضيف للتحقق من الهوية
-              </Text>
-              <TextInput
-                style={styles.input}
-                placeholder="أدخل كود المضيف"
-                value={hostCodeInput}
-                onChangeText={setHostCodeInput}
-                placeholderTextColor="#999"
-              />
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', width: '100%' }}>
-                <TouchableOpacity style={[styles.modalButton, { backgroundColor: '#ccc' }]} onPress={() => setShowHostCodeModal(false)}>
-                  <Text style={styles.buttonText}>إلغاء</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[styles.modalButton, { backgroundColor: '#2F4F4F' }]} onPress={handleVerifyHostCode}>
-                  <Text style={styles.buttonText}>تحقق</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-      </GlobalLayout>
-    );
-  }
-
-  if (screen === 'HOST_GAME' || screen === 'HOST_DRAFTING') {
-    return (
-      <GlobalLayout title={gameTitle || "المهمة جارية"} showStamp={false}>
-        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%' }}>
-          <Text style={styles.timer}>{timeLeft}</Text>
-          <Text style={styles.subtitle}>جاري كتابة التقارير...</Text>
-          <View style={styles.playerList}>
-            {submittedPlayers.map((name, index) => (
-              <View key={index} style={[styles.playerCard, { backgroundColor: '#e0ffe0' }]}>
-                <Text style={styles.playerCardText}>{name} ✅</Text>
-              </View>
-            ))}
-          </View>
-        </ScrollView>
-      </GlobalLayout>
-    );
-  }
-
-  // ============================================
-  // ❌ OLD HOST_PRESENTATION - تم استبدالها
-  // ============================================
-  if (screen === 'HOST_PRESENTATION') {
-    // الآن يتم الانتقال مباشرة لـ HOST_QUALITY_VOTING
-    return (
-      <GlobalLayout title="⏳ جاري التحضير..." showStamp={false}>
-        <View style={{ alignItems: 'center', marginVertical: 30 }}>
-          <Text style={[styles.title, { fontSize: 24 }]}>
-            ⏳ جاري الانتقال للتصويت...
-          </Text>
-        </View>
-      </GlobalLayout>
-    );
-  }
-
-  // ============================================
-  // ❌ OLD HOST_VOTING - تم استبدالها بـ HOST_QUALITY_VOTING و HOST_CULPRIT_VOTING
-  // ============================================
-  if (screen === 'HOST_VOTING') {
-    // الآن تم الفصل إلى مرحلتين
-    return (
-      <GlobalLayout title="⏳ التصويت" showStamp={false}>
-        <View style={{ alignItems: 'center', marginVertical: 30 }}>
-          <Text style={[styles.title, { fontSize: 24 }]}>
-            ⏳ جاري التصويت...
-          </Text>
-        </View>
-      </GlobalLayout>
-    );
-  }
-
-  if (screen === 'HOST_RESULTS') {
-    return (
-      <GlobalLayout title="نتائج الجولة" showStamp={false}>
-        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%', paddingBottom: 20 }}>
-          <View style={styles.resultsList}>
-            {results.map((player, index) => (
-              <View key={index} style={[styles.resultCard, { borderWidth: 3, borderColor: '#333', padding: 15, marginBottom: 15, backgroundColor: '#fafaf5' }]}>
-                <View style={{ marginBottom: 15, paddingBottom: 10, borderBottomWidth: 2, borderBottomColor: '#333' }}>
-                  <Text style={{ fontWeight: 'bold', fontSize: 16 }}>#{index + 1} {player.name}</Text>
-                  <Text style={{ color: '#666', fontSize: 13, marginTop: 5 }}>{player.role}</Text>
-                  <View style={{ marginTop: 10 }}>
-                    <Text style={{ fontWeight: 'bold', color: '#E1AD01', fontSize: 18 }}>+{player.roundScore}</Text>
-                    <Text style={{ color: '#666', fontSize: 12 }}>المجموع: {player.totalScore}</Text>
-                  </View>
-                </View>
-
-                <View>
-                  <Text style={{ fontWeight: 'bold', marginBottom: 10, fontSize: 14 }}>📊 كيف حصل على نقاطه:</Text>
-                  {player.breakdown && player.breakdown.length > 0 ? (
-                    player.breakdown.map((item, idx) => {
-                      const isNegative = item.includes('-') && !item.includes('لم');
-                      const bgColor = isNegative ? '#ffebee' : '#e8f5e9';
-                      const borderColor = isNegative ? '#B22222' : '#E1AD01';
-                      const textColor = isNegative ? '#c62828' : '#1b5e20';
-
-                      return (
-                        <View key={idx} style={{ backgroundColor: bgColor, padding: 10, marginVertical: 5, borderLeftWidth: 4, borderLeftColor: borderColor, borderRadius: 4 }}>
-                          <Text style={{ color: textColor, fontSize: 13, fontWeight: '500' }}>{item}</Text>
-                        </View>
-                      );
-                    })
-                  ) : (
-                    <Text style={{ color: '#2F4F4F', fontSize: 12 }}>لا توجد نقاط</Text>
-                  )}
-                </View>
-              </View>
-            ))}
-          </View>
-          <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleNextRound}>
-            <Text style={styles.buttonText}>الجولة التالية</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </GlobalLayout>
-    );
-  }
-
-  if (screen === 'HOST_END') {
-    return (
-      <GlobalLayout title="النتائج النهائية" showStamp={true} stampText="انتهت المهمة">
-        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%', paddingBottom: 20 }}>
-          <View style={styles.resultsList}>
-            {results.map((player, index) => (
-              <View key={index} style={styles.resultCard}>
-                <Text>{index === 0 ? '🏆 ' : ''} #{index + 1} {player.name}</Text>
-                <Text>{player.totalScore} نقطة</Text>
-              </View>
-            ))}
-          </View>
-          <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleRestart}>
-            <Text style={styles.buttonText}>لعبة جديدة</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </GlobalLayout>
-    );
-  }
-
-  // --- PLAYER SCREENS ---
-
-  if (screen === 'LOGIN') {
-    return (
-      <GlobalLayout title="تسجيل الدخول" showStamp={false}>
-        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%' }}>
-          <View style={styles.stampContainer}>
-            <Text style={styles.stamp}>سري للغاية</Text>
-          </View>
-          <Text style={styles.title}>تسجيل الدخول</Text>
-
-          <TextInput
-            style={styles.input}
-            placeholder="الاسم الحركي"
-            value={playerName}
-            onChangeText={setPlayerName}
-            placeholderTextColor="#666"
+  
+  const handleVoteQuality = (scenarioIndex) => {
+    if (!socket || hasVoted) return;
+    console.log('📤 Emitting submitQualityVote event');
+    socket.emit('submitQualityVote', {
+      roomCode,
+      scenarioIndex,
+    });
+    setHasVoted(true);
+    setSelectedScenario(scenarioIndex);
+  };
+  
+  const handleVoteCulprit = (playerIdOrIndex) => {
+    if (!socket || hasVoted) return;
+    console.log('📤 Emitting submitCulpritVote event');
+    socket.emit('submitCulpritVote', {
+      roomCode,
+      playerId: playerIdOrIndex,
+    });
+    setHasVoted(true);
+    setSelectedCulprit(playerIdOrIndex);
+  };
+  
+  const handleContinue = () => {
+    if (!socket) return;
+    console.log('📤 Emitting nextRound event');
+    socket.emit('nextRound');
+  };
+  
+  const handleFillBots = () => {
+    if (!socket) return;
+    console.log('📤 Emitting fillBots event');
+    socket.emit('fillBots');
+  };
+  
+  const handleExit = () => {
+    if (socket) {
+      socket.disconnect();
+    }
+    setScreen(SCREENS.ROLE_SELECT);
+    setUserRole(null);
+    setPlayerName('');
+    setRoomCode('');
+    setGeneratedRoomCode('');
+    setPlayers([]);
+    setRoleData(null);
+    setAnswer('');
+    setIsSubmitted(false);
+    setHasVoted(false);
+  };
+  
+  // Render screens
+  const renderScreen = () => {
+    switch (screen) {
+      case SCREENS.ROLE_SELECT:
+        return (
+          <RoleSelectScreen
+            onSelectHost={handleSelectHost}
+            onSelectPlayer={handleSelectPlayer}
+            onSelectTraining={handleSelectTraining}
           />
-
-          <TextInput
-            style={styles.input}
-            placeholder="رمز الغرفة"
-            value={roomCode}
-            onChangeText={(text) => setRoomCode(text.toUpperCase())}
-            placeholderTextColor="#666"
-            maxLength={4}
+        );
+      
+      // شاشات التدريب
+      case SCREENS.TRAINING_ROLE_SELECT:
+        return (
+          <TrainingRoleSelectScreen
+            onSelectRole={handleTrainingRoleSelect}
+            onBack={() => setScreen(SCREENS.ROLE_SELECT)}
           />
-
-          <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleJoin}>
-            <Text style={styles.buttonText}>
-              {isTutorialFlow ? 'انضمام للتدريب' : 'انضمام للمهمة'}
-            </Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity activeOpacity={0.7}
-            style={[styles.button, { backgroundColor: '#2F4F4F', marginTop: 10 }]}
-            onPress={handleBackToRoleSelect}
-          >
-            <Text style={styles.buttonText}>رجوع</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </GlobalLayout>
-    );
-  }
-
-  if (screen === 'LOBBY') {
-    return (
-      <GlobalLayout title="تم قبول التصريح" showStamp={true} stampText="بانتظار القيادة">
-        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%' }}>
-          <Text style={styles.subtitle}>أهلاً بالعميل {playerName}</Text>
-          <Text style={[styles.status, { color: theme.colors.accentRed }]}>وضع الاستعداد</Text>
-
-          {isTutorialFlow && (
-            <View style={{ backgroundColor: '#F5F5DC', borderWidth: 1, borderColor: '#B22222', borderRadius: 8, padding: 12, marginVertical: 15 }}>
-              <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#2F4F4F', textAlign: 'right', marginBottom: 5 }}>📝 ملاحظة تدريب:</Text>
-              <Text style={{ fontSize: 11, color: '#2F4F4F', textAlign: 'right', lineHeight: 18 }}>سيتم اللعب مع 3 بوتات ذكية تحاكي أدوار مختلفة (شاهد، مهندس، محتال). البوتات ستكتب وترسل إجاباتها تلقائياً! 🤖</Text>
-            </View>
-          )}
-
-          {/* Existing 'Wait for leader' stamp was removed in favor of GlobalLayout stamp */}
-
-          <TouchableOpacity activeOpacity={0.7}
-            style={[styles.button, { marginTop: 30, backgroundColor: '#B22222' }]}
-            onPress={() => setTutorialModalVisible(true)}
-          >
-            <Text style={styles.buttonText}>بدء تدريب (Tutorial)</Text>
-          </TouchableOpacity>
-
-          <Modal visible={tutorialModalVisible} transparent animationType="slide">
-            <View style={styles.modalOverlay}>
-              <View style={styles.modalContent}>
-                <Text style={styles.modalTitle}>اختر دورك للتدريب</Text>
-                <ScrollView style={{ maxHeight: 300, width: '100%' }}>
-                  {[
-                    { id: 'CULPRIT', name: '🎭 الجاني', team: '🔴' },
-                    { id: 'FORGER', name: '🧩 المزور', team: '🔴' },
-                    { id: 'INFILTRATOR', name: '🕵️ المخترق', team: '🔴' },
-                    { id: 'ACCOMPLICE', name: '🤝 الشريك', team: '🔴' },
-                    { id: 'LAWYER', name: '⚖️ المحامي', team: '🔴' },
-                    { id: 'CHIEF_DETECTIVE', name: '🔍 المحقق الرئيسي', team: '🔵' },
-                    { id: 'ANALYST', name: '🕵️‍♀️ المحلل', team: '🔵' },
-                    { id: 'OFFICER', name: '🎖️ الضابط', team: '🔵' },
-                    { id: 'WITNESS', name: '👤 الشاهد المحايد', team: '🔵' },
-                    { id: 'SABOTEUR', name: '😈 المخرب', team: '⚪' }
-                  ].map(role => (
-                    <TouchableOpacity activeOpacity={0.7} key={role.id} onPress={() => handleStartTutorialAsHost(role.id)} style={styles.modalButton}>
-                      <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                        <Text style={styles.modalButtonText}>{role.name}</Text>
-                        <Text style={{ fontSize: 16 }}>{role.team}</Text>
-                      </View>
-                    </TouchableOpacity>
-                  ))}
-                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleStartTutorialAsHost(null)} style={[styles.modalButton, { backgroundColor: '#ddd' }]}>
-                    <Text style={styles.modalButtonText}>عشوائي</Text>
-                  </TouchableOpacity>
-                </ScrollView>
-                <TouchableOpacity activeOpacity={0.7} onPress={() => setTutorialModalVisible(false)} style={styles.cancelButton}>
-                  <Text style={styles.cancelButtonText}>إلغاء</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </Modal>
-        </ScrollView>
-      </GlobalLayout>
-    );
-  }
-
-  if (screen === 'GAME' && roleData) {
-    // تحديد ألوان الفريق
-    const teamColor = roleData.team === 'CRIME' ? theme.colors.accentRed : 
-                      roleData.team === 'INVESTIGATION' ? '#1E90FF' : 
-                      '#9370DB'; // Purple for neutral
-    
-    const teamIcon = roleData.team === 'CRIME' ? '🔴' : 
-                     roleData.team === 'INVESTIGATION' ? '🔵' : 
-                     '⚪';
-    
-    return (
-      <GlobalLayout title="هوية العميل" showStamp={true} stampText="سري للغاية">
-        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%', paddingBottom: 20 }}>
-          {/* شارة الفريق */}
-          <View style={{
-            backgroundColor: teamColor,
-            paddingHorizontal: 15,
-            paddingVertical: 8,
-            borderRadius: 20,
-            marginBottom: 10,
-            flexDirection: 'row',
-            alignItems: 'center',
-            shadowColor: '#000',
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.3,
-            shadowRadius: 3,
-            elevation: 3
-          }}>
-            <Text style={{ fontSize: 16, marginRight: 5 }}>{teamIcon}</Text>
-            <Text style={{ color: '#FFF', fontWeight: 'bold', fontSize: 14 }}>
-              {roleData.teamName || 'فريق غير معروف'}
-            </Text>
+        );
+      
+      case SCREENS.TRAINING_JOIN:
+        return (
+          <TrainingJoinScreen
+            selectedRole={selectedTrainingRole}
+            playerName={playerName}
+            setPlayerName={setPlayerName}
+            roomCode={roomCode}
+            setRoomCode={setRoomCode}
+            onJoin={handleTrainingJoin}
+            connecting={connecting}
+            onBack={handleBackFromTraining}
+          />
+        );
+      
+      // شاشات المضيف
+      case SCREENS.HOST_SETUP:
+        return (
+          <HostSetupScreen
+            onCreateRoom={handleCreateRoom}
+            connecting={connecting}
+          />
+        );
+      
+      case SCREENS.HOST_LOBBY:
+        return (
+          <HostLobbyScreen
+            roomCode={generatedRoomCode}
+            players={players}
+            onStartGame={handleStartGame}
+            onFillBots={handleFillBots}
+          />
+        );
+      
+      case SCREENS.HOST_GAME_INTRO:
+        return (
+          <HostGameIntroScreen
+            scenarioTitle={scenario}
+            round={currentRound}
+            totalRounds={totalRounds}
+          />
+        );
+      
+      case SCREENS.HOST_DRAFTING:
+        return (
+          <HostDraftingScreen
+            players={players}
+            waitingFor={waitingFor}
+            timeLeft={timeLeft}
+          />
+        );
+      
+      case SCREENS.HOST_DRAMATIC_REVEAL:
+        return (
+          <HostDramaticRevealScreen
+            revealedScenarios={revealedScenarios}
+            currentReveal={currentReveal}
+          />
+        );
+      
+      case SCREENS.HOST_QUALITY_VOTING:
+        return (
+          <HostVotingScreen
+            votingType="quality"
+            scenarios={scenarios}
+            liveVotes={liveVotes}
+            players={players}
+          />
+        );
+      
+      case SCREENS.HOST_CULPRIT_VOTING:
+        return (
+          <HostVotingScreen
+            votingType="culprit"
+            scenarios={scenarios}
+            liveVotes={liveVotes}
+            players={players}
+          />
+        );
+      
+      case SCREENS.HOST_RESULTS:
+        return (
+          <HostResultsScreen
+            roundResults={roundResults}
+            onContinue={handleContinue}
+          />
+        );
+      
+      // شاشات اللاعب
+      case SCREENS.LOGIN:
+        return (
+          <LoginScreen
+            playerName={playerName}
+            setPlayerName={setPlayerName}
+            roomCode={roomCode}
+            setRoomCode={setRoomCode}
+            onJoinRoom={handleJoinRoom}
+            connecting={connecting}
+          />
+        );
+      
+      case SCREENS.LOBBY:
+        return (
+          <LobbyScreen
+            players={players}
+            roomCode={roomCode}
+          />
+        );
+      
+      case SCREENS.GAME:
+        return (
+          <GameScreen 
+            roleData={roleData}
+            onReady={handleRoleReady}
+          />
+        );
+      
+      case SCREENS.DRAFTING:
+        return (
+          <DraftingScreen
+            answer={answer}
+            setAnswer={setAnswer}
+            onSubmit={handleSubmitAnswer}
+            timeLeft={timeLeft}
+            isSubmitted={isSubmitted}
+            scenario={scenario}
+          />
+        );
+      
+      case SCREENS.QUALITY_VOTING:
+        return (
+          <QualityVotingScreen
+            scenarios={scenarios}
+            onVote={handleVoteQuality}
+            hasVoted={hasVoted}
+            selectedScenario={selectedScenario}
+          />
+        );
+      
+      case SCREENS.PLAYER_DRAMATIC_REVEAL:
+        return <PlayerDramaticRevealScreen />;
+      
+      case SCREENS.CULPRIT_VOTING:
+        return (
+          <CulpritVotingScreen
+            scenarios={scenarios}
+            onVote={handleVoteCulprit}
+            hasVoted={hasVoted}
+            selectedCulprit={selectedCulprit}
+          />
+        );
+      
+      case SCREENS.WAITING:
+        return <WaitingRevealScreen />;
+      
+      case SCREENS.END:
+        return (
+          <EndScreen
+            results={roundResults}
+            onExit={handleExit}
+          />
+        );
+      
+      // شاشات المضيف الإضافية
+      case SCREENS.HOST_DRAFTING:
+        return (
+          <HostGameScreen
+            players={players}
+            waitingFor={waitingFor}
+          />
+        );
+      
+      case SCREENS.HOST_QUALITY_VOTING:
+        return (
+          <HostVotingScreen
+            votingType="quality"
+            scenarios={scenarios}
+            liveVotes={liveVotes}
+            players={players}
+          />
+        );
+      
+      case SCREENS.HOST_CULPRIT_VOTING:
+        return (
+          <HostVotingScreen
+            votingType="culprit"
+            scenarios={scenarios}
+            liveVotes={liveVotes}
+            players={players}
+          />
+        );
+      
+      case SCREENS.HOST_RESULTS:
+        return (
+          <HostResultsScreen
+            roundResults={roundResults}
+            onContinue={handleContinue}
+            isLastRound={false}
+          />
+        );
+      
+      case SCREENS.HOST_END:
+        return (
+          <EndScreen
+            results={roundResults}
+            onExit={handleExit}
+          />
+        );
+      
+      default:
+        return (
+          <View style={styles.tempScreen}>
+            <Text style={styles.tempText}>🚧 قيد التطوير</Text>
+            <Text style={styles.tempSubtext}>{screen}</Text>
           </View>
-
-          {/* صورة الدور */}
-          <View style={{ alignItems: 'center', marginBottom: 10 }}>
-            <RoleAvatar role={roleData.role} size={100} />
-          </View>
-
-          {/* اسم الدور مع الإيموجي */}
-          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 5 }}>
-            {roleData.emoji && <Text style={{ fontSize: 24, marginLeft: 8 }}>{roleData.emoji}</Text>}
-            <Text style={[styles.roleTitle, { color: teamColor, textAlign: 'center' }]}>
-              {roleData.roleName}
-            </Text>
-          </View>
-
-          {/* الوصف */}
-          <Text style={styles.roleDesc}>{roleData.description}</Text>
-
-          {/* الهدف */}
-          {roleData.goal && (
-            <View style={[styles.infoBox, { backgroundColor: 'rgba(255, 215, 0, 0.1)', borderColor: '#DAA520', borderWidth: 1, marginTop: 10 }]}>
-              <Text style={[styles.infoLabel, { color: '#B8860B' }]}>🎯 هدفك:</Text>
-              <Text style={[styles.infoText, { color: '#333' }]}>{roleData.goal}</Text>
-            </View>
-          )}
-
-          {/* المعلومات السرية */}
-          <View style={styles.infoBox}>
-            <Text style={styles.infoLabel}>🔒 معلومات سرية:</Text>
-            <Text style={styles.infoText}>{roleData.info}</Text>
-          </View>
-
-          {/* القدرة الخاصة */}
-          {roleData.ability && (
-            <View style={[styles.infoBox, { backgroundColor: 'rgba(138, 43, 226, 0.1)', borderColor: '#8A2BE2', borderWidth: 1, marginTop: 10 }]}>
-              <Text style={[styles.infoLabel, { color: '#8A2BE2' }]}>⚡ القدرة الخاصة:</Text>
-              <Text style={[styles.infoText, { fontWeight: 'bold', color: '#4B0082', marginBottom: 5 }]}>
-                {roleData.ability.name}
-              </Text>
-              <Text style={[styles.infoText, { fontSize: 12, color: '#666', fontStyle: 'italic' }]}>
-                {roleData.ability.description}
-              </Text>
-              {roleData.ability.usage && (
-                <Text style={[styles.infoText, { fontSize: 11, color: '#999', marginTop: 5 }]}>
-                  📌 {roleData.ability.usage}
-                </Text>
-              )}
-            </View>
-          )}
-
-          {/* معلومات اللاعب المستهدف (للشريك والمحامي) */}
-          {roleData.targetPlayer && (
-            <View style={{ marginTop: 10, padding: 10, backgroundColor: 'rgba(255, 69, 0, 0.1)', borderRadius: 5, width: '100%' }}>
-              <Text style={{ textAlign: 'center', fontWeight: 'bold', color: '#FF4500' }}>
-                👤 اللاعب المستهدف: {roleData.targetPlayer}
-              </Text>
-            </View>
-          )}
-
-          {/* معلومات الجولة */}
-          <View style={{ marginTop: 15, padding: 8, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 5, width: '100%' }}>
-            <Text style={{ textAlign: 'center', fontSize: 12, color: '#666' }}>
-              الجولة {roleData.round} من {roleData.totalRounds}
-              {roleData.isTutorial ? ' (تدريب)' : ''}
-            </Text>
-          </View>
-        </ScrollView>
-      </GlobalLayout>
-    );
-  }
-
-  if (screen === 'DRAFTING') {
-    const teamColor = roleData?.team === 'CRIME' ? theme.colors.accentRed : 
-                      roleData?.team === 'INVESTIGATION' ? '#1E90FF' : 
-                      '#9370DB';
-    const teamIcon = roleData?.team === 'CRIME' ? '🔴' : 
-                     roleData?.team === 'INVESTIGATION' ? '🔵' : 
-                     '⚪';
-    
-    return (
-      <GlobalLayout title="تقرير المهمة" showStamp={isSubmitted} stampText="تم الإرسال">
-        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%' }}>
-          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10, width: '100%' }}>
-            <View style={{ flex: 1 }}>
-              <View style={{ width: '100%', padding: 10, backgroundColor: 'rgba(0,0,0,0.05)', borderRadius: 5 }}>
-                <Text style={{ textAlign: 'right', fontWeight: 'bold', color: theme.colors.accentRed }}>{gameTitle}</Text>
-                <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', marginTop: 5 }}>
-                  <Text style={{ fontSize: 12, marginLeft: 5 }}>{teamIcon}</Text>
-                  <Text style={{ textAlign: 'right', fontWeight: 'bold' }}>
-                    أنت: {roleData?.emoji} {roleData?.roleName}
-                  </Text>
-                </View>
-                <RedactedText text={roleData?.info} />
-              </View>
-            </View>
-            <View style={{ marginLeft: 10 }}>
-              <RoleAvatar role={roleData?.role} size={80} showLabel={false} />
-            </View>
-          </View>
-
-          <Text style={styles.timer}>{timeLeft}s</Text>
-          <Text style={styles.title}>اكتب تبريرك</Text>
-
-          {!isSubmitted ? (
-            <>
-              <TextInput
-                style={[styles.input, { height: 100, textAlignVertical: 'top' }]}
-                placeholder="اكتب قصتك هنا..."
-                value={answer}
-                onChangeText={handleDraftChange}
-                multiline
-                maxLength={500}
-                placeholderTextColor="#666"
-              />
-              <Text style={{ alignSelf: 'flex-end', marginRight: '10%', color: answer.length > 450 ? '#B22222' : '#666' }}>
-                {answer.length}/500 حرف
-              </Text>
-
-              {/* زر القدرة الخاصة - تحديث للأدوار الجديدة */}
-              {roleData?.role === 'INFILTRATOR' && (roleData?.round >= 2 || roleData?.isTutorial) && !abilityUsed && (
-                <TouchableOpacity activeOpacity={0.7}
-                  style={[styles.button, { backgroundColor: theme.colors.accentYellow, marginBottom: 10 }]}
-                  onPress={handleUseAbility}
-                >
-                  <Text style={[styles.buttonText, { color: theme.colors.text }]}>👁️ عين الصقر</Text>
-                </TouchableOpacity>
-              )}
-              
-              {/* دعم للتوافق مع الدور القديم SPY */}
-              {roleData?.role === 'SPY' && (roleData?.round >= 2 || roleData?.isTutorial) && !abilityUsed && (
-                <TouchableOpacity activeOpacity={0.7}
-                  style={[styles.button, { backgroundColor: theme.colors.accentYellow, marginBottom: 10 }]}
-                  onPress={handleUseAbility}
-                >
-                  <Text style={[styles.buttonText, { color: theme.colors.text }]}>👁️ عين الصقر</Text>
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleSubmitAnswer}>
-                <Text style={styles.buttonText}>إرسال</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <Text style={styles.subtitle}>بانتظار التقارير الأخرى...</Text>
-          )}
-        </ScrollView>
-      </GlobalLayout>
-    );
-  }
-
-  // ============================================
-  // ❌ PRESENTATION - تم إلغاؤها (الانتقال مباشرة للتصويت)
-  // ============================================
-  if (screen === 'PRESENTATION') {
-    return (
-      <GlobalLayout title="⏳ جاري التحضير..." showStamp={false}>
-        <View style={{ alignItems: 'center', marginVertical: 20 }}>
-          <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
-        </View>
-        <Text style={styles.subtitle}>جاري الانتقال للتصويت...</Text>
-      </GlobalLayout>
-    );
-  }
-
-  // ============================================
-  // 🆕 HOST: QUALITY_VOTING (المضيف ينتظر)
-  // ============================================
-  if (screen === 'HOST_QUALITY_VOTING') {
-    return (
-      <GlobalLayout title="📊 التصويت على الجودة" showStamp={false}>
-        <View style={{ alignItems: 'center', marginVertical: 30 }}>
-          <Text style={[styles.title, { fontSize: 24, marginBottom: 20 }]}>
-            ⏳ اللاعبون يصوّتون...
-          </Text>
-          <Text style={[styles.subtitle, { textAlign: 'center' }]}>
-            يصوّت اللاعبون على أفضل سيناريو{'\n'}(بدون معرفة الكاتب)
-          </Text>
-          
-          {/* 🆕 التصويتات الحية */}
-          <View style={{ marginTop: 30, width: '90%' }}>
-            <Text style={[styles.sectionTitle, { textAlign: 'center', marginBottom: 15 }]}>
-              📊 التصويتات الحية: {liveVotes.length}/{votingData?.scenarios.length || 0}
-            </Text>
-            
-            <View style={{ backgroundColor: '#f9f9f9', borderRadius: 10, padding: 15 }}>
-              {votingData?.scenarios.map((scenario, index) => {
-                const playerName = scenario.playerName || `اللاعب ${index + 1}`;
-                const hasVoted = liveVotes.includes(playerName);
-                
-                return (
-                  <View key={index} style={{ 
-                    flexDirection: 'row', 
-                    alignItems: 'center', 
-                    paddingVertical: 8,
-                    borderBottomWidth: index < votingData.scenarios.length - 1 ? 1 : 0,
-                    borderBottomColor: '#e0e0e0'
-                  }}>
-                    <Text style={{ fontSize: 24, marginRight: 10 }}>
-                      {hasVoted ? '✅' : '⏳'}
-                    </Text>
-                    <Text style={{ 
-                      fontSize: 16, 
-                      color: hasVoted ? '#2F4F4F' : '#999',
-                      fontWeight: hasVoted ? 'bold' : 'normal'
-                    }}>
-                      {playerName}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-            
-            {liveVotes.length === 0 && (
-              <Text style={{ textAlign: 'center', color: '#888', marginTop: 15, fontSize: 14 }}>
-                ⏳ بانتظار التصويتات...
-              </Text>
-            )}
-          </View>
-          
-          {votingData && (
-            <View style={{ marginTop: 30, width: '90%' }}>
-              <Text style={[styles.sectionTitle, { textAlign: 'center', marginBottom: 15 }]}>
-                📋 السيناريوهات:
-              </Text>
-              {votingData.scenarios.map((scenario, index) => (
-                <View key={index} style={[styles.voteButton, { backgroundColor: '#f5f5f5', marginBottom: 10 }]}>
-                  <Text style={{ fontWeight: 'bold', fontSize: 14, color: '#666' }}>
-                    السيناريو #{index + 1}
-                  </Text>
-                  <Text style={[styles.voteText, { fontSize: 14, color: '#666' }]}>
-                    "{scenario.answer}"
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-      </GlobalLayout>
-    );
-  }
-
-  // ============================================
-  // 🆕 PLAYER: WAITING_REVEAL (اللاعبون ينتظرون)
-  // ============================================
-  if (screen === 'WAITING_REVEAL') {
-    return (
-      <GlobalLayout title="🎭 النتائج" showStamp={false}>
-        <View style={{ alignItems: 'center', marginVertical: 30 }}>
-          <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
-          <Text style={[styles.title, { fontSize: 24, marginTop: 20, marginBottom: 20 }]}>
-            ⏳ جاري الكشف...
-          </Text>
-          <Text style={[styles.subtitle, { textAlign: 'center' }]}>
-            انظر إلى الشاشة الرئيسية{'\n'}لمشاهدة النتائج التشويقية!
-          </Text>
-        </View>
-      </GlobalLayout>
-    );
-  }
-
-  // ============================================
-  // 🆕 HOST: DRAMATIC_REVEAL (العرض التشويقي المتراكم)
-  // ============================================
-  if (screen === 'HOST_DRAMATIC_REVEAL') {
-    // استخدام state محلي لتخزين البيانات المتراكمة
-    const currentScenario = revealData.data?.answer || revealData.currentScenario;
-    const currentPosition = revealData.data?.position || revealData.currentPosition;
-    const currentTotal = revealData.data?.total || revealData.total;
-    const currentVoters = revealData.data?.voters || revealData.currentVoters || [];
-    const currentVoteCount = revealData.data?.voteCount || revealData.currentVoteCount || 0;
-    const currentAuthor = revealData.data?.authorName || revealData.currentAuthor;
-
-    return (
-      <GlobalLayout title="🎭 عرض النتائج" showStamp={false}>
-        <ScrollView
-          style={{ width: '100%', flex: 1 }}
-          contentContainerStyle={{ alignItems: 'center', paddingVertical: 30 }}
-        >
-          {revealData.step === null && (
-            <View style={{ alignItems: 'center' }}>
-              <Text style={[styles.title, { fontSize: 28 }]}>⏳ جاري الكشف عن النتائج...</Text>
-            </View>
-          )}
-
-          {/* العرض المتراكم - يبدأ من SCENARIO وما بعده */}
-          {(revealData.step === 'SCENARIO' || revealData.step === 'VOTERS' || revealData.step === 'AUTHOR') && (
-            <View style={{ width: '90%', alignItems: 'center' }}>
-              {/* 1. السيناريو - يظهر دائماً */}
-              <Text style={[styles.sectionTitle, { fontSize: 24, marginBottom: 15 }]}>
-                السيناريو #{currentPosition} من {currentTotal}
-              </Text>
-              <View style={[styles.voteButton, { backgroundColor: '#f0f8ff', borderWidth: 3, borderColor: theme.colors.primary, padding: 20, marginBottom: 20 }]}>
-                <Text style={[styles.voteText, { fontSize: 18, color: '#000' }]}>
-                  "{currentScenario}"
-                </Text>
-              </View>
-
-              {/* 2. الأصوات - تظهر من VOTERS فصاعداً */}
-              {(revealData.step === 'VOTERS' || revealData.step === 'AUTHOR') && (
-                <View style={{ width: '100%', alignItems: 'center', marginBottom: 20 }}>
-                  <Text style={[styles.sectionTitle, { fontSize: 22, marginBottom: 10 }]}>
-                    👥 صوّت له:
-                  </Text>
-                  {currentVoters.map((voterName, idx) => (
-                    <Text key={idx} style={{ fontSize: 20, color: theme.colors.accentGreen, marginVertical: 3 }}>
-                      ✓ {voterName}
-                    </Text>
-                  ))}
-                  <Text style={[styles.title, { fontSize: 28, marginTop: 10, color: theme.colors.accentGreen }]}>
-                    ({currentVoteCount} {currentVoteCount === 1 ? 'صوت' : 'أصوات'}) 🏆
-                  </Text>
-                </View>
-              )}
-
-              {/* 3. الكاتب - يظهر فقط في AUTHOR */}
-              {revealData.step === 'AUTHOR' && (
-                <View style={{ width: '100%', alignItems: 'center', marginTop: 10 }}>
-                  <Text style={{ fontSize: 22, color: '#888', marginBottom: 10 }}>
-                    ✍️ الكاتب:
-                  </Text>
-                  <Text style={[styles.title, { fontSize: 40, color: theme.colors.accentYellow }]}>
-                    {currentAuthor} 🎉
-                  </Text>
-                </View>
-              )}
-
-              {/* رسائل الانتظار */}
-              {revealData.step === 'SCENARIO' && (
-                <Text style={{ color: '#888', fontSize: 18, marginTop: 15 }}>
-                  ⏳ من صوّت له؟
-                </Text>
-              )}
-              {revealData.step === 'VOTERS' && (
-                <Text style={{ color: '#888', fontSize: 18, marginTop: 15 }}>
-                  ⏳ من كتبه؟
-                </Text>
-              )}
-            </View>
-          )}
-
-          {/* السيناريوهات بدون أصوات */}
-          {revealData.step === 'NO_VOTES' && revealData.data && (
-            <View style={{ width: '90%', alignItems: 'center' }}>
-              <Text style={[styles.sectionTitle, { fontSize: 22, marginBottom: 20 }]}>
-                📋 سيناريوهات لم تحصل على أصوات:
-              </Text>
-              {revealData.data.scenarios.map((scenario, idx) => (
-                <View key={idx} style={[styles.voteButton, { backgroundColor: '#f5f5f5', marginBottom: 10 }]}>
-                  <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#666' }}>
-                    ✍️ {scenario.authorName}
-                  </Text>
-                  <Text style={[styles.voteText, { fontSize: 15, color: '#666' }]}>
-                    "{scenario.answer}"
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </ScrollView>
-      </GlobalLayout>
-    );
-  }
-
-  // ============================================
-  // 🆕 HOST: CULPRIT_VOTING (المضيف ينتظر)
-  // ============================================
-  if (screen === 'HOST_CULPRIT_VOTING') {
-    return (
-      <GlobalLayout title="🔍 التصويت على الجاني" showStamp={false}>
-        <View style={{ alignItems: 'center', marginVertical: 30 }}>
-          <Text style={[styles.title, { fontSize: 24, marginBottom: 20 }]}>
-            ⏳ اللاعبون يصوّتون...
-          </Text>
-          <Text style={[styles.subtitle, { textAlign: 'center' }]}>
-            يصوّت اللاعبون على الجاني الحقيقي
-          </Text>
-          
-          {/* 🆕 التصويتات الحية */}
-          <View style={{ marginTop: 30, width: '90%' }}>
-            <Text style={[styles.sectionTitle, { textAlign: 'center', marginBottom: 15 }]}>
-              🔍 التصويتات الحية: {liveVotes.length}/{votingData?.scenarios.length || 0}
-            </Text>
-            
-            <View style={{ backgroundColor: '#f9f9f9', borderRadius: 10, padding: 15 }}>
-              {votingData?.scenarios.map((scenario) => {
-                const hasVoted = liveVotes.includes(scenario.playerName);
-                
-                return (
-                  <View key={scenario.playerId} style={{ 
-                    flexDirection: 'row', 
-                    alignItems: 'center', 
-                    paddingVertical: 8,
-                    borderBottomWidth: votingData.scenarios.indexOf(scenario) < votingData.scenarios.length - 1 ? 1 : 0,
-                    borderBottomColor: '#e0e0e0'
-                  }}>
-                    <Text style={{ fontSize: 24, marginRight: 10 }}>
-                      {hasVoted ? '✅' : '⏳'}
-                    </Text>
-                    <Text style={{ 
-                      fontSize: 16, 
-                      color: hasVoted ? '#2F4F4F' : '#999',
-                      fontWeight: hasVoted ? 'bold' : 'normal'
-                    }}>
-                      {scenario.playerName}
-                    </Text>
-                  </View>
-                );
-              })}
-            </View>
-            
-            {liveVotes.length === 0 && (
-              <Text style={{ textAlign: 'center', color: '#888', marginTop: 15, fontSize: 14 }}>
-                ⏳ بانتظار التصويتات...
-              </Text>
-            )}
-          </View>
-          
-          {votingData && (
-            <View style={{ marginTop: 30, width: '90%' }}>
-              <Text style={[styles.sectionTitle, { textAlign: 'center', marginBottom: 15 }]}>
-                👥 اللاعبون:
-              </Text>
-              {votingData.scenarios.map((scenario) => (
-                <View key={scenario.playerId} style={[styles.voteButton, { backgroundColor: '#f5f5f5', marginBottom: 10 }]}>
-                  <Text style={{ fontWeight: 'bold', fontSize: 16, color: '#666' }}>
-                    👤 {scenario.playerName}
-                  </Text>
-                  <Text style={[styles.voteText, { fontSize: 14, color: '#666' }]}>
-                    "{scenario.answer}"
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-        </View>
-      </GlobalLayout>
-    );
-  }
-
-  // ============================================
-  // 🆕 SCREEN: QUALITY_VOTING (المرحلة الأولى - اللاعبون)
-  // ============================================
-  if (screen === 'QUALITY_VOTING' && votingData) {
-    if (isSubmitted) {
-      return (
-        <GlobalLayout title="✨ أفضل سيناريو" showStamp={true} stampText="تم التصويت">
-          <View style={{ alignItems: 'center', marginVertical: 20 }}>
-            <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
-          </View>
-          <Text style={styles.subtitle}>⏳ بانتظار باقي اللاعبين...</Text>
-        </GlobalLayout>
-      );
+        );
     }
-
-    return (
-      <GlobalLayout title="✨ أفضل سيناريو" showStamp={false}>
-        <ScrollView
-          style={{ width: '100%', flex: 1 }}
-          contentContainerStyle={{ alignItems: 'center', paddingBottom: 40 }}
-        >
-          <View style={{ marginBottom: 15 }}>
-            <RoleAvatar role={roleData?.role} size={50} showLabel={false} />
-          </View>
-
-          <Text style={[styles.sectionTitle, { textAlign: 'center', marginBottom: 5 }]}>
-            صوّت لأفضل سيناريو
-          </Text>
-          <Text style={{ color: '#888', fontSize: 14, textAlign: 'center', marginBottom: 20 }}>
-            (لا يمكنك معرفة من كتب كل سيناريو)
-          </Text>
-
-          <View style={{ width: '90%' }}>
-            {votingData.scenarios.map((scenario, index) => {
-              const isOwnScenario = index === votingData.scenarios.findIndex(
-                (_, i) => votingData.scenarios[i] === votingData.scenarios.find((s, si) => si === index)
-              );
-              
-              return (
-                <TouchableOpacity
-                  activeOpacity={0.7}
-                  key={index}
-                  style={[
-                    styles.voteButton,
-                    selectedQuality === index && styles.selectedVote,
-                  ]}
-                  onPress={() => setSelectedQuality(index)}
-                >
-                  <Text style={[styles.voteLabel, { marginBottom: 5, fontWeight: 'bold' }]}>
-                    السيناريو #{index + 1}
-                  </Text>
-                  <Text style={styles.voteText}>"{scenario.answer}"</Text>
-                  {selectedQuality === index && (
-                    <Text style={{ color: theme.colors.accentGreen, fontSize: 16, marginTop: 5 }}>
-                      ✓ تم الاختيار
-                    </Text>
-                  )}
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-
-          <TouchableOpacity
-            activeOpacity={0.7}
-            style={[
-              styles.button,
-              !selectedQuality && { backgroundColor: '#ccc' }
-            ]}
-            onPress={() => {
-              if (selectedQuality !== null) {
-                socket.emit('submitQualityVote', { roomCode, scenarioIndex: selectedQuality });
-                setIsSubmitted(true);
-              } else {
-                Alert.alert('تنبيه', 'اختر سيناريو أولاً!');
-              }
-            }}
-            disabled={selectedQuality === null}
-          >
-            <Text style={styles.buttonText}>✅ إرسال التصويت</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </GlobalLayout>
-    );
-  }
-
-  // ============================================
-  // ❌ OLD DRAMATIC_REVEAL للاعبين - تم استبدالها بـ WAITING_REVEAL
-  // ============================================
-  // (تم نقلها للمضيف فقط في HOST_DRAMATIC_REVEAL)
-
-  // ============================================
-  // 🆕 SCREEN: CULPRIT_VOTING (المرحلة الثانية - اللاعبون)
-  // ============================================
-  if (screen === 'CULPRIT_VOTING' && votingData) {
-    if (isSubmitted) {
-      return (
-        <GlobalLayout title="🔍 من الجاني؟" showStamp={true} stampText="تم التصويت">
-          <View style={{ alignItems: 'center', marginVertical: 20 }}>
-            <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
-          </View>
-          <Text style={styles.subtitle}>⏳ بانتظار النتائج...</Text>
-        </GlobalLayout>
-      );
-    }
-
-    return (
-      <GlobalLayout title="🔍 من الجاني؟" showStamp={false}>
-        <ScrollView
-          style={{ width: '100%', flex: 1 }}
-          contentContainerStyle={{ alignItems: 'center', paddingBottom: 40 }}
-        >
-          <View style={{ marginBottom: 15 }}>
-            <RoleAvatar role={roleData?.role} size={50} showLabel={false} />
-          </View>
-
-          <Text style={[styles.sectionTitle, { textAlign: 'center', marginBottom: 5 }]}>
-            من هو الجاني الحقيقي؟
-          </Text>
-          <Text style={{ color: '#888', fontSize: 14, textAlign: 'center', marginBottom: 20 }}>
-            (الآن يمكنك رؤية من كتب كل سيناريو)
-          </Text>
-
-          <View style={{ width: '90%' }}>
-            {votingData.scenarios.map((scenario) => (
-              <TouchableOpacity
-                activeOpacity={0.7}
-                key={scenario.playerId}
-                style={[
-                  styles.voteButton,
-                  selectedCulprit === scenario.playerId && styles.selectedVote,
-                ]}
-                onPress={() => setSelectedCulprit(scenario.playerId)}
-              >
-                <Text style={[styles.voteLabel, { marginBottom: 5, fontWeight: 'bold', fontSize: 16 }]}>
-                  👤 {scenario.playerName}
-                </Text>
-                <Text style={[styles.voteText, { fontSize: 14 }]}>
-                  "{scenario.answer}"
-                </Text>
-                {selectedCulprit === scenario.playerId && (
-                  <Text style={{ color: theme.colors.accentRed, fontSize: 16, marginTop: 5 }}>
-                    ✓ المشتبه به
-                  </Text>
-                )}
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <TouchableOpacity
-            activeOpacity={0.7}
-            style={[
-              styles.button,
-              { backgroundColor: theme.colors.accentRed },
-              !selectedCulprit && { backgroundColor: '#ccc' }
-            ]}
-            onPress={() => {
-              if (selectedCulprit) {
-                socket.emit('submitCulpritVote', { roomCode, playerId: selectedCulprit });
-                setIsSubmitted(true);
-              } else {
-                Alert.alert('تنبيه', 'اختر مشتبهاً به أولاً!');
-              }
-            }}
-            disabled={!selectedCulprit}
-          >
-            <Text style={styles.buttonText}>🚨 تقديم الاتهام</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </GlobalLayout>
-    );
-  }
-
-  // ============================================
-  // OLD VOTING SCREEN (للتوافقية المؤقتة)
-  // ============================================
-  if (screen === 'VOTING' && votingData) {
-    if (isSubmitted) {
-      return (
-        <GlobalLayout title="التصويت" showStamp={true} stampText="تم التصويت">
-          <View style={{ alignItems: 'center', marginVertical: 20 }}>
-            <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
-          </View>
-          <Text style={styles.subtitle}>بانتظار النتائج...</Text>
-        </GlobalLayout>
-      );
-    }
-
-    return (
-      <GlobalLayout title="التصويت" showStamp={false}>
-        <ScrollView
-          style={{ width: '100%', flex: 1 }}
-          contentContainerStyle={{ alignItems: 'center', paddingBottom: 40 }}
-        >
-          <View style={{ marginBottom: 10 }}>
-            <RoleAvatar role={roleData?.role} size={60} showLabel={false} />
-          </View>
-
-          {/* دعم للأدوار الجديدة والقديمة */}
-          {(roleData?.role === 'CHIEF_DETECTIVE' || roleData?.role === 'DETECTIVE') && (roleData?.round >= 2 || roleData?.isTutorial) && !abilityUsed && (
-            <Text style={{ color: theme.colors.accentRed, fontWeight: 'bold', marginBottom: 10, textAlign: 'center' }}>
-              🕵️ يمكنك الضغط مطولاً على إجابة لاستجواب صاحبها
-            </Text>
-          )}
-
-          {/* قدرة الضابط */}
-          {(roleData?.role === 'OFFICER' || roleData?.role === 'OFFICER') && (roleData?.round >= 2 || roleData?.isTutorial) && !abilityUsed && (
-            <TouchableOpacity activeOpacity={0.7}
-              style={[styles.button, { backgroundColor: '#4169E1', marginBottom: 15, width: '90%' }]}
-              onPress={() => {
-                socket.emit('useAbility', { roomCode, abilityType: 'OBSERVATION' });
-              }}
-            >
-              <Text style={styles.buttonText}>⏱️ الملاحظة الدقيقة</Text>
-            </TouchableOpacity>
-          )}
-
-          <View style={{ width: '90%' }}>
-            <Text style={[styles.sectionTitle, { textAlign: 'center' }]}>1. أفضل إجابة</Text>
-            {votingData.answers.map((item) => (
-              <TouchableOpacity activeOpacity={0.7}
-                key={item.id}
-                style={[
-                  styles.voteButton,
-                  selectedQuality === item.id && styles.selectedVote,
-                  item.id === socket.id && styles.disabledVote
-                ]}
-                onPress={() => {
-                  if (item.id !== socket.id) setSelectedQuality(item.id);
-                  else Alert.alert('تنبيه', 'لا يمكنك التصويت لنفسك!');
-                }}
-                onLongPress={() => {
-                  // دعم الأدوار الجديدة والقديمة
-                  if ((roleData?.role === 'CHIEF_DETECTIVE' || roleData?.role === 'DETECTIVE') && (roleData?.round >= 2 || roleData?.isTutorial) && !abilityUsed && item.id !== socket.id) {
-                    Alert.alert(
-                      'استجواب',
-                      'هل تريد استجواب هذا المشتبه به؟',
-                      [{ text: 'إلغاء', style: 'cancel' }, { text: 'نعم', onPress: () => handleInterrogate(item.id) }]
-                    );
-                  }
-                }}
-                disabled={item.id === socket.id}
-              >
-                <Text style={[styles.voteText, item.id === socket.id && { color: '#2F4F4F' }]}>
-                  "{item.answer}"
-                </Text>
-                <Text style={{ fontSize: 12, color: '#666', textAlign: 'right', marginTop: 4 }}>
-                  - {item.name} {item.id === socket.id ? '(أنت)' : ''}
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={{ width: '90%', marginTop: 20 }}>
-            <Text style={[styles.sectionTitle, { textAlign: 'center' }]}>2. من هو الشاهد؟</Text>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center' }}>
-              {votingData.players.map((player) => (
-                <TouchableOpacity activeOpacity={0.7}
-                  key={player.id}
-                  style={[styles.playerButton, selectedIdentity === player.id && styles.selectedVote]}
-                  onPress={() => setSelectedIdentity(player.id)}
-                >
-                  <Text style={[styles.voteText, { textAlign: 'center', fontSize: 14 }]}>{player.name}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          <TouchableOpacity activeOpacity={0.7} style={styles.button} onPress={handleSubmitVote}>
-            <Text style={styles.buttonText}>إرسال التصويت</Text>
-          </TouchableOpacity>
-        </ScrollView>
-      </GlobalLayout>
-    );
-  }
-
-  if (screen === 'RESULTS') {
-    const myResult = results.find(r => r.name === playerName);
-    const myTeam = myResult?.team;
-    const myTeamColor = myTeam === 'CRIME' ? theme.colors.accentRed : 
-                        myTeam === 'INVESTIGATION' ? '#1E90FF' : '#9370DB';
-    
-    return (
-      <GlobalLayout title="النتائج" showStamp={false}>
-        <ScrollView contentContainerStyle={{ alignItems: 'center', width: '100%', paddingBottom: 20 }}>
-          {/* صورة الدور */}
-          <View style={{ alignItems: 'center', marginVertical: 15 }}>
-            <RoleAvatar role={roleData?.role} size={70} showLabel={false} />
-          </View>
-
-          {/* إعلان فوز الفريق */}
-          {teamResults && (teamResults.crimeTeamWon || teamResults.investigationTeamWon) && (
-            <View style={{
-              backgroundColor: teamResults.crimeTeamWon ? 'rgba(178, 34, 34, 0.15)' : 'rgba(30, 144, 255, 0.15)',
-              borderColor: teamResults.crimeTeamWon ? theme.colors.accentRed : '#1E90FF',
-              borderWidth: 2,
-              borderRadius: 10,
-              padding: 15,
-              marginBottom: 15,
-              width: '90%',
-              alignItems: 'center'
-            }}>
-              <Text style={{ fontSize: 20, fontWeight: 'bold', marginBottom: 5 }}>
-                {teamResults.crimeTeamWon ? '🔴' : '🔵'}
-              </Text>
-              <Text style={{ fontSize: 18, fontWeight: 'bold', textAlign: 'center', color: '#333' }}>
-                {teamResults.crimeTeamWon ? '🎉 فاز فريق الجريمة!' : '🎉 فاز فريق التحقيق!'}
-              </Text>
-              {teamResults.culpritCaught && (
-                <Text style={{ fontSize: 12, color: '#666', marginTop: 5, textAlign: 'center' }}>
-                  🚨 تم القبض على الجاني!
-                </Text>
-              )}
-            </View>
-          )}
-
-          {/* نتيجتك الشخصية */}
-          {myResult && (
-            <View style={{
-              backgroundColor: 'rgba(255, 215, 0, 0.1)',
-              borderColor: myTeamColor,
-              borderWidth: 2,
-              borderRadius: 8,
-              padding: 12,
-              marginBottom: 15,
-              width: '90%'
-            }}>
-              <Text style={{ fontSize: 16, fontWeight: 'bold', textAlign: 'center', color: '#333', marginBottom: 8 }}>
-                📊 نتيجتك
-              </Text>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-                <Text style={{ fontSize: 14, color: '#666' }}>دورك:</Text>
-                <Text style={{ fontSize: 14, fontWeight: 'bold', color: myTeamColor }}>
-                  {myResult.role}
-                </Text>
-              </View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 }}>
-                <Text style={{ fontSize: 14, color: '#666' }}>نقاط هذه الجولة:</Text>
-                <Text style={{ fontSize: 14, fontWeight: 'bold', color: theme.colors.accentRed }}>
-                  {myResult.roundScore > 0 ? '+' : ''}{myResult.roundScore}
-                </Text>
-              </View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={{ fontSize: 14, color: '#666' }}>المجموع الكلي:</Text>
-                <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#2F4F4F' }}>
-                  {myResult.totalScore}
-                </Text>
-              </View>
-              
-              {/* تفصيل النقاط */}
-              {myResult.breakdown && myResult.breakdown.length > 0 && (
-                <View style={{ marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#ddd' }}>
-                  <Text style={{ fontSize: 12, fontWeight: 'bold', color: '#666', marginBottom: 5 }}>
-                    📝 تفصيل النقاط:
-                  </Text>
-                  {myResult.breakdown.map((item, idx) => (
-                    <Text key={idx} style={{ fontSize: 11, color: '#555', marginBottom: 3 }}>
-                      • {item}
-                    </Text>
-                  ))}
-                </View>
-              )}
-            </View>
-          )}
-
-          {/* معلومات الفريق */}
-          {teamResults && myTeam && myTeam !== 'NEUTRAL' && (
-            <View style={{
-              backgroundColor: 'rgba(255, 255, 255, 0.8)',
-              borderRadius: 8,
-              padding: 12,
-              marginBottom: 15,
-              width: '90%'
-            }}>
-              <Text style={{ fontSize: 14, fontWeight: 'bold', textAlign: 'center', color: '#333', marginBottom: 8 }}>
-                {myTeam === 'CRIME' ? '🔴 فريقك (الجريمة)' : '🔵 فريقك (التحقيق)'}
-              </Text>
-              {(myTeam === 'CRIME' ? teamResults.crimeMembers : teamResults.investigationMembers)?.map((member, idx) => (
-                <View key={idx} style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
-                  <Text style={{ fontSize: 12, color: '#666' }}>
-                    {member.name === playerName ? '👤 ' : ''}
-                    {member.name}
-                  </Text>
-                  <Text style={{ fontSize: 12, fontWeight: 'bold', color: myTeamColor }}>
-                    {member.score}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-
-          <Text style={[styles.subtitle, { marginTop: 10 }]}>
-            انتظر المضيف للجولة التالية...
-          </Text>
-        </ScrollView>
-      </GlobalLayout>
-    );
-  }
-
-  if (screen === 'END') {
-    return (
-      <GlobalLayout title="نهاية اللعبة" showStamp={true} stampText="انتهت المهمة">
-        <View style={{ alignItems: 'center', marginVertical: 20 }}>
-          <RoleAvatar role={roleData?.role} size={50} showLabel={false} />
-        </View>
-        <Text style={styles.subtitle}>شكراً لمشاركتك</Text>
-
-        <TouchableOpacity activeOpacity={0.7} style={[styles.button, { backgroundColor: '#666', marginTop: 30 }]} onPress={handleBackToRoleSelect}>
-          <Text style={styles.buttonText}>خروج</Text>
-        </TouchableOpacity>
-      </GlobalLayout>
-    );
-  }
-
-  return <View style={styles.container} />;
+  };
+  
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar 
+        barStyle="dark-content" 
+        backgroundColor={theme.colors.background}
+      />
+      {renderScreen()}
+    </SafeAreaView>
+  );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#2F4F4F',  // ✅ رمادي فحمي (خلفية مظلمة للتباين)
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 20,
-    minHeight: Platform.OS === 'web' ? '100vh' : undefined,
+    backgroundColor: theme.colors.background,
   },
-  paperContainer: {
-    width: '100%',
-    backgroundColor: '#F5F5DC',  // ✅ بيج ورق قديم (الأساس)
-    borderWidth: 2,              // ✅ حد أسمك
-    borderColor: '#B22222',      // ✅ أحمر باهت (أختام)
-    padding: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 5, height: 5 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 10,
-    position: 'relative',
-    marginTop: 20,
-  },
-  fileContainer: {
-    width: '100%',
-    height: '90%',
-    padding: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  paperClip: {
-    position: 'absolute',
-    top: -10,
-    right: 10, // Visual left in RTL
-    width: 50,
-    height: 100,
-    zIndex: 5,
-  },
-  tape: {
-    position: 'absolute',
-    top: -25,
-    alignSelf: 'center',
-    width: 130,
-    height: 65,
-    zIndex: 10,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#3e2723',
-    marginBottom: 20,
-    fontFamily: 'Courier New',
-    textShadowColor: 'rgba(0, 0, 0, 0.1)',
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
-    textAlign: 'center',
-  },
-  subtitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#4e342e',
-    marginBottom: 10,
-    textAlign: 'center',
-    lineHeight: 24,
-  },
-  input: {
-    width: '90%',
-    height: 45,
-    borderBottomWidth: 2,
-    borderBottomColor: '#3e2723',
-    backgroundColor: 'rgba(255, 255, 255, 0.4)',
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 15,
-    textAlign: 'center',
-    color: '#3e2723',
-    fontFamily: 'Courier New',
-    borderRadius: 4,
-  },
-  button: {
-    backgroundColor: '#3e2723',
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    marginTop: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 0.5,
-    shadowRadius: 2,
-    elevation: 5,
-    borderRadius: 2,
-    transform: [{ scale: 1 }],
-    minWidth: 150,
-    alignItems: 'center',
-  },
-  buttonText: {
-    color: '#f4e4bc',
-    fontSize: 16,
-    fontWeight: 'bold',
-    fontFamily: 'Courier New',
-  },
-  stampContainer: {
-    borderWidth: 4,
-    borderColor: theme.colors.accentRed,
-    paddingVertical: 2,
-    paddingHorizontal: 10,
-    marginBottom: 20,
-    transform: [{ rotate: '-5deg' }],
-    alignSelf: 'center',
-    borderRadius: 2,
-    backgroundColor: 'transparent',
-    borderStyle: 'solid',
-  },
-  stamp: {
-    color: theme.colors.accentRed,
-    fontSize: 12,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-  },
-  status: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginTop: 10,
-  },
-  roleTitle: {
-    fontSize: 36,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  roleDesc: {
-    fontSize: 18,
-    lineHeight: 26,
-    fontStyle: 'italic',
-    textAlign: 'center',
-    marginBottom: 30,
-    color: '#2F4F4F',
-    fontWeight: '500',
-  },
-  infoBox: {
-    backgroundColor: 'rgba(0,0,0,0.05)',
-    padding: 20,
-    width: '100%',
-    borderWidth: 1,
-    borderColor: theme.colors.text,
-    borderStyle: 'dashed',
-  },
-  infoLabel: {
-    fontWeight: 'bold',
-    marginBottom: 10,
-    fontSize: 16,
-    textAlign: 'right',
-  },
-  infoText: {
-    fontSize: 20, // Larger
-    fontWeight: 'bold', // Bolder
-    textAlign: 'right', // Arabic alignment
-    lineHeight: 30,
-    color: '#1a1a1a', // Darker black
-  },
-  roleButton: {
-    width: '85%',
-    paddingVertical: 20,
-    paddingHorizontal: 20,
-    marginBottom: 10,
-    alignItems: 'center',
-    borderRadius: 10,
-    shadowColor: theme.colors.accentYellow,
-    shadowOffset: { width: 5, height: 5 },
-    shadowOpacity: 0.8,
-    shadowRadius: 0,
-    elevation: 5,
-  },
-  roleButtonIcon: {
-    fontSize: 40,
-    marginBottom: 5,
-  },
-  roleButtonText: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: theme.colors.background,
-    marginBottom: 5,
-  },
-  roleButtonSubtext: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.9)',
-    textAlign: 'center',
-  },
-  roomCodeBox: {
-    backgroundColor: '#000',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    marginVertical: 20,
-    transform: [{ rotate: '2deg' }],
-  },
-  roomCode: {
-    fontSize: 40,
-    fontWeight: 'bold',
-    color: '#fff',
-    letterSpacing: 10,
-    fontFamily: 'Courier New',
-  },
-  screenLabel: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: theme.colors.text,
-    marginBottom: 15,
-    marginTop: 20,
-  },
-  playerList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    width: '100%',
-    marginVertical: 20,
-    gap: 15,
-  },
-  playerCard: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: theme.colors.text,
-    paddingVertical: 10,
-    paddingHorizontal: 15,
-    minWidth: 120,
-    alignItems: 'center',
-    position: 'relative',
-    overflow: 'visible',
-  },
-  confidentialBadge: {
-    position: 'absolute',
-    top: -8,
-    right: -5,
-    backgroundColor: theme.colors.accentRed,
-    paddingHorizontal: 4,
-    paddingVertical: 2,
-    transform: [{ rotate: '5deg' }],
-    zIndex: 1,
-  },
-  confidentialText: {
-    color: 'white',
-    fontSize: 8,
-    fontWeight: 'bold',
-  },
-  enhancedCard: {
-    backgroundColor: '#fff',
-    borderWidth: 2,
-    borderColor: theme.colors.accentRed,
-    borderRadius: 4,
-    padding: 15,
-    marginVertical: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
-  },
-  playerCardText: {
-    fontSize: 16,
-    color: theme.colors.text,
-    fontWeight: 'bold',
-  },
-  timer: {
-    fontSize: 48,
-    fontWeight: 'bold',
-    color: theme.colors.accentRed,
-    marginBottom: 20,
-  },
-  answersList: {
-    width: '100%',
-    marginVertical: 20,
-    gap: 15,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-  },
-  answerCard: {
-    backgroundColor: '#fffcf0',
-    borderWidth: 2,
-    borderColor: '#2F4F4F',
-    paddingVertical: 15,
-    paddingHorizontal: 20,
-    marginVertical: 10,
-  },
-  answerCardSquare: {
-    backgroundColor: '#fffcf0',
-    borderWidth: 2,
-    borderColor: '#2F4F4F',
-    width: '45%', // 2 per row
-    minHeight: 150, // Allow growth if needed, but flex wrap helps.
-    // aspectRatio: 1, // REMOVE AspectRatio to allow vertical growth for long text
-    padding: 10,
-    margin: '2.5%',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    shadowColor: '#000',
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 0.1,
-    elevation: 3,
-  },
-  answerText: {
-    fontSize: 16, // Reduced from 18
-    fontWeight: 'bold',
-    color: '#2e2e2e',
-    marginVertical: 10,
-    fontStyle: 'italic',
-    textAlign: 'center',
-    flexWrap: 'wrap', // Ensure wrapping
-  },
-  answerAuthor: {
-    fontSize: 14,
-    color: '#666',
-    fontWeight: 'bold',
-    marginTop: 10,
-  },
-  resultsList: {
-    width: '100%',
-    marginVertical: 20,
-  },
-  resultCard: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: theme.colors.text,
-    paddingVertical: 12,
-    paddingHorizontal: 15,
-    marginVertical: 8,
-    flexDirection: 'column', // Changed to column for small screens, or let it wrap
-    width: '100%',
-    alignItems: 'flex-start',
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginTop: 20,
-    marginBottom: 10,
-    color: theme.colors.text,
-    textAlign: 'right',
-    width: '100%',
-  },
-  voteButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: theme.colors.text,
-    padding: 10,
-    marginBottom: 8,
-    width: '100%',
-    borderRadius: 5,
-    alignSelf: 'center',
-  },
-  playerButton: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: theme.colors.text,
-    padding: 10,
-    margin: 5,
-    minWidth: 100,
-    alignItems: 'center',
-    borderRadius: 5,
-  },
-  selectedVote: {
-    backgroundColor: theme.colors.accentYellow,
-    borderColor: theme.colors.accentRed,
-    borderWidth: 2,
-  },
-  disabledVote: {
-    backgroundColor: '#f0f0f0',
-    borderColor: '#ccc',
-  },
-  voteText: {
-    fontSize: 14, // Reduced from 16
-    color: theme.colors.text,
-    textAlign: 'right',
-    flexWrap: 'wrap',
-    width: '100%',
-    lineHeight: 20, // Better line spacing for reading
-  },
-  modalOverlay: {
+  tempScreen: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    padding: 40,
   },
-  modalContent: {
-    width: '85%',
-    backgroundColor: 'white',
-    padding: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    elevation: 5,
-  },
-  modalTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+  tempText: {
+    fontSize: 48,
     marginBottom: 20,
-    color: theme.colors.text,
   },
-  modalButton: {
-    width: '100%',
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-    alignItems: 'center',
-  },
-  modalButtonText: {
+  tempSubtext: {
     fontSize: 18,
-    color: theme.colors.text,
-  },
-  cancelButton: {
-    marginTop: 20,
-    padding: 10,
-    backgroundColor: theme.colors.accentRed,
-    borderRadius: 5,
-    width: '100%',
-    alignItems: 'center',
-  },
-  cancelButtonText: {
-    color: 'white',
-    fontWeight: 'bold',
-  },
-  fileButtonContainer: {
-    width: '90%',
-    height: 120, // Reduced from 160
-    marginBottom: 15,
-  },
-  fileButtonBackground: {
-    width: '100%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  fileContent: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 10, // Reduced padding
-  },
-  menuContainer: {
-    width: '95%',
-    backgroundColor: 'rgba(245, 245, 220, 0.6)', // More subtle paper color
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(178, 34, 34, 0.4)',
-    padding: 10,
-    maxHeight: '90%', // More space
-    alignItems: 'center',
-  },
-  roleButtonTextBlack: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#333',
-    marginBottom: 5,
-    fontFamily: 'Courier New',
-  },
-  roleButtonSubtextBlack: {
-    fontSize: 10,
-    color: '#555',
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-  redactedText: {
-    backgroundColor: 'black',
-    color: 'black',
-    paddingHorizontal: 5,
-  },
-  stampContainerSmall: {
-    position: 'absolute',
-    top: 20,
-    right: 20,
-    borderWidth: 2,
-    borderColor: theme.colors.accentRed,
-    paddingVertical: 5,
-    paddingHorizontal: 10,
-    transform: [{ rotate: '-10deg' }],
-    borderRadius: 2,
-  },
-  stampSmall: {
-    color: theme.colors.accentRed,
-    fontSize: 9,
-    fontWeight: '900',
-    textTransform: 'uppercase',
-  },
-  roleTitle: {
-    fontSize: 28, // Reduced from 36
-    fontWeight: 'bold',
-    marginBottom: 10,
-    textAlign: 'center',
-    flexWrap: 'wrap', // Wrap long names
+    color: theme.colors.textSecondary,
   },
 });
 
 registerRootComponent(App);
-
-
-
-
+export default App;

@@ -1,17 +1,23 @@
 # التوثيق التقني - مشروع الحبكة
 
-## حالة المشروع الحالية (الإصدار 2.0)
+## حالة المشروع الحالية (الإصدار 2.1.0)
+
+### آخر التحديثات (2026-02-03):
+- ✅ **إصلاح حالة اللاعبين اللحظية**: الآن شاشة المضيف تعرض الحالة الصحيحة للاعبين في الوقت الفعلي
+- ✅ **إصلاح العرض التشويقي**: العرض التشويقي يعمل بشكل كامل بعد التصويت على الجودة
+- ✅ **تحسين واجهة المستخدم**: عرض أسماء المصوتين وموقع السيناريو والتحديثات اللحظية
 
 ### المراحل المنفذة:
 1. ✅ **Lobby Phase**: إنشاء الغرف والانضمام للاعبين
 2. ✅ **Role Assignment**: توزيع الأدوار (10 أدوار - نظام الفرق)
-3. ✅ **Drafting Phase**: كتابة السيناريوهات (90 ثانية، حد 500 حرف)
+3. ✅ **Drafting Phase**: كتابة السيناريوهات (90 ثانية، حد 500 حرف) - **مع مراقبة لحظية** ⭐
 4. ✅ **Two-Phase Voting System**: تصويت على الجودة ثم التصويت على الجاني
-5. ✅ **Dramatic Reveal**: عرض تشويقي تلقائي للسيناريوهات
+5. ✅ **Dramatic Reveal**: عرض تشويقي تلقائي للسيناريوهات - **محسّن ويعمل بالكامل** ⭐
 6. ✅ **Results Phase**: حساب ونشر النتائج مع نظام الفرق
 7. ✅ **Multi-Round System**: دعم جولات متعددة
 8. ✅ **Live Voting Display**: عرض التصويتات الحية للمضيف
 9. ✅ **AI Integration**: توليد السيناريوهات بواسطة AI (GitHub Models)
+10. ✅ **Training Mode**: وضع التدريب الفردي مع 3 بوتات ذكية
 
 ### التقنيات المستخدمة:
 - **Backend**: Node.js + Express + Socket.io
@@ -45,8 +51,22 @@ plot/
 │   │   ├── GlobalLayout.js        # المكون الأساسي للهوية البصرية (Container)
 │   │   └── RedactedText.js        # مكون النصوص المحجوبة (تفاعلي)
 │   └── /src
+│       ├── /screens                # شاشات اللعبة المنظمة
+│       │   ├── RoleSelectScreen_v2.js     # اختيار الدور (مضيف/لاعب/تدريب)
+│       │   ├── HostScreens_v2.js          # شاشات المضيف (Lobby)
+│       │   ├── HostGameScreens.js         # شاشات المضيف داخل اللعبة
+│       │   ├── PlayerScreens.js           # شاشات اللاعب (Login, Lobby)
+│       │   ├── GameScreens.js             # شاشات اللعبة للاعب
+│       │   ├── VotingScreens.js           # شاشات التصويت والنتائج
+│       │   └── TrainingScreens.js         # شاشات التدريب الفردي
+│       ├── /ui                     # مكونات واجهة المستخدم
+│       │   ├── Button.js           # أزرار بأنماط مختلفة
+│       │   ├── Card.js             # بطاقات Manila folder style
+│       │   ├── Badge.js            # شارات Stamps style
+│       │   └── TextInput.js        # حقول إدخال النص
 │       └── /styles
-│           └── theme.js           # متغيرات الألوان والتصميم
+│           ├── theme.js            # متغيرات الألوان والتصميم
+│           └── responsive.js       # متغيرات التصميم المتجاوب
 │
 ├── start.js                       # سكريبت التشغيل الموحد
 ├── package.json                   # التبعيات الرئيسية
@@ -81,15 +101,21 @@ plot/
 ### Game Flow
 - `roleAssigned`: تعيين دور وإرسال المعلومات السرية
 - `gameStarted`: بدء الجولة (عرض عنوان السيناريو)
-- `startDrafting`: بدء مرحلة الكتابة (90 ثانية، حد 500 حرف)
+- `startDrafting`: بدء مرحلة الكتابة (90 ثانية، حد 500 حرف) + **قائمة waitingFor** ⭐
+- `timerUpdate`: تحديث العداد التنازلي كل ثانية
+- `playerSubmitted`: إشعار المضيف بتسليم لاعب (تحديث فوري للحالة) ⭐
 - `submitAnswer`: Player يرسل سيناريوه
 
-### Two-Phase Voting System (NEW)
+### Two-Phase Voting System
 - `qualityVotingStarted`: بدء المرحلة الأولى - التصويت على الجودة (بدون أسماء)
 - `submitQualityVote`: Player يصوّت على أفضل سيناريو
-- `voteReceived`: إشعار فوري للمضيف بأن لاعب صوّت (🆕 Live Voting)
-- `dramaticRevealStarted`: بدء العرض التشويقي التلقائي
-- `revealStep`: خطوات الكشف التدريجي (سيناريو → أصوات → كاتب)
+- `voteReceived`: إشعار فوري للمضيف بأن لاعب صوّت (Live Voting)
+- `dramaticRevealStarted`: بدء العرض التشويقي التلقائي ⭐
+- `revealStep`: خطوات الكشف التدريجي - يدعم الآن جميع الأنواع: ⭐
+  - `SCENARIO`: عرض نص السيناريو مع موقعه (X من Y)
+  - `VOTERS`: عرض قائمة المصوتين وعدد الأصوات
+  - `AUTHOR`: كشف اسم الكاتب
+  - `NO_VOTES`: عرض السيناريوهات التي لم تحصل على أصوات
 - `culpritVotingStarted`: بدء المرحلة الثانية - التصويت على الجاني (مع الأسماء)
 - `submitCulpritVote`: Player يصوّت على الجاني
 - `roundResults`: عرض نتائج الجولة
@@ -246,3 +272,212 @@ plot/
   - `002-complete-system-overhaul.md`: النظام الكامل + AI
   - `001-team-based-gameplay-system-imp.md`: نظام الفرق
 
+
+---
+
+## التحديثات الأخيرة - الإصدار 2.1.0 (2026-02-03)
+
+### 🔧 إصلاحات حرجة
+
+#### 1. إصلاح حالة اللاعبين اللحظية في شاشة المضيف
+
+**المشكلة**:
+- شاشة مراقبة الكتابة للمضيف كانت تعرض جميع اللاعبين كـ "تم التسليم ✅" فوراً
+- السبب: الخادم لا يُرسل قائمة `waitingFor` الأولية
+
+**الحل التقني**:
+\\\javascript
+// server/index.js - السطر 110
+const waitingFor = room.players.map(p => p.id);
+io.to(roomCode).emit('startDrafting', { 
+  duration: 90,
+  waitingFor  // ✨ جديد
+});
+
+// plot-mobile/App.js - السطر 217
+setWaitingFor(data.waitingFor || players.map(p => p.id));
+\\\
+
+**النتيجة**:
+- ⏳ جميع اللاعبين يظهرون بحالة "يكتب..." في البداية
+- ✅ التحديث الفوري عند تسليم كل لاعب
+- 📊 عرض دقيق لتقدم اللاعبين
+
+#### 2. إصلاح العرض التشويقي (Dramatic Reveal)
+
+**المشكلة**:
+- العرض التشويقي لا يظهر بعد التصويت على الجودة
+- الأسباب:
+  1. عدم تطابق أسماء: `data.step` (خادم) vs `data.type` (تطبيق)
+  2. عدم تطابق الحقول: `answer` vs `text`, `authorName` vs `author`
+  3. عدم دعم `NO_VOTES` step
+
+**الحل التقني**:
+\\\javascript
+// plot-mobile/App.js - معالج revealStep (السطر 258-299)
+const step = data.step || data.type; // دعم كلا الاسمين ✨
+
+if (step === 'SCENARIO' || step === 'scenario') {
+  setCurrentReveal({ 
+    text: data.data.answer || data.data.text,  // دعم كلا الحقلين ✨
+    position: data.data.position,
+    total: data.data.total
+  });
+} else if (step === 'VOTERS' || step === 'votes') {
+  setCurrentReveal(prev => ({ 
+    ...prev, 
+    voters: data.data.voters,  // أسماء المصوتين ✨
+    voteCount: data.data.voteCount
+  }));
+} else if (step === 'AUTHOR' || step === 'author') {
+  setCurrentReveal(prev => {
+    const complete = { 
+      ...prev, 
+      author: data.data.authorName || data.data.author  // دعم كلا الحقلين ✨
+    };
+    setRevealedScenarios(prev => [...prev, complete]);
+    return complete;
+  });
+} else if (step === 'NO_VOTES') {
+  // ✨ دعم جديد للسيناريوهات بدون أصوات
+  const noVoteScenarios = data.data.scenarios || [];
+  setRevealedScenarios(prev => [...prev, ...noVoteScenarios.map(s => ({
+    text: s.answer,
+    author: s.authorName,
+    voteCount: 0
+  }))]);
+}
+\\\
+
+**تحسينات واجهة HostDramaticRevealScreen**:
+- عرض موقع السيناريو: "1 من 4"
+- عرض قائمة أسماء المصوتين
+- عرض عدد الأصوات بدقة
+- دعم السيناريوهات بدون أصوات
+
+**النتيجة**:
+- �� العرض التشويقي يظهر تلقائياً
+- 📊 ترتيب صحيح للسيناريوهات حسب الأصوات
+- 👥 عرض واضح لمن صوّت لكل سيناريو
+- ⏭️ انتقال سلس للمرحلة التالية
+
+### 📝 الملفات المُعدّلة
+
+#### الخادم (Backend):
+- **server/index.js** (السطور 101-115)
+  - إضافة حساب وإرسال `waitingFor` في `startDraftingPhase()`
+
+#### التطبيق (Frontend):
+- **plot-mobile/App.js**
+  - السطر 217: استقبال وتهيئة `waitingFor`
+  - السطور 258-299: معالج `revealStep` المحسّن
+  
+- **plot-mobile/src/screens/HostGameScreens.js**
+  - السطور 56-185: `HostDraftingScreen` - عرض محسّن لحالة اللاعبين
+  - السطور 190-280: `HostDramaticRevealScreen` - عرض محسّن للمصوتين والمواقع
+  - إضافة styles: `positionText`, `votersText`, `voteCount`
+
+### 🎮 التدفق الصحيح للعبة
+
+\\\
+1. 📝 Drafting (الكتابة)
+   ├─ عرض لحظي لحالة اللاعبين ✅
+   ├─ عداد تنازلي ملون
+   └─ شريط تقدم دقيق
+   ↓
+2. 🗳️ Quality Voting (التصويت على الجودة)
+   └─ سيناريوهات بدون أسماء
+   ↓
+3. 🎬 Dramatic Reveal (العرض التشويقي) ✅
+   ├─ عرض تدريجي للسيناريوهات
+   ├─ إظهار المصوتين لكل سيناريو
+   ├─ كشف أسماء الكُتّاب
+   └─ عرض السيناريوهات بدون أصوات
+   ↓
+4. 🔍 Culprit Voting (التصويت على الجاني)
+   └─ سيناريوهات مع أسماء
+   ↓
+5. 🏆 Results (النتائج)
+\\\
+
+### 🧪 الاختبارات الموصى بها
+
+- [x] مرحلة الكتابة: حالة اللاعبين اللحظية
+- [x] العرض التشويقي: يظهر بعد التصويت على الجودة
+- [x] العرض التشويقي: يعرض المصوتين والمواقع
+- [x] العرض التشويقي: ينتقل تلقائياً للمرحلة التالية
+- [ ] اختبار مع 8 لاعبين حقيقيين
+- [ ] اختبار إعادة الاتصال أثناء اللعب
+
+### 📚 للمطورين: Socket Events المُحدّثة
+
+#### startDrafting Event
+\\\javascript
+// من الخادم إلى الغرفة
+{
+  duration: 90,
+  waitingFor: ['player1_id', 'player2_id', ...]  // ✨ جديد
+}
+\\\
+
+#### revealStep Event Variations
+\\\javascript
+// SCENARIO step
+{
+  step: 'SCENARIO',
+  data: {
+    index: 0,
+    answer: "نص السيناريو",
+    position: 1,    // ✨ جديد
+    total: 4        // ✨ جديد
+  }
+}
+
+// VOTERS step
+{
+  step: 'VOTERS',
+  data: {
+    index: 0,
+    voters: ["محمد", "أحمد", "سارة"],  // ✨ جديد
+    voteCount: 3
+  }
+}
+
+// AUTHOR step
+{
+  step: 'AUTHOR',
+  data: {
+    index: 0,
+    authorName: "علي"
+  }
+}
+
+// NO_VOTES step ✨ جديد
+{
+  step: 'NO_VOTES',
+  data: {
+    scenarios: [
+      { index: 3, authorName: "فاطمة", answer: "..." },
+      { index: 5, authorName: "خالد", answer: "..." }
+    ]
+  }
+}
+\\\
+
+### 🐛 المشاكل المعروفة
+
+لا توجد مشاكل معروفة حالياً. جميع الميزات الأساسية تعمل بشكل كامل.
+
+### 🚀 الإصدارات القادمة
+
+- [ ] دعم إعادة الاتصال مع الحفاظ على حالة اللعبة
+- [ ] مؤثرات صوتية للعرض التشويقي
+- [ ] تحسين الأداء مع عدد كبير من اللاعبين
+- [ ] إحصائيات مفصلة للاعبين
+- [ ] نظام الإنجازات (Achievements)
+
+---
+
+**آخر تحديث**: 2026-02-03  
+**الإصدار**: 2.1.0  
+**الحالة**: ✅ مستقر - جاهز للعب
