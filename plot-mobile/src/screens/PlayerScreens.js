@@ -7,7 +7,7 @@ import { Button, Card, TextInput, Badge, ListItem } from '../ui';
 /**
  * شاشة تسجيل دخول اللاعب
  */
-export const LoginScreen = ({ playerName, setPlayerName, roomCode, setRoomCode, onJoinRoom, connecting }) => {
+export const LoginScreen = ({ playerName, setPlayerName, roomCode, setRoomCode, onJoinRoom, connecting, onBack }) => {
   const canJoin = playerName.trim().length >= 2 && roomCode.trim().length >= 4;
 
   return (
@@ -17,6 +17,14 @@ export const LoginScreen = ({ playerName, setPlayerName, roomCode, setRoomCode, 
       keyboardShouldPersistTaps="handled"
     >
       <View style={styles.container}>
+        {/* Back Button */}
+        {onBack && (
+          <TouchableOpacity style={styles.backButton} onPress={onBack}>
+            <Text style={styles.backIcon}>←</Text>
+            <Text style={styles.backText}>رجوع</Text>
+          </TouchableOpacity>
+        )}
+        
         <Card variant="paper" style={styles.card}>
           <Text style={styles.title}>🎭 الانضمام للعبة</Text>
           <Text style={styles.subtitle}>أدخل بياناتك للانضمام</Text>
@@ -153,6 +161,25 @@ const styles = StyleSheet.create({
     color: theme.colors.textLight,
     textAlign: 'center',
     marginBottom: spacing.l,
+  },
+
+  // زر الرجوع
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    padding: spacing.m,
+    marginBottom: spacing.l,
+  },
+  backIcon: {
+    fontSize: moderateScale(24),
+    marginRight: spacing.s,
+    color: theme.colors.primary,
+  },
+  backText: {
+    fontSize: fonts.medium,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.primary,
   },
 
   // النموذج

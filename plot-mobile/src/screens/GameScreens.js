@@ -1,21 +1,31 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, StatusBar } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, StatusBar, Platform, Dimensions, ImageBackground } from 'react-native';
 import { theme } from '../styles/theme';
 import { spacing, fonts, moderateScale, borderRadius, getContainerPadding } from '../styles/responsive';
 import { Card, Button, TextInput, Badge } from '../ui';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
 /**
  * شاشة عرض الدور المحسّنة (للاعب)
  */
 export const GameScreen = ({ roleData, onReady }) => {
+  const { isDesktop } = useResponsiveLayout();
+  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
+
   if (!roleData) {
     return (
+    <ImageBackground
+      source={require('../../assets/desk_background_noir.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centeredContainer}>
           <Text style={styles.largeEmoji}>⏳</Text>
           <Text style={styles.loadingText}>جاري تحميل دورك...</Text>
         </View>
       </SafeAreaView>
+    </ImageBackground>
     );
   }
 
@@ -66,13 +76,18 @@ export const GameScreen = ({ roleData, onReady }) => {
   const keywords = isForger ? extractKeywords(info) : [];
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+    <ImageBackground
+      source={require('../../assets/desk_background_noir.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.container}>
           {/* Header with Role Emoji */}
           <View style={styles.header}>
@@ -182,6 +197,7 @@ export const GameScreen = ({ roleData, onReady }) => {
         </View>
       </ScrollView>
     </SafeAreaView>
+  </ImageBackground>
   );
 };
 
@@ -196,19 +212,27 @@ export const DraftingScreen = ({
   isSubmitted,
   scenario 
 }) => {
+  const { isDesktop } = useResponsiveLayout();
+  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
+
   const maxLength = 500;
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+    <ImageBackground
+      source={require('../../assets/desk_background_noir.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
         <View style={styles.container}>
           {/* Timer */}
           <View style={styles.timerContainer}>
@@ -262,22 +286,32 @@ export const DraftingScreen = ({
         </View>
       </ScrollView>
     </SafeAreaView>
+  </ImageBackground>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isDesktop) => StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#1a1410',
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     flexGrow: 1,
-    paddingVertical: spacing.xl,
+    paddingVertical: isDesktop ? moderateScale(3) : spacing.xl,
   },
   container: {
     flex: 1,
     padding: getContainerPadding(),
     alignItems: 'center',
+    maxWidth: isDesktop ? '90%' : 800,
+    alignSelf: 'center',
+    width: '100%',
   },
 
   // Stamp
@@ -287,7 +321,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.m,
     borderRadius: borderRadius.small,
     transform: [{ rotate: '-5deg' }],
-    marginBottom: spacing.xl,
+    marginBottom: isDesktop ? moderateScale(2) : spacing.xl,
     borderWidth: 2,
     borderColor: theme.colors.stamp,
     shadowColor: theme.colors.black,
@@ -297,7 +331,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   stampText: {
-    fontSize: fonts.xlarge,
+    fontSize: isDesktop ? fonts.medium : fonts.xlarge,
     fontFamily: theme.fonts.heading,
     fontWeight: '800',
     color: theme.colors.paper,
@@ -306,7 +340,7 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   stampSubtext: {
-    fontSize: fonts.small,
+    fontSize: isDesktop ? fonts.tiny : fonts.small,
     fontFamily: theme.fonts.main,
     color: theme.colors.paper,
     textAlign: 'center',
@@ -315,24 +349,25 @@ const styles = StyleSheet.create({
 
   // Avatar
   avatarContainer: {
-    marginBottom: spacing.l,
+    marginBottom: isDesktop ? moderateScale(2) : spacing.l,
   },
 
   // Card
   card: {
     width: '100%',
-    maxWidth: 500,
-    marginBottom: spacing.l,
+    maxWidth: isDesktop ? '100%' : 500,
+    marginBottom: isDesktop ? moderateScale(1) : spacing.l,
+    paddingVertical: isDesktop ? moderateScale(2) : undefined,
   },
 
   // Role Info
   roleTitle: {
-    fontSize: fonts.xxlarge,
+    fontSize: isDesktop ? fonts.medium : fonts.xxlarge,
     fontFamily: theme.fonts.heading,
     fontWeight: '700',
     color: theme.colors.text,
     textAlign: 'center',
-    marginBottom: spacing.m,
+    marginBottom: isDesktop ? spacing.xs : spacing.m,
     textTransform: 'uppercase',
     letterSpacing: 2,
   },
@@ -344,7 +379,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.m,
   },
   teamText: {
-    fontSize: fonts.medium,
+    fontSize: isDesktop ? fonts.tiny : fonts.medium,
     fontFamily: theme.fonts.main,
     fontWeight: '700',
   },
@@ -353,10 +388,10 @@ const styles = StyleSheet.create({
   divider: {
     height: 1,
     backgroundColor: theme.colors.text + '20',
-    marginVertical: spacing.m,
+    marginVertical: isDesktop ? moderateScale(2) : spacing.m,
   },
   sectionTitle: {
-    fontSize: fonts.large,
+    fontSize: isDesktop ? fonts.small : fonts.large,
     fontFamily: theme.fonts.heading,
     fontWeight: '700',
     color: theme.colors.text,
@@ -364,10 +399,10 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   description: {
-    fontSize: fonts.regular,
+    fontSize: isDesktop ? fonts.tiny : fonts.regular,
     fontFamily: theme.fonts.main,
     color: theme.colors.text,
-    lineHeight: fonts.regular * 1.6,
+    lineHeight: isDesktop ? fonts.tiny * 1.6 : fonts.regular * 1.6,
   },
 
   // Abilities
@@ -375,7 +410,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.s,
   },
   abilityText: {
-    fontSize: fonts.regular,
+    fontSize: isDesktop ? fonts.tiny : fonts.regular,
     fontFamily: theme.fonts.main,
     color: theme.colors.text,
   },
@@ -397,7 +432,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.m,
   },
   timerText: {
-    fontSize: fonts.xlarge,
+    fontSize: isDesktop ? fonts.medium : fonts.xlarge,
     fontFamily: theme.fonts.main,
     fontWeight: '700',
     color: theme.colors.text,
@@ -413,7 +448,7 @@ const styles = StyleSheet.create({
 
   // Instructions
   instructionText: {
-    fontSize: fonts.medium,
+    fontSize: isDesktop ? fonts.tiny : fonts.medium,
     fontFamily: theme.fonts.main,
     color: theme.colors.text,
     marginBottom: spacing.m,
@@ -422,6 +457,9 @@ const styles = StyleSheet.create({
   // Submit Button
   submitButton: {
     marginTop: spacing.m,
+    maxWidth: isDesktop ? 400 : undefined,
+    width: '100%',
+    alignSelf: 'center',
   },
 
   // Info/Success Boxes
@@ -429,11 +467,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.stickyNote + '20',
-    padding: spacing.m,
+    padding: isDesktop ? moderateScale(3) : spacing.m,
     borderRadius: borderRadius.small,
     borderWidth: 1,
     borderColor: theme.colors.stickyNote,
-    maxWidth: 450,
+    maxWidth: isDesktop ? '100%' : 450,
     width: '100%',
   },
   infoIcon: {
@@ -448,15 +486,15 @@ const styles = StyleSheet.create({
   },
   successBox: {
     backgroundColor: theme.colors.teamGood + '20',
-    padding: spacing.l,
+    padding: isDesktop ? moderateScale(3) : spacing.l,
     borderRadius: borderRadius.medium,
     borderWidth: 1,
     borderColor: theme.colors.teamGood,
-    maxWidth: 450,
+    maxWidth: isDesktop ? '100%' : 450,
     width: '100%',
   },
   successText: {
-    fontSize: fonts.medium,
+    fontSize: isDesktop ? fonts.tiny : fonts.medium,
     fontFamily: theme.fonts.main,
     color: theme.colors.teamGood,
     textAlign: 'center',
@@ -468,39 +506,42 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: getContainerPadding(),
+    maxWidth: isDesktop ? '90%' : 800,
+    alignSelf: 'center',
+    width: '100%',
   },
   largeEmoji: {
-    fontSize: moderateScale(80),
-    marginBottom: spacing.xl,
+    fontSize: isDesktop ? moderateScale(48) : moderateScale(80),
+    marginBottom: isDesktop ? moderateScale(1) : spacing.xl,
   },
   loadingText: {
-    fontSize: fonts.large,
+    fontSize: isDesktop ? fonts.small : fonts.large,
     fontFamily: theme.fonts.main,
     color: theme.colors.textSecondary,
   },
   header: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: isDesktop ? moderateScale(1) : spacing.xl,
   },
   roleEmoji: {
-    fontSize: moderateScale(80),
-    marginBottom: spacing.m,
+    fontSize: isDesktop ? moderateScale(48) : moderateScale(80),
+    marginBottom: isDesktop ? spacing.s : spacing.m,
   },
   secretCard: {
     width: '100%',
-    maxWidth: 600,
-    padding: spacing.xl,
-    marginBottom: spacing.l,
+    maxWidth: isDesktop ? '100%' : 600,
+    padding: isDesktop ? moderateScale(4) : spacing.xl,
+    marginBottom: isDesktop ? moderateScale(2) : spacing.l,
   },
   secretHeader: {
     alignItems: 'center',
-    marginBottom: spacing.l,
+    marginBottom: isDesktop ? moderateScale(1) : spacing.l,
   },
   descriptionContainer: {
     marginBottom: spacing.m,
   },
   descriptionLabel: {
-    fontSize: fonts.medium,
+    fontSize: isDesktop ? fonts.tiny : fonts.medium,
     fontFamily: theme.fonts.heading,
     fontWeight: '700',
     color: theme.colors.stamp,
@@ -508,7 +549,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   infoLabel: {
-    fontSize: fonts.medium,
+    fontSize: isDesktop ? fonts.tiny : fonts.medium,
     fontFamily: theme.fonts.heading,
     fontWeight: '700',
     color: theme.colors.stamp,
@@ -552,7 +593,7 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   keywordText: {
-    fontSize: fonts.large,
+    fontSize: isDesktop ? fonts.small : fonts.large,
     fontFamily: theme.fonts.heading,
     fontWeight: '700',
     color: theme.colors.text,
@@ -586,7 +627,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.stamp,
   },
   accompliceText: {
-    fontSize: fonts.large,
+    fontSize: isDesktop ? fonts.small : fonts.large,
     fontFamily: theme.fonts.heading,
     fontWeight: '700',
     color: theme.colors.stamp,
@@ -610,7 +651,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.stickyNote,
   },
   instructionsTitle: {
-    fontSize: fonts.large,
+    fontSize: isDesktop ? fonts.small : fonts.large,
     fontFamily: theme.fonts.heading,
     fontWeight: '700',
     color: theme.colors.text,
@@ -623,8 +664,9 @@ const styles = StyleSheet.create({
     lineHeight: fonts.regular * 1.5,
   },
   readyButton: {
-    maxWidth: 500,
+    maxWidth: isDesktop ? 400 : 500,
     width: '100%',
     marginBottom: spacing.l,
+    alignSelf: 'center',
   },
 });

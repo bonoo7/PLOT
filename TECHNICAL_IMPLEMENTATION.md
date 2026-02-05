@@ -275,6 +275,56 @@ plot/
 
 ---
 
+## التحديثات الأخيرة - الإصدار 2.1.1 (2026-02-05)
+
+### 🎨 هيكلية التصميم المتجاوب (Dynamic Responsive Architecture)
+
+تم الانتقال من التصميم الثابت (Static Styles) إلى التصميم الديناميكي الكامل لدعم الويب والموبايل بكفاءة عالية.
+
+#### 1. الخطاف المركزي `useResponsiveLayout`
+تم إنشاء Hook مخصص لإدارة منطق التجاوب في مكان واحد، مما يلغي تكرار التحقق من المنصة (Platform Check) مئات المرات.
+
+\\\javascript
+// src/hooks/useResponsiveLayout.js
+export const useResponsiveLayout = () => {
+  const { width, height } = useWindowDimensions();
+  // التحقق الديناميكي من وضع سطح المكتب
+  const isDesktop = Platform.OS === 'web' && width >= 768;
+  // ...
+  return { isDesktop, isMobile, ... };
+};
+\\\
+
+#### 2. الأنماط الديناميكية (Dynamic Styling Pattern)
+تم إعادة هيكلة جميع الشاشات لتستخدم `useMemo` لتحديث الأنماط فقط عند تغير الأبعاد، مما يحسن الأداء ويضمن استجابة فورية.
+
+\\\javascript
+// النمط القديم (Static)
+const styles = StyleSheet.create({ ... });
+
+// النمط الجديد (Dynamic)
+const GameScreen = () => {
+  const { isDesktop } = useResponsiveLayout();
+  // يتم إعادة حساب الستايل فقط عند تغير حالة سطح المكتب
+  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
+  // ...
+};
+
+const getStyles = (isDesktop) => StyleSheet.create({
+  container: {
+    padding: isDesktop ? moderateScale(3) : spacing.l, // قيم متغيرة
+    maxWidth: isDesktop ? '90%' : 800,
+  }
+});
+\\\
+
+#### 3. تحسينات المكونات (UI Components Overhaul)
+تم تحديث المكونات الأساسية (`Button`, `Card`, `TextInput`) لتدعم خاصية التكيف الذاتي:
+- **Button**: تقليل الارتفاع والحواشي (Padding) على الويب ليكون مناسباً للماوس، مع إبقائه كبيراً للمس على الموبايل.
+- **Card**: تقليل الهوامش (Margins) في وضع الـ Landscape لاستغلال المساحة العرضية.
+
+---
+
 ## التحديثات الأخيرة - الإصدار 2.1.0 (2026-02-03)
 
 ### 🔧 إصلاحات حرجة

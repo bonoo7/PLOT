@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { TextInput as RNTextInput, StyleSheet, View, Text } from 'react-native';
 import { theme } from '../styles/theme';
 import { spacing, fonts, borderRadius, moderateScale } from '../styles/responsive';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
 /**
  * حقل إدخال بنمط الهوية البصرية
@@ -18,6 +19,9 @@ const TextInput = ({
   style = {},
   ...props
 }) => {
+  const { isDesktop } = useResponsiveLayout();
+  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
+
   const showCharCounter = maxLength && multiline;
   const charCount = value?.length || 0;
 
@@ -58,13 +62,13 @@ const TextInput = ({
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isDesktop) => StyleSheet.create({
   container: {
-    marginVertical: spacing.s,
+    marginVertical: isDesktop ? spacing.xs : spacing.s,
   },
 
   label: {
-    fontSize: fonts.small,
+    fontSize: isDesktop ? fonts.tiny : fonts.small,
     fontFamily: theme.fonts.main,
     fontWeight: '700',
     color: theme.colors.text,
@@ -78,16 +82,16 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.text + '40',
     borderRadius: borderRadius.small,
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.m,
-    fontSize: fonts.regular,
+    paddingHorizontal: isDesktop ? spacing.m : spacing.m,
+    paddingVertical: isDesktop ? spacing.s : spacing.m,
+    fontSize: isDesktop ? fonts.small : fonts.regular,
     fontFamily: theme.fonts.main,  // Courier New - الآلة الكاتبة
     color: theme.colors.text,
-    minHeight: moderateScale(48),
+    minHeight: isDesktop ? moderateScale(36) : moderateScale(48),
   },
 
   inputMultiline: {
-    minHeight: moderateScale(120),
+    minHeight: isDesktop ? moderateScale(80) : moderateScale(120),
     paddingTop: spacing.m,
   },
 
@@ -104,13 +108,13 @@ const styles = StyleSheet.create({
   },
 
   errorText: {
-    fontSize: fonts.small,
+    fontSize: isDesktop ? fonts.tiny : fonts.small,
     fontFamily: theme.fonts.main,
     color: theme.colors.stamp,
   },
 
   charCounter: {
-    fontSize: fonts.small,
+    fontSize: isDesktop ? fonts.tiny : fonts.small,
     fontFamily: theme.fonts.main,
     color: theme.colors.textSecondary,
     marginLeft: 'auto',

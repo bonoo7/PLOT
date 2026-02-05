@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { TouchableOpacity, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { theme } from '../styles/theme';
 import { moderateScale, spacing, fonts, borderRadius } from '../styles/responsive';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
 /**
  * زر بنمط الهوية البصرية - Bureaucratic Noir
@@ -17,6 +18,9 @@ const Button = ({
   style = {},
   textStyle = {},
 }) => {
+  const { isDesktop } = useResponsiveLayout();
+  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
+
   return (
     <TouchableOpacity
       style={[
@@ -50,12 +54,12 @@ const Button = ({
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isDesktop) => StyleSheet.create({
   button: {
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: borderRadius.small,  // حواف أقل تقريباً - نمط الملفات القديمة
-    paddingHorizontal: spacing.l,
+    paddingHorizontal: isDesktop ? spacing.m : spacing.l,
     // ظل خفيف يحاكي ارتفاع الورق
     shadowColor: theme.colors.black,
     shadowOffset: { width: 2, height: 2 },
@@ -66,15 +70,16 @@ const styles = StyleSheet.create({
 
   // Sizes
   button_small: {
-    height: moderateScale(40),
-    paddingHorizontal: spacing.m,
+    height: isDesktop ? moderateScale(28) : moderateScale(40),
+    paddingHorizontal: isDesktop ? spacing.s : spacing.m,
   },
   button_medium: {
-    height: moderateScale(50),
+    height: isDesktop ? moderateScale(32) : moderateScale(50),
+    paddingHorizontal: isDesktop ? spacing.m : spacing.l,
   },
   button_large: {
-    height: moderateScale(56),
-    paddingHorizontal: spacing.xl,
+    height: isDesktop ? moderateScale(36) : moderateScale(56),
+    paddingHorizontal: isDesktop ? spacing.l : spacing.xl,
   },
 
   // Variants - ألوان الهوية البصرية

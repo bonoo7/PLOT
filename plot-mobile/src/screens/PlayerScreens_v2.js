@@ -1,8 +1,9 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, StatusBar } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, StatusBar, ImageBackground } from 'react-native';
 import { theme } from '../styles/theme';
 import { spacing, fonts, moderateScale, borderRadius, getContainerPadding } from '../styles/responsive';
 import { Button, Card, TextInput } from '../ui';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
 /**
  * شاشة تسجيل دخول اللاعب
@@ -13,13 +14,21 @@ export const LoginScreen = ({
   roomCode, 
   setRoomCode, 
   onJoinRoom, 
-  connecting 
+  connecting,
+  onBack
 }) => {
+  const { isDesktop } = useResponsiveLayout();
+  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
   const canJoin = playerName.trim().length >= 2 && roomCode.trim().length >= 4;
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+    <ImageBackground
+      source={require('../../assets/desk_background_noir.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
@@ -29,7 +38,6 @@ export const LoginScreen = ({
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.emoji}>🎭</Text>
             <Text style={styles.title}>الانضمام للعبة</Text>
             <Text style={styles.subtitle}>أدخل بياناتك للدخول إلى العملية</Text>
           </View>
@@ -56,7 +64,7 @@ export const LoginScreen = ({
             />
 
             <Button
-              title={connecting ? "جاري الاتصال..." : "دخول 🚪"}
+              title={connecting ? "جاري الاتصال..." : "دخول"}
               onPress={onJoinRoom}
               disabled={!canJoin || connecting}
               loading={connecting}
@@ -68,14 +76,24 @@ export const LoginScreen = ({
 
           {/* Info */}
           <View style={styles.infoBox}>
-            <Text style={styles.infoIcon}>💡</Text>
             <Text style={styles.infoText}>
               اطلب رمز الغرفة من المضيف
             </Text>
           </View>
+
+          {/* Back Button */}
+          {onBack && (
+            <Button
+              title="رجوع"
+              onPress={onBack}
+              variant="secondary"
+              style={styles.backButtonBottom}
+            />
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
+  </ImageBackground>
   );
 };
 
@@ -83,9 +101,17 @@ export const LoginScreen = ({
  * شاشة غرفة الانتظار
  */
 export const LobbyScreen = ({ players = [], roomCode }) => {
+  const { isDesktop } = useResponsiveLayout();
+  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+    <ImageBackground
+      source={require('../../assets/desk_background_noir.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
@@ -94,7 +120,6 @@ export const LobbyScreen = ({ players = [], roomCode }) => {
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.emoji}>⏳</Text>
             <Text style={styles.title}>غرفة الانتظار</Text>
             <View style={styles.roomCodeBadge}>
               <Text style={styles.roomCodeText}>{roomCode}</Text>
@@ -109,7 +134,6 @@ export const LobbyScreen = ({ players = [], roomCode }) => {
 
             {players.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyIcon}>👥</Text>
                 <Text style={styles.emptyText}>لا يوجد لاعبون بعد</Text>
               </View>
             ) : (
@@ -118,7 +142,6 @@ export const LobbyScreen = ({ players = [], roomCode }) => {
                   <View key={player.id || index} style={styles.playerItem}>
                     <Text style={styles.playerNumber}>#{index + 1}</Text>
                     <Text style={styles.playerName}>{player.name}</Text>
-                    <Text style={styles.playerIcon}>🕵️</Text>
                   </View>
                 ))}
               </View>
@@ -134,58 +157,77 @@ export const LobbyScreen = ({ players = [], roomCode }) => {
         </View>
       </ScrollView>
     </SafeAreaView>
+  </ImageBackground>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isDesktop) => StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#1a1410',
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     flexGrow: 1,
-    paddingVertical: spacing.xl,
+    paddingVertical: isDesktop ? moderateScale(2) : spacing.xl,
+    justifyContent: 'center',
   },
   container: {
     flex: 1,
     padding: getContainerPadding(),
     alignItems: 'center',
+    maxWidth: isDesktop ? 900 : 800,
+    alignSelf: 'center',
+    width: '100%',
   },
 
   // Header
   header: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: isDesktop ? moderateScale(1) : spacing.xl,
     width: '100%',
   },
-  emoji: {
-    fontSize: moderateScale(64),
-    marginBottom: spacing.m,
-  },
   title: {
-    fontSize: fonts.xxlarge,
+    fontSize: isDesktop ? fonts.medium : fonts.xxlarge,
     fontFamily: theme.fonts.bold,
     fontWeight: '700',
-    color: theme.colors.text,
-    marginBottom: spacing.s,
+    color: '#FFFFFF',
+    marginBottom: spacing.xs,
   },
   subtitle: {
-    fontSize: fonts.regular,
+    fontSize: isDesktop ? fonts.tiny : fonts.regular,
     fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
+    color: '#E8DCC8',
     textAlign: 'center',
+  },
+
+  // Back Button Bottom
+  backButtonBottom: {
+    marginTop: isDesktop ? moderateScale(3) : spacing.m,
+    maxWidth: isDesktop ? 400 : 450,
+    width: '100%',
+    alignSelf: 'center',
   },
 
   // Card
   card: {
     width: '100%',
-    maxWidth: 450,
-    marginBottom: spacing.l,
+    maxWidth: isDesktop ? 450 : 450,
+    marginBottom: isDesktop ? moderateScale(1) : spacing.s,
+    paddingVertical: isDesktop ? moderateScale(2) : undefined,
   },
 
   // Button
   button: {
-    marginTop: spacing.l,
+    marginTop: isDesktop ? moderateScale(4) : spacing.l,
+    maxWidth: isDesktop ? 400 : undefined,
+    width: '100%',
+    alignSelf: 'center',
   },
 
   // Room Code Badge
@@ -238,18 +280,11 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.main,
     color: theme.colors.text,
   },
-  playerIcon: {
-    fontSize: moderateScale(24),
-  },
 
   // Empty State
   emptyState: {
     alignItems: 'center',
     padding: spacing.xl,
-  },
-  emptyIcon: {
-    fontSize: moderateScale(48),
-    marginBottom: spacing.m,
   },
   emptyText: {
     fontSize: fonts.regular,
@@ -261,20 +296,20 @@ const styles = StyleSheet.create({
   infoBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.gray100,
-    padding: spacing.m,
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    padding: isDesktop ? moderateScale(3) : spacing.m,
     borderRadius: borderRadius.medium,
-    maxWidth: 400,
-  },
-  infoIcon: {
-    fontSize: moderateScale(20),
-    marginRight: spacing.m,
+    maxWidth: isDesktop ? '100%' : 400,
+    width: '100%',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 215, 0, 0.3)',
   },
   infoText: {
     fontSize: fonts.small,
     fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
+    color: '#FFD700',
     flex: 1,
+    textAlign: 'center',
   },
 
   // Waiting Box
@@ -285,7 +320,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.colors.info + '30',
     width: '100%',
-    maxWidth: 400,
+    maxWidth: isDesktop ? 700 : 400,
   },
   waitingText: {
     fontSize: fonts.medium,

@@ -1,16 +1,25 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, StatusBar, Share, TouchableOpacity } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, StatusBar, Share, TouchableOpacity, ImageBackground, Platform, Dimensions } from 'react-native';
 import { theme } from '../styles/theme';
 import { spacing, fonts, moderateScale, borderRadius, getContainerPadding } from '../styles/responsive';
 import { Button, Card } from '../ui';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
 /**
  * شاشة إعداد المضيف
  */
-export const HostSetupScreen = ({ onCreateRoom, connecting }) => {
+export const HostSetupScreen = ({ onCreateRoom, connecting, onBack }) => {
+  const { isDesktop } = useResponsiveLayout();
+  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+    <ImageBackground
+      source={require('../../assets/desk_background_noir.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
@@ -19,7 +28,6 @@ export const HostSetupScreen = ({ onCreateRoom, connecting }) => {
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.emoji}>👑</Text>
             <Text style={styles.title}>مركز القيادة</Text>
             <Text style={styles.subtitle}>أنشئ غرفة جديدة للعبة</Text>
           </View>
@@ -30,25 +38,21 @@ export const HostSetupScreen = ({ onCreateRoom, connecting }) => {
             
             <View style={styles.featuresList}>
               <View style={styles.featureItem}>
-                <Text style={styles.featureIcon}>🎭</Text>
-                <Text style={styles.featureText}>توزيع الأدوار</Text>
+                <Text style={styles.featureText}>• توزيع الأدوار</Text>
               </View>
               <View style={styles.featureItem}>
-                <Text style={styles.featureIcon}>📝</Text>
-                <Text style={styles.featureText}>إدارة السيناريوهات</Text>
+                <Text style={styles.featureText}>• إدارة السيناريوهات</Text>
               </View>
               <View style={styles.featureItem}>
-                <Text style={styles.featureIcon}>🗳️</Text>
-                <Text style={styles.featureText}>التصويت المباشر</Text>
+                <Text style={styles.featureText}>• التصويت المباشر</Text>
               </View>
               <View style={styles.featureItem}>
-                <Text style={styles.featureIcon}>🏆</Text>
-                <Text style={styles.featureText}>النتائج والنقاط</Text>
+                <Text style={styles.featureText}>• النتائج والنقاط</Text>
               </View>
             </View>
 
             <Button
-              title={connecting ? "جاري الإنشاء..." : "إنشاء غرفة 🚀"}
+              title={connecting ? "جاري الإنشاء..." : "إنشاء غرفة"}
               onPress={onCreateRoom}
               disabled={connecting}
               loading={connecting}
@@ -64,9 +68,20 @@ export const HostSetupScreen = ({ onCreateRoom, connecting }) => {
             <Text style={styles.infoText}>• 4-8 لاعبين</Text>
             <Text style={styles.infoText}>• مدة اللعبة: 30-45 دقيقة</Text>
           </View>
+
+          {/* Back Button */}
+          {onBack && (
+            <Button
+              title="رجوع"
+              onPress={onBack}
+              variant="secondary"
+              style={styles.backButtonBottom}
+            />
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
+  </ImageBackground>
   );
 };
 
@@ -78,7 +93,11 @@ export const HostLobbyScreen = ({
   players = [], 
   onStartGame,
   onFillBots,
+  onBack,
 }) => {
+  const { isDesktop } = useResponsiveLayout();
+  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
+
   const canStart = players.length >= 4 && players.length <= 8;
   const needsMore = 4 - players.length;
 
@@ -93,8 +112,13 @@ export const HostLobbyScreen = ({
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+    <ImageBackground
+      source={require('../../assets/desk_background_noir.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
@@ -103,7 +127,6 @@ export const HostLobbyScreen = ({
         <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.emoji}>👑</Text>
             <Text style={styles.title}>غرفة الانتظار</Text>
             
             {/* Room Code */}
@@ -112,8 +135,9 @@ export const HostLobbyScreen = ({
               <View style={styles.roomCodeBox}>
                 <Text style={styles.roomCodeText}>{roomCode}</Text>
               </View>
+              <Text style={styles.roomCodeHint}>شارك هذا الرمز مع اللاعبين</Text>
               <TouchableOpacity style={styles.shareButton} onPress={handleShare}>
-                <Text style={styles.shareText}>مشاركة 📤</Text>
+                <Text style={styles.shareText}>مشاركة الرمز</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -133,7 +157,6 @@ export const HostLobbyScreen = ({
 
             {players.length === 0 ? (
               <View style={styles.emptyState}>
-                <Text style={styles.emptyIcon}>👥</Text>
                 <Text style={styles.emptyText}>في انتظار اللاعبين...</Text>
                 <Text style={styles.emptySubtext}>شارك رمز الغرفة</Text>
               </View>
@@ -143,7 +166,6 @@ export const HostLobbyScreen = ({
                   <View key={player.id || index} style={styles.playerItem}>
                     <Text style={styles.playerNumber}>#{index + 1}</Text>
                     <Text style={styles.playerName}>{player.name}</Text>
-                    <Text style={styles.playerIcon}>🕵️</Text>
                   </View>
                 ))}
               </View>
@@ -164,7 +186,7 @@ export const HostLobbyScreen = ({
           {/* Fill Bots Button */}
           {players.length < 8 && (
             <Button
-              title="إضافة بوتات 🤖"
+              title="إضافة بوتات"
               onPress={onFillBots}
               size="large"
               variant="secondary"
@@ -176,137 +198,193 @@ export const HostLobbyScreen = ({
           {canStart && (
             <Text style={styles.readyText}>✅ جاهز للبدء!</Text>
           )}
+
+          {/* Back Button */}
+          {onBack && (
+            <Button
+              title="إلغاء وإغلاق الغرفة"
+              onPress={onBack}
+              variant="secondary"
+              style={styles.backButtonBottom}
+            />
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
+  </ImageBackground>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isDesktop) => StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#1a1410',
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     flexGrow: 1,
-    paddingVertical: spacing.xl,
+    paddingVertical: isDesktop ? moderateScale(3) : spacing.xl,
+    justifyContent: 'center',
   },
   container: {
     flex: 1,
     padding: getContainerPadding(),
     alignItems: 'center',
+    maxWidth: isDesktop ? 1200 : 800,
+    alignSelf: 'center',
+    width: '100%',
   },
 
   // Header
   header: {
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: isDesktop ? moderateScale(1) : spacing.xl,
     width: '100%',
   },
-  emoji: {
-    fontSize: moderateScale(64),
-    marginBottom: spacing.m,
-  },
   title: {
-    fontSize: fonts.xxlarge,
+    fontSize: isDesktop ? fonts.large : fonts.xxlarge,
     fontFamily: theme.fonts.bold,
     fontWeight: '700',
-    color: theme.colors.text,
-    marginBottom: spacing.s,
+    color: '#FFFFFF',
+    marginBottom: isDesktop ? 0 : spacing.s,
   },
   subtitle: {
-    fontSize: fonts.regular,
+    fontSize: isDesktop ? fonts.tiny : fonts.regular,
     fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
+    color: '#E8DCC8',
     textAlign: 'center',
+  },
+
+  // Back Button Bottom
+  backButtonBottom: {
+    marginTop: isDesktop ? moderateScale(2) : spacing.m,
+    maxWidth: isDesktop ? 400 : 500,
+    width: '100%',
+    alignSelf: 'center',
   },
 
   // Card
   card: {
     width: '100%',
-    maxWidth: 500,
-    marginBottom: spacing.l,
+    maxWidth: isDesktop ? 700 : 500,
+    marginBottom: isDesktop ? moderateScale(1) : spacing.s,
+    paddingVertical: isDesktop ? moderateScale(2) : undefined,
+    paddingHorizontal: isDesktop ? moderateScale(3) : undefined,
   },
 
   // Section Title
   sectionTitle: {
-    fontSize: fonts.large,
+    fontSize: isDesktop ? fonts.medium : fonts.large,
     fontFamily: theme.fonts.bold,
     fontWeight: '600',
     color: theme.colors.text,
-    marginBottom: spacing.m,
+    marginBottom: isDesktop ? spacing.xs : spacing.xs,
   },
 
   // Features
   featuresList: {
-    marginBottom: spacing.l,
+    marginBottom: isDesktop ? spacing.s : spacing.s,
+    width: '100%',
+    maxWidth: isDesktop ? '100%' : '100%',
+    // Grid layout for web
+    flexDirection: isDesktop ? 'row' : 'column',
+    flexWrap: isDesktop ? 'wrap' : 'nowrap',
+    justifyContent: isDesktop ? 'center' : 'flex-start',
+    gap: isDesktop ? moderateScale(4) : 0,
   },
   featureItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.m,
-    backgroundColor: theme.colors.gray50,
+    padding: isDesktop ? moderateScale(2) : spacing.m,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
     borderRadius: borderRadius.medium,
-    marginBottom: spacing.s,
-  },
-  featureIcon: {
-    fontSize: moderateScale(28),
-    marginRight: spacing.m,
+    marginBottom: isDesktop ? 0 : 0,
+    // Width for grid items
+    width: isDesktop ? '45%' : '100%',
   },
   featureText: {
-    fontSize: fonts.medium,
+    fontSize: isDesktop ? fonts.small : fonts.medium,
     fontFamily: theme.fonts.main,
-    color: theme.colors.text,
+    color: '#FFFFFF',
   },
 
   // Button
   button: {
-    marginTop: spacing.m,
+    marginTop: isDesktop ? moderateScale(3) : spacing.m,
+    maxWidth: isDesktop ? 400 : undefined,
+    width: '100%',
+    alignSelf: 'center',
   },
   startButton: {
-    maxWidth: 500,
+    maxWidth: isDesktop ? 400 : 500,
     width: '100%',
+    alignSelf: 'center',
   },
 
   // Room Code
   roomCodeContainer: {
     alignItems: 'center',
-    marginTop: spacing.l,
+    marginTop: isDesktop ? moderateScale(2) : spacing.l,
   },
   roomCodeLabel: {
-    fontSize: fonts.small,
+    fontSize: isDesktop ? fonts.tiny : fonts.small,
     fontFamily: theme.fonts.main,
     color: theme.colors.textSecondary,
-    marginBottom: spacing.s,
+    marginBottom: isDesktop ? 0 : spacing.s,
   },
   roomCodeBox: {
     backgroundColor: theme.colors.primary,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.l,
+    paddingHorizontal: isDesktop ? spacing.l : spacing.xl,
+    paddingVertical: isDesktop ? spacing.m : spacing.l,
     borderRadius: borderRadius.large,
-    marginBottom: spacing.m,
+    borderWidth: 3,
+    borderColor: theme.colors.primaryDark,
+    marginBottom: isDesktop ? spacing.m : spacing.m,
+    minWidth: isDesktop ? 200 : 280,
     shadowColor: theme.colors.black,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
+    shadowOpacity: 0.3,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 8,
   },
   roomCodeText: {
-    fontSize: fonts.title,
+    fontSize: isDesktop ? moderateScale(24) : moderateScale(42),
     fontFamily: theme.fonts.bold,
-    fontWeight: '800',
+    fontWeight: '900',
     color: theme.colors.white,
-    letterSpacing: moderateScale(8),
+    letterSpacing: moderateScale(4),
+    textAlign: 'center',
+  },
+  roomCodeHint: {
+    fontSize: isDesktop ? fonts.tiny : fonts.small,
+    fontFamily: theme.fonts.main,
+    color: theme.colors.textSecondary,
+    marginBottom: isDesktop ? moderateScale(2) : spacing.m,
+    textAlign: 'center',
   },
   shareButton: {
-    paddingHorizontal: spacing.l,
-    paddingVertical: spacing.s,
-    backgroundColor: theme.colors.gray100,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: isDesktop ? spacing.m : spacing.l,
+    paddingVertical: isDesktop ? spacing.s : spacing.m,
+    backgroundColor: theme.colors.secondary,
     borderRadius: borderRadius.medium,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   shareText: {
-    fontSize: fonts.small,
-    fontFamily: theme.fonts.main,
+    fontSize: isDesktop ? fonts.small : fonts.medium,
+    fontFamily: theme.fonts.bold,
+    fontWeight: '600',
     color: theme.colors.text,
   },
 
@@ -315,7 +393,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.m,
+    marginBottom: isDesktop ? moderateScale(2) : spacing.m,
   },
   warningBadge: {
     backgroundColor: theme.colors.warning + '20',
@@ -330,17 +408,24 @@ const styles = StyleSheet.create({
   },
   playersList: {
     width: '100%',
+    maxWidth: isDesktop ? 800 : 500,
+    // Grid for players on web
+    flexDirection: isDesktop ? 'row' : 'column',
+    flexWrap: isDesktop ? 'wrap' : 'nowrap',
+    gap: isDesktop ? moderateScale(4) : 0,
   },
   playerItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: spacing.m,
+    padding: isDesktop ? moderateScale(2) : spacing.m,
     backgroundColor: theme.colors.gray50,
     borderRadius: borderRadius.medium,
-    marginBottom: spacing.s,
+    marginBottom: isDesktop ? 0 : spacing.s,
+    // Grid item width
+    width: isDesktop ? '48%' : '100%',
   },
   playerNumber: {
-    fontSize: fonts.medium,
+    fontSize: isDesktop ? fonts.small : fonts.medium,
     fontFamily: theme.fonts.bold,
     fontWeight: '700',
     color: theme.colors.primary,
@@ -348,63 +433,62 @@ const styles = StyleSheet.create({
   },
   playerName: {
     flex: 1,
-    fontSize: fonts.medium,
+    fontSize: isDesktop ? fonts.small : fonts.medium,
     fontFamily: theme.fonts.main,
     color: theme.colors.text,
-  },
-  playerIcon: {
-    fontSize: moderateScale(24),
   },
 
   // Empty State
   emptyState: {
     alignItems: 'center',
-    padding: spacing.xl,
-  },
-  emptyIcon: {
-    fontSize: moderateScale(48),
-    marginBottom: spacing.m,
+    padding: isDesktop ? spacing.l : spacing.xl,
   },
   emptyText: {
-    fontSize: fonts.large,
+    fontSize: isDesktop ? fonts.medium : fonts.large,
     fontFamily: theme.fonts.bold,
     fontWeight: '600',
     color: theme.colors.text,
     marginBottom: spacing.xs,
   },
   emptySubtext: {
-    fontSize: fonts.regular,
+    fontSize: isDesktop ? fonts.tiny : fonts.regular,
     fontFamily: theme.fonts.main,
     color: theme.colors.textSecondary,
   },
   
   // Buttons
   fillBotsButton: {
-    marginTop: spacing.m,
-    maxWidth: 500,
+    marginTop: isDesktop ? moderateScale(3) : spacing.m,
+    maxWidth: isDesktop ? 400 : 500,
     width: '100%',
+    alignSelf: 'center',
   },
 
   // Info Box
   infoBox: {
-    padding: spacing.l,
+    padding: isDesktop ? moderateScale(3) : spacing.l,
     backgroundColor: theme.colors.gray100,
     borderRadius: borderRadius.medium,
     width: '100%',
-    maxWidth: 400,
+    maxWidth: isDesktop ? 700 : 400,
+    // Horizontal layout for info items on web
+    flexDirection: isDesktop ? 'row' : 'column',
+    alignItems: isDesktop ? 'center' : 'flex-start',
+    justifyContent: isDesktop ? 'space-around' : 'flex-start',
   },
   infoTitle: {
-    fontSize: fonts.medium,
+    fontSize: isDesktop ? fonts.small : fonts.medium,
     fontFamily: theme.fonts.bold,
     fontWeight: '600',
     color: theme.colors.text,
-    marginBottom: spacing.s,
+    marginBottom: isDesktop ? 0 : spacing.s,
+    marginRight: isDesktop ? spacing.m : 0,
   },
   infoText: {
-    fontSize: fonts.small,
+    fontSize: isDesktop ? fonts.tiny : fonts.small,
     fontFamily: theme.fonts.main,
     color: theme.colors.textSecondary,
-    marginVertical: spacing.xs,
+    marginVertical: isDesktop ? 0 : spacing.xs,
   },
 
   // Ready Text

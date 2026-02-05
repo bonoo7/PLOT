@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, StatusBar, TouchableOpacity } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, SafeAreaView, StatusBar, TouchableOpacity, Platform, Dimensions, ImageBackground } from 'react-native';
 import { theme } from '../styles/theme';
 import { spacing, fonts, moderateScale, borderRadius, getContainerPadding } from '../styles/responsive';
 import { Card, Button } from '../ui';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
 /**
  * شاشة التصويت على جودة السيناريو (Quality Voting)
@@ -13,6 +14,9 @@ export const QualityVotingScreen = ({
   hasVoted = false,
   selectedScenario = null 
 }) => {
+  const { isDesktop } = useResponsiveLayout();
+  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
+
   const [selected, setSelected] = useState(selectedScenario);
 
   const handleVote = () => {
@@ -22,75 +26,81 @@ export const QualityVotingScreen = ({
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
-      
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.stampContainer}>
-            <Text style={styles.stampText}>مرحلة التقييم</Text>
-            <Text style={styles.stampSubtext}>EVALUATION PHASE</Text>
-          </View>
-
-          {/* Instructions */}
-          <Card style={styles.instructionCard}>
-            <Text style={styles.instructionText}>
-              📋 اقرأ جميع السيناريوهات واختر الأفضل
-            </Text>
-            <Text style={styles.instructionSubtext}>
-              (الأسماء مخفية - اختر بناءً على الجودة فقط)
-            </Text>
-          </Card>
-
-          {/* Scenarios */}
-          {scenarios.map((scenario, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.scenarioCard,
-                selected === index && styles.scenarioCardSelected,
-                hasVoted && styles.scenarioCardDisabled,
-              ]}
-              onPress={() => !hasVoted && setSelected(index)}
-              disabled={hasVoted}
-              activeOpacity={0.7}
-            >
-              <View style={styles.scenarioHeader}>
-                <Text style={styles.scenarioNumber}>تقرير #{index + 1}</Text>
-                {selected === index && !hasVoted && (
-                  <Text style={styles.selectedBadge}>✓ محدد</Text>
-                )}
-              </View>
-              <Text style={styles.scenarioText}>
-                {scenario.answer || scenario.text || (typeof scenario === 'string' ? scenario : 'لا يوجد نص')}
-              </Text>
-            </TouchableOpacity>
-          ))}
-
-          {/* Vote Button */}
-          <Button
-            title={hasVoted ? "تم التصويت ✓" : "تأكيد التصويت 🗳️"}
-            onPress={handleVote}
-            disabled={hasVoted || selected === null}
-            size="large"
-            fullWidth
-            style={styles.voteButton}
-          />
-
-          {hasVoted && (
-            <View style={styles.successBox}>
-              <Text style={styles.successText}>
-                ✅ تم تسجيل صوتك! في انتظار باقي اللاعبين...
-              </Text>
+    <ImageBackground
+      source={require('../../assets/desk_background_noir.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.container}>
+            {/* Header */}
+            <View style={styles.stampContainer}>
+              <Text style={styles.stampText}>مرحلة التقييم</Text>
+              <Text style={styles.stampSubtext}>EVALUATION PHASE</Text>
             </View>
-          )}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+
+            {/* Instructions */}
+            <Card style={styles.instructionCard}>
+              <Text style={styles.instructionText}>
+                📋 اقرأ جميع السيناريوهات واختر الأفضل
+              </Text>
+              <Text style={styles.instructionSubtext}>
+                (الأسماء مخفية - اختر بناءً على الجودة فقط)
+              </Text>
+            </Card>
+
+            {/* Scenarios */}
+            {scenarios.map((scenario, index) => (
+              <TouchableOpacity
+                key={index}
+                style={[
+                  styles.scenarioCard,
+                  selected === index && styles.scenarioCardSelected,
+                  hasVoted && styles.scenarioCardDisabled,
+                ]}
+                onPress={() => !hasVoted && setSelected(index)}
+                disabled={hasVoted}
+                activeOpacity={0.7}
+              >
+                <View style={styles.scenarioHeader}>
+                  <Text style={styles.scenarioNumber}>تقرير #{index + 1}</Text>
+                  {selected === index && !hasVoted && (
+                    <Text style={styles.selectedBadge}>✓ محدد</Text>
+                  )}
+                </View>
+                <Text style={styles.scenarioText}>
+                  {scenario.answer || scenario.text || (typeof scenario === 'string' ? scenario : 'لا يوجد نص')}
+                </Text>
+              </TouchableOpacity>
+            ))}
+
+            {/* Vote Button */}
+            <Button
+              title={hasVoted ? "تم التصويت ✓" : "تأكيد التصويت 🗳️"}
+              onPress={handleVote}
+              disabled={hasVoted || selected === null}
+              size="large"
+              fullWidth
+              style={styles.voteButton}
+            />
+
+            {hasVoted && (
+              <View style={styles.successBox}>
+                <Text style={styles.successText}>
+                  ✅ تم تسجيل صوتك! في انتظار باقي اللاعبين...
+                </Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 };
 
@@ -100,9 +110,12 @@ export const QualityVotingScreen = ({
 export const CulpritVotingScreen = ({ 
   scenarios = [], 
   onVote, 
-  hasVoted = false,
+  hasVoted = false, 
   selectedCulprit = null 
 }) => {
+  const { isDesktop } = useResponsiveLayout();
+  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
+
   const [selected, setSelected] = useState(selectedCulprit);
 
   const handleVote = () => {
@@ -112,13 +125,18 @@ export const CulpritVotingScreen = ({
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+    <ImageBackground
+      source={require('../../assets/desk_background_noir.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.container}>
           {/* Header */}
           <View style={[styles.stampContainer, { backgroundColor: theme.colors.teamEvil }]}>
@@ -184,6 +202,7 @@ export const CulpritVotingScreen = ({
         </View>
       </ScrollView>
     </SafeAreaView>
+  </ImageBackground>
   );
 };
 
@@ -191,10 +210,18 @@ export const CulpritVotingScreen = ({
  * شاشة انتظار العرض الدرامي
  */
 export const WaitingRevealScreen = () => {
+  const { isDesktop } = useResponsiveLayout();
+  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <View style={styles.container}>
-        <View style={styles.waitingContainer}>
+    <ImageBackground
+      source={require('../../assets/desk_background_noir.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.container}>
+          <View style={styles.waitingContainer}>
           <Text style={styles.waitingEmoji}>🎭</Text>
           <Text style={styles.waitingTitle}>العرض الدرامي</Text>
           <Text style={styles.waitingText}>
@@ -203,9 +230,10 @@ export const WaitingRevealScreen = () => {
           <Text style={styles.waitingSubtext}>
             شاهد الشاشة الرئيسية
           </Text>
+          </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </ImageBackground>
   );
 };
 
@@ -213,14 +241,22 @@ export const WaitingRevealScreen = () => {
  * شاشة النهاية
  */
 export const EndScreen = ({ results = null, onPlayAgain, onExit }) => {
+  const { isDesktop } = useResponsiveLayout();
+  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+    <ImageBackground
+      source={require('../../assets/desk_background_noir.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
       
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
         <View style={styles.container}>
           {/* Trophy */}
           <Text style={styles.trophyEmoji}>🏆</Text>
@@ -279,6 +315,7 @@ export const EndScreen = ({ results = null, onPlayAgain, onExit }) => {
         </View>
       </ScrollView>
     </SafeAreaView>
+  </ImageBackground>
   );
 };
 
@@ -286,11 +323,19 @@ export const EndScreen = ({ results = null, onPlayAgain, onExit }) => {
  * شاشة مشاهدة العرض التشويقي للاعب
  */
 export const PlayerDramaticRevealScreen = () => {
+  const { isDesktop } = useResponsiveLayout();
+  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
-      
-      <View style={styles.centeredContainer}>
+    <ImageBackground
+      source={require('../../assets/desk_background_noir.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        
+        <View style={styles.centeredContainer}>
         {/* TV Icon */}
         <Text style={styles.largeEmoji}>📺</Text>
 
@@ -319,22 +364,32 @@ export const PlayerDramaticRevealScreen = () => {
         </View>
       </View>
     </SafeAreaView>
+  </ImageBackground>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isDesktop) => StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#1a1410',
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: theme.colors.background,
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     flexGrow: 1,
-    paddingVertical: spacing.xl,
+    paddingVertical: isDesktop ? moderateScale(3) : spacing.xl,
   },
   container: {
     flex: 1,
     padding: getContainerPadding(),
     alignItems: 'center',
+    maxWidth: isDesktop ? '90%' : 800,
+    alignSelf: 'center',
+    width: '100%',
   },
 
   // Stamp
@@ -344,7 +399,7 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.m,
     borderRadius: borderRadius.small,
     transform: [{ rotate: '-3deg' }],
-    marginBottom: spacing.xl,
+    marginBottom: isDesktop ? moderateScale(2) : spacing.xl,
     borderWidth: 2,
     borderColor: theme.colors.stamp,
     shadowColor: theme.colors.black,
@@ -354,7 +409,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   stampText: {
-    fontSize: fonts.xlarge,
+    fontSize: isDesktop ? fonts.medium : fonts.xlarge,
     fontFamily: theme.fonts.heading,
     fontWeight: '800',
     color: theme.colors.paper,
@@ -363,7 +418,7 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   stampSubtext: {
-    fontSize: fonts.small,
+    fontSize: isDesktop ? moderateScale(7) : fonts.small,
     fontFamily: theme.fonts.main,
     color: theme.colors.paper,
     textAlign: 'center',
@@ -373,25 +428,26 @@ const styles = StyleSheet.create({
   // Cards
   card: {
     width: '100%',
-    maxWidth: 600,
-    marginBottom: spacing.l,
+    maxWidth: isDesktop ? '100%' : 600,
+    marginBottom: isDesktop ? moderateScale(2) : spacing.l,
+    paddingVertical: isDesktop ? moderateScale(4) : undefined,
   },
   instructionCard: {
     width: '100%',
-    maxWidth: 600,
-    marginBottom: spacing.l,
+    maxWidth: isDesktop ? '100%' : 600,
+    marginBottom: isDesktop ? moderateScale(2) : spacing.l,
     backgroundColor: theme.colors.stickyNote + '20',
     borderColor: theme.colors.stickyNote,
   },
   instructionText: {
-    fontSize: fonts.medium,
+    fontSize: isDesktop ? fonts.tiny : fonts.medium,
     fontFamily: theme.fonts.main,
     color: theme.colors.text,
     textAlign: 'center',
     marginBottom: spacing.xs,
   },
   instructionSubtext: {
-    fontSize: fonts.small,
+    fontSize: isDesktop ? moderateScale(7) : fonts.small,
     fontFamily: theme.fonts.main,
     color: theme.colors.textSecondary,
     textAlign: 'center',
@@ -400,11 +456,11 @@ const styles = StyleSheet.create({
   // Scenario Cards
   scenarioCard: {
     width: '100%',
-    maxWidth: 600,
+    maxWidth: isDesktop ? '100%' : 600,
     backgroundColor: theme.colors.paper,
     borderRadius: borderRadius.small,
-    padding: spacing.l,
-    marginBottom: spacing.m,
+    padding: isDesktop ? moderateScale(3) : spacing.l,
+    marginBottom: isDesktop ? moderateScale(1) : spacing.m,
     borderWidth: 2,
     borderColor: '#D4C5A9',
     shadowColor: theme.colors.black,
@@ -428,20 +484,20 @@ const styles = StyleSheet.create({
     marginBottom: spacing.m,
   },
   scenarioNumber: {
-    fontSize: fonts.medium,
+    fontSize: isDesktop ? fonts.tiny : fonts.medium,
     fontFamily: theme.fonts.heading,
     fontWeight: '700',
     color: theme.colors.text,
     textTransform: 'uppercase',
   },
   selectedBadge: {
-    fontSize: fonts.small,
+    fontSize: isDesktop ? moderateScale(7) : fonts.small,
     fontFamily: theme.fonts.main,
     color: theme.colors.stamp,
     fontWeight: '700',
   },
   scenarioText: {
-    fontSize: fonts.regular,
+    fontSize: isDesktop ? fonts.tiny : fonts.regular,
     fontFamily: theme.fonts.main,
     color: theme.colors.text,
     lineHeight: fonts.regular * 1.5,
@@ -457,7 +513,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.s,
   },
   authorName: {
-    fontSize: fonts.medium,
+    fontSize: isDesktop ? fonts.tiny : fonts.medium,
     fontFamily: theme.fonts.main,
     fontWeight: '700',
     color: theme.colors.text,
@@ -465,9 +521,10 @@ const styles = StyleSheet.create({
 
   // Vote Button
   voteButton: {
-    maxWidth: 600,
+    maxWidth: isDesktop ? 400 : 600,
     width: '100%',
     marginTop: spacing.m,
+    alignSelf: 'center',
   },
 
   // Success Box
@@ -482,7 +539,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   successText: {
-    fontSize: fonts.medium,
+    fontSize: isDesktop ? fonts.tiny : fonts.medium,
     fontFamily: theme.fonts.main,
     color: theme.colors.teamGood,
     textAlign: 'center',
@@ -493,14 +550,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: spacing.xxl,
+    padding: isDesktop ? moderateScale(3) : spacing.xxl,
+    maxWidth: isDesktop ? '90%' : 800,
+    alignSelf: 'center',
+    width: '100%',
   },
   waitingEmoji: {
     fontSize: moderateScale(80),
-    marginBottom: spacing.xl,
+    marginBottom: isDesktop ? moderateScale(2) : spacing.xl,
   },
   waitingTitle: {
-    fontSize: fonts.title,
+    fontSize: isDesktop ? fonts.medium : fonts.title,
     fontFamily: theme.fonts.heading,
     fontWeight: '700',
     color: theme.colors.text,
@@ -509,14 +569,14 @@ const styles = StyleSheet.create({
     letterSpacing: 2,
   },
   waitingText: {
-    fontSize: fonts.large,
+    fontSize: isDesktop ? fonts.small : fonts.large,
     fontFamily: theme.fonts.main,
     color: theme.colors.text,
     textAlign: 'center',
     marginBottom: spacing.s,
   },
   waitingSubtext: {
-    fontSize: fonts.regular,
+    fontSize: isDesktop ? fonts.tiny : fonts.regular,
     fontFamily: theme.fonts.main,
     color: theme.colors.textSecondary,
     textAlign: 'center',
@@ -525,10 +585,10 @@ const styles = StyleSheet.create({
   // End Screen
   trophyEmoji: {
     fontSize: moderateScale(100),
-    marginBottom: spacing.xl,
+    marginBottom: isDesktop ? moderateScale(2) : spacing.xl,
   },
   resultsTitle: {
-    fontSize: fonts.xxlarge,
+    fontSize: isDesktop ? fonts.medium : fonts.xxlarge,
     fontFamily: theme.fonts.heading,
     fontWeight: '700',
     color: theme.colors.text,
@@ -555,7 +615,7 @@ const styles = StyleSheet.create({
     marginRight: spacing.m,
   },
   resultRankText: {
-    fontSize: fonts.medium,
+    fontSize: isDesktop ? fonts.tiny : fonts.medium,
     fontFamily: theme.fonts.heading,
     fontWeight: '700',
     color: theme.colors.paper,
@@ -564,31 +624,31 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   resultName: {
-    fontSize: fonts.medium,
+    fontSize: isDesktop ? fonts.tiny : fonts.medium,
     fontFamily: theme.fonts.main,
     fontWeight: '700',
     color: theme.colors.text,
   },
   resultRole: {
-    fontSize: fonts.small,
+    fontSize: isDesktop ? moderateScale(7) : fonts.small,
     fontFamily: theme.fonts.main,
     color: theme.colors.textSecondary,
   },
   resultScore: {
-    fontSize: fonts.large,
+    fontSize: isDesktop ? fonts.small : fonts.large,
     fontFamily: theme.fonts.heading,
     fontWeight: '700',
     color: theme.colors.stickyNote,
   },
   thankYouText: {
-    fontSize: fonts.large,
+    fontSize: isDesktop ? fonts.small : fonts.large,
     fontFamily: theme.fonts.main,
     color: theme.colors.text,
     textAlign: 'center',
     marginBottom: spacing.s,
   },
   thankYouSubtext: {
-    fontSize: fonts.regular,
+    fontSize: isDesktop ? fonts.tiny : fonts.regular,
     fontFamily: theme.fonts.main,
     color: theme.colors.textSecondary,
     textAlign: 'center',
@@ -596,6 +656,7 @@ const styles = StyleSheet.create({
   actionsContainer: {
     width: '100%',
     maxWidth: 400,
+    alignSelf: 'center',
   },
   actionButton: {
     marginBottom: spacing.m,
@@ -614,13 +675,13 @@ const styles = StyleSheet.create({
   },
   messageCard: {
     width: '100%',
-    maxWidth: 500,
-    padding: spacing.xxl,
+    maxWidth: isDesktop ? '100%' : 500,
+    padding: isDesktop ? moderateScale(6) : spacing.xxl,
     alignItems: 'center',
-    marginBottom: spacing.xl,
+    marginBottom: isDesktop ? moderateScale(2) : spacing.xl,
   },
   messageTitle: {
-    fontSize: fonts.xxlarge,
+    fontSize: isDesktop ? fonts.medium : fonts.xxlarge,
     fontFamily: theme.fonts.heading,
     fontWeight: '700',
     color: theme.colors.text,
@@ -629,7 +690,7 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   },
   messageText: {
-    fontSize: fonts.large,
+    fontSize: isDesktop ? fonts.small : fonts.large,
     fontFamily: theme.fonts.main,
     color: theme.colors.text,
     textAlign: 'center',
@@ -639,11 +700,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: theme.colors.stickyNote + '20',
-    padding: spacing.l,
+    padding: isDesktop ? moderateScale(3) : spacing.l,
     borderRadius: borderRadius.medium,
     borderWidth: 1,
     borderColor: theme.colors.stickyNote,
-    maxWidth: 500,
+    maxWidth: isDesktop ? '100%' : 500,
     width: '100%',
   },
   revealInfoIcon: {
@@ -652,7 +713,7 @@ const styles = StyleSheet.create({
   },
   revealInfoText: {
     flex: 1,
-    fontSize: fonts.medium,
+    fontSize: isDesktop ? fonts.tiny : fonts.medium,
     fontFamily: theme.fonts.main,
     color: theme.colors.text,
   },

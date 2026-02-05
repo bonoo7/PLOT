@@ -1,24 +1,32 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, SafeAreaView } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, StatusBar, SafeAreaView, ImageBackground } from 'react-native';
 import { theme } from '../styles/theme';
 import { spacing, fonts, moderateScale, borderRadius, getContainerPadding } from '../styles/responsive';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
 /**
  * شاشة اختيار الدور - تصميم بسيط ونظيف
  */
 export const RoleSelectScreen = ({ onSelectHost, onSelectPlayer, onSelectTraining }) => {
+  const { isDesktop } = useResponsiveLayout();
+  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
+
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor={theme.colors.background} />
-      
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.container}>
+    <ImageBackground
+      source={require('../../assets/desk_background_noir.png')}
+      style={styles.backgroundImage}
+      resizeMode="cover"
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+        
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.container}>
           {/* Header */}
           <View style={styles.header}>
-            <Text style={styles.logo}>🕵️</Text>
             <Text style={styles.title}>PLOT</Text>
             <Text style={styles.subtitle}>لعبة التحقيقات السرية</Text>
           </View>
@@ -32,7 +40,6 @@ export const RoleSelectScreen = ({ onSelectHost, onSelectPlayer, onSelectTrainin
               activeOpacity={0.9}
             >
               <View style={styles.cardContent}>
-                <Text style={styles.cardEmoji}>👑</Text>
                 <Text style={styles.cardTitle}>المضيف</Text>
                 <Text style={styles.cardDescription}>
                   إنشاء غرفة جديدة وإدارة اللعبة
@@ -47,7 +54,6 @@ export const RoleSelectScreen = ({ onSelectHost, onSelectPlayer, onSelectTrainin
               activeOpacity={0.9}
             >
               <View style={styles.cardContent}>
-                <Text style={styles.cardEmoji}>🎭</Text>
                 <Text style={styles.cardTitle}>لاعب</Text>
                 <Text style={styles.cardDescription}>
                   الانضمام إلى لعبة موجودة
@@ -62,7 +68,6 @@ export const RoleSelectScreen = ({ onSelectHost, onSelectPlayer, onSelectTrainin
               activeOpacity={0.9}
             >
               <View style={styles.cardContent}>
-                <Text style={styles.cardEmoji}>🤖</Text>
                 <Text style={styles.cardTitle}>تدريب فردي</Text>
                 <Text style={styles.cardDescription}>
                   اختر دوراً والعب مع البوتات
@@ -73,7 +78,6 @@ export const RoleSelectScreen = ({ onSelectHost, onSelectPlayer, onSelectTrainin
 
           {/* Info */}
           <View style={styles.infoBox}>
-            <Text style={styles.infoIcon}>💡</Text>
             <Text style={styles.infoText}>
               تحتاج اللعبة من 4 إلى 8 لاعبين
             </Text>
@@ -81,125 +85,131 @@ export const RoleSelectScreen = ({ onSelectHost, onSelectPlayer, onSelectTrainin
         </View>
       </ScrollView>
     </SafeAreaView>
+  </ImageBackground>
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isDesktop) => StyleSheet.create({
+  backgroundImage: {
+    flex: 1,
+    width: '100%',
+    height: '100%',
+    backgroundColor: '#1a1410',
+  },
   safeArea: {
     flex: 1,
-    backgroundColor: theme.colors.background,  // بيج ورق قديم
+    backgroundColor: 'transparent',
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingVertical: spacing.xxl,
+    paddingVertical: isDesktop ? moderateScale(3) : spacing.xxl,
   },
   container: {
     flex: 1,
     padding: getContainerPadding(),
     alignItems: 'center',
     justifyContent: 'center',
+    maxWidth: isDesktop ? '90%' : 800,
+    alignSelf: 'center',
+    width: '100%',
   },
 
   // Header
   header: {
     alignItems: 'center',
-    marginBottom: spacing.xxl * 1.5,
-  },
-  logo: {
-    fontSize: moderateScale(80),
-    marginBottom: spacing.m,
+    marginBottom: isDesktop ? 0 : spacing.m,
   },
   title: {
-    fontSize: fonts.title * 1.2,
-    fontFamily: theme.fonts.heading,  // Courier New
+    fontSize: isDesktop ? fonts.medium : fonts.title * 1.2,
+    fontFamily: theme.fonts.heading,
     fontWeight: '800',
-    color: theme.colors.text,  // رمادي فحمي
+    color: '#FFD700',
     marginBottom: spacing.s,
     letterSpacing: moderateScale(3),
     textTransform: 'uppercase',
   },
   subtitle: {
-    fontSize: fonts.medium,
+    fontSize: isDesktop ? fonts.tiny : fonts.medium,
     fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
+    color: '#E8DCC8',
   },
 
   // Role Cards - نمط Manila Folder
+  // Cards Container
   cardsContainer: {
     width: '100%',
-    maxWidth: 400,
-    gap: spacing.l,
+    maxWidth: isDesktop ? 800 : 400,
+    gap: isDesktop ? moderateScale(2) : spacing.l,
+    flexDirection: isDesktop ? 'row' : 'column',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   roleCard: {
-    backgroundColor: theme.colors.paper,
+    backgroundColor: 'rgba(235, 225, 210, 0.95)',
     borderRadius: borderRadius.small,
-    padding: spacing.xl,
-    marginBottom: spacing.m,
-    borderWidth: 1,
-    borderColor: '#D4C5A9',
+    padding: isDesktop ? moderateScale(3) : spacing.xl,
+    marginBottom: isDesktop ? 0 : spacing.m,
+    borderWidth: 2,
+    borderColor: '#8B7355',
+    maxWidth: isDesktop ? 300 : 450,
+    width: '100%',
     // ظل يحاكي ملفات مكدسة
     shadowColor: theme.colors.black,
-    shadowOffset: { width: 2, height: 3 },
-    shadowOpacity: 0.2,
-    shadowRadius: 5,
-    elevation: 4,
+    shadowOffset: { width: 3, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
   },
   tutorialCard: {
-    backgroundColor: theme.colors.accentYellow + '15',
+    backgroundColor: 'rgba(255, 240, 200, 0.95)',
     borderColor: theme.colors.accentYellow,
-    borderWidth: 1.5,
+    borderWidth: 2,
   },
   cardContent: {
     alignItems: 'center',
   },
-  cardEmoji: {
-    fontSize: moderateScale(56),
-    marginBottom: spacing.m,
-  },
   cardTitle: {
-    fontSize: fonts.xxlarge,
+    fontSize: isDesktop ? fonts.medium : fonts.xxlarge,
     fontFamily: theme.fonts.heading,
     fontWeight: '700',
-    color: theme.colors.text,
-    marginBottom: spacing.s,
+    color: '#2C1810',
+    marginBottom: isDesktop ? moderateScale(1) : spacing.s,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
   cardDescription: {
-    fontSize: fonts.regular,
+    fontSize: isDesktop ? fonts.tiny : fonts.regular,
     fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
+    color: '#5C4A3A',
     textAlign: 'center',
+    lineHeight: isDesktop ? fonts.tiny * 1.2 : fonts.regular * 1.5,
   },
 
-  // Info Box - نمط الملاحظة اللاصقة
+  // Info Box
   infoBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.colors.stickyNote + '20',  // أصفر خردل شفاف
-    padding: spacing.m,
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    padding: isDesktop ? moderateScale(3) : spacing.m,
     borderRadius: borderRadius.small,
     borderWidth: 1,
-    borderColor: theme.colors.stickyNote + '50',
-    marginTop: spacing.xl,
-    maxWidth: 350,
-    // ظل خفيف
+    borderColor: 'rgba(255, 215, 0, 0.3)',
+    marginTop: isDesktop ? moderateScale(2) : spacing.xl,
+    maxWidth: isDesktop ? 800 : 350,
+    width: '100%',
     shadowColor: theme.colors.black,
     shadowOffset: { width: 1, height: 2 },
     shadowOpacity: 0.15,
     shadowRadius: 3,
     elevation: 2,
   },
-  infoIcon: {
-    fontSize: moderateScale(20),
-    marginRight: spacing.m,
-  },
   infoText: {
     fontSize: fonts.small,
     fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
+    color: '#FFD700',
     flex: 1,
+    textAlign: 'center',
   },
 });
 

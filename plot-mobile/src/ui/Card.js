@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { theme } from '../styles/theme';
 import { spacing, fonts, borderRadius, moderateScale } from '../styles/responsive';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
 /**
  * بطاقة بنمط Manila Folder - الهوية البصرية
@@ -12,6 +13,9 @@ const Card = ({
   subtitle = null,
   style = {},
 }) => {
+  const { isDesktop } = useResponsiveLayout();
+  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
+
   return (
     <View style={[styles.card, style]}>
       {(title || subtitle) && (
@@ -30,12 +34,12 @@ const Card = ({
   );
 };
 
-const styles = StyleSheet.create({
+const getStyles = (isDesktop) => StyleSheet.create({
   card: {
     backgroundColor: theme.colors.paper,
     borderRadius: borderRadius.small,
-    padding: spacing.l,
-    marginVertical: spacing.s,
+    padding: isDesktop ? moderateScale(3) : spacing.l,
+    marginVertical: isDesktop ? moderateScale(1) : spacing.s,
     borderWidth: 1,
     borderColor: '#D4C5A9',  // حدود بنية تحاكي الملفات القديمة
     // ظل يحاكي ورق مكدس
@@ -50,7 +54,7 @@ const styles = StyleSheet.create({
   // Decorative paperclip
   paperclip: {
     position: 'absolute',
-    top: -moderateScale(6),
+    top: isDesktop ? -moderateScale(3) : -moderateScale(6),
     left: spacing.xl,
     width: moderateScale(8),
     height: moderateScale(24),
@@ -69,7 +73,7 @@ const styles = StyleSheet.create({
   },
 
   title: {
-    fontSize: fonts.large,
+    fontSize: isDesktop ? fonts.medium : fonts.large,
     fontFamily: theme.fonts.heading,
     fontWeight: '700',
     color: theme.colors.text,
@@ -79,7 +83,7 @@ const styles = StyleSheet.create({
   },
 
   subtitle: {
-    fontSize: fonts.regular,
+    fontSize: isDesktop ? fonts.tiny : fonts.regular,
     fontFamily: theme.fonts.main,
     color: theme.colors.textSecondary,
   },
