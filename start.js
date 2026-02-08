@@ -26,7 +26,7 @@ console.log(`📱 Server IP Address: ${localIP}`);
 console.log(`🌐 Web App URL: http://${localIP}:3000 (Browser)\n`);
 
 // Generate QR Code for Mobile App
-const mobileUrl = `exp://${localIP}:8081`; // Default Expo port
+const mobileUrl = `exp://${localIP}:8082`; // Using 8082 to avoid conflicts
 console.log('📱 Scan this QR code with Expo Go App:');
 qrcode.generate(mobileUrl, { small: true });
 console.log(`Or enter URL manually: ${mobileUrl}\n`);
@@ -56,8 +56,8 @@ server.stdout.on('data', (data) => {
 
 // Wait for server to start before starting client
 setTimeout(() => {
-    console.log('\n🚀 Starting mobile app...');
-    const client = exec(`cd "${clientPath}" && npx expo start --clear`, (error, stdout, stderr) => {
+    console.log('\n🚀 Starting mobile app (Port 8082)...');
+    const client = exec(`cd "${clientPath}" && npx expo start --clear --port 8082`, (error, stdout, stderr) => {
         if (error) console.error(`Client error: ${error.message}`);
     });
 

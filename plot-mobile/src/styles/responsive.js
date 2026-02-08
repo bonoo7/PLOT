@@ -3,39 +3,48 @@ import { Dimensions, Platform, PixelRatio, I18nManager } from 'react-native';
 // الحصول على أبعاد الشاشة
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
+// التحقق من المتصفح (شاشات أكبر)
+const isWeb = Platform.OS === 'web';
+const isLargeWeb = isWeb && SCREEN_WIDTH >= 768;
+const isLandscapeMode = SCREEN_WIDTH > SCREEN_HEIGHT;
+// Reduce scale for Web OR Mobile Landscape (to match the "minimalist" request on phone rotation)
+const shouldReduceScale = isLargeWeb || (isLandscapeMode && !isWeb && SCREEN_WIDTH >= 500);
+const webMultiplier = shouldReduceScale ? 0.5 : 1;
+
 // تصنيف حجم الشاشة
 export const SCREEN_SIZES = {
   SMALL: SCREEN_WIDTH < 375,    // iPhone SE, صغير جداً
   MEDIUM: SCREEN_WIDTH >= 375 && SCREEN_WIDTH < 414,  // iPhone standard
   LARGE: SCREEN_WIDTH >= 414,   // iPhone Plus, Android كبير
+  XLARGE: SCREEN_WIDTH >= 768,  // Tablet, Web
 };
 
 // مقاييس responsive
-export const scale = (size) => (SCREEN_WIDTH / 375) * size;
+export const scale = (size) => (SCREEN_WIDTH / 375) * size * webMultiplier;
 export const verticalScale = (size) => (SCREEN_HEIGHT / 812) * size;
 export const moderateScale = (size, factor = 0.5) => 
   size + (scale(size) - size) * factor;
 
-// أحجام الخطوط responsive
+// أحجام الخطوط responsive - مع دعم الويب (مصغرة جداً للويب الأفقي)
 export const fonts = {
-  tiny: moderateScale(10),
-  small: moderateScale(12),
-  regular: moderateScale(14),
-  medium: moderateScale(16),
-  large: moderateScale(18),
-  xlarge: moderateScale(22),
-  xxlarge: moderateScale(28),
-  title: moderateScale(32),
+  tiny: moderateScale(9),
+  small: moderateScale(11),
+  regular: moderateScale(13),
+  medium: moderateScale(15),
+  large: moderateScale(17),
+  xlarge: moderateScale(20),
+  xxlarge: moderateScale(24),
+  title: moderateScale(28),
 };
 
-// المسافات responsive
+// المسافات responsive - مع دعم الويب (أصغر جداً للويب الأفقي)
 export const spacing = {
-  xs: scale(4),
-  s: scale(8),
-  m: scale(16),
-  l: scale(24),
-  xl: scale(32),
-  xxl: scale(48),
+  xs: scale(3),
+  s: scale(6),
+  m: scale(12),
+  l: scale(18),
+  xl: scale(24),
+  xxl: scale(36),
 };
 
 // أحجام الأيقونات والصور
@@ -47,14 +56,14 @@ export const iconSizes = {
   xlarge: moderateScale(48),
 };
 
-// أبعاد العناصر
+// أبعاد العناصر - مع دعم الويب
 export const dimensions = {
-  buttonHeight: verticalScale(48),
-  inputHeight: verticalScale(48),
+  buttonHeight: verticalScale(44),
+  inputHeight: verticalScale(44),
   cardWidth: SCREEN_WIDTH * 0.9,
-  cardMaxWidth: 400,
-  avatarSize: moderateScale(60),
-  smallAvatarSize: moderateScale(40),
+  cardMaxWidth: isLargeWeb ? 800 : 500, // Increased max width for web
+  avatarSize: moderateScale(50),
+  smallAvatarSize: moderateScale(35),
 };
 
 // border radius
@@ -118,11 +127,11 @@ export const getCardWidth = (columns = 1, margin = spacing.m) => {
   return (SCREEN_WIDTH - totalMargin) / columns;
 };
 
-// الحصول على padding للحاوية
+// الحصول على padding للحاوية (أصغر للويب)
 export const getContainerPadding = () => {
-  if (SCREEN_SIZES.SMALL) return spacing.m;
-  if (SCREEN_SIZES.MEDIUM) return spacing.l;
-  return spacing.xl;
+  if (isLargeWeb) return spacing.s;  
+  if (SCREEN_SIZES.SMALL) return spacing.s; // Reduced for small screens too
+  return spacing.m; // Reduced for others
 };
 
 // إعدادات النص المتجاوب

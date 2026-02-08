@@ -1,82 +1,75 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Share } from 'react-native';
+import { View, Text, StyleSheet, Share } from 'react-native';
+import MinimalLayout from '../components/minimal/MinimalLayout';
+import MinimalHeader from '../components/minimal/MinimalHeader';
+import MinimalCard from '../components/minimal/MinimalCard';
+import MinimalButton from '../components/minimal/MinimalButton';
 import { theme } from '../styles/theme';
-import { spacing, fonts, moderateScale, borderRadius, shadows, getContainerPadding } from '../styles/responsive';
-import { Button, Card, Badge, ListItem, Divider } from '../ui';
+import { spacing, fonts, borderRadius } from '../styles/responsive';
+import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
 /**
- * شاشة إعداد المضيف
+ * HostSetupScreen - Minimalist V3
  */
-export const HostSetupScreen = ({ onCreateRoom, connecting }) => {
+export const HostSetupScreen = ({ onCreateRoom, connecting, onBack }) => {
   return (
-    <ScrollView 
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.container}>
-        <Card variant="paper" style={styles.card}>
-          <Text style={styles.title}>👑 مركز القيادة</Text>
-          <Text style={styles.subtitle}>
-            أنت المضيف - قم بإنشاء غرفة جديدة للعبة
-          </Text>
-
-          <View style={styles.featuresContainer}>
-            <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>🎭</Text>
-              <Text style={styles.featureText}>توزيع الأدوار التلقائي</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>📝</Text>
-              <Text style={styles.featureText}>إدارة السيناريوهات</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>🗳️</Text>
-              <Text style={styles.featureText}>نظام التصويت المباشر</Text>
-            </View>
-            <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>🏆</Text>
-              <Text style={styles.featureText}>تتبع النقاط والنتائج</Text>
-            </View>
+    <MinimalLayout>
+      <View style={styles.centerBox}>
+        <MinimalHeader title="مركز القيادة" subtitle="إعداد غرفة جديدة" />
+        
+        <MinimalCard style={styles.setupCard}>
+          <Text style={styles.infoTitle}>معلومات المهمة:</Text>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoText}>• اللاعبون: 4 - 8</Text>
           </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoText}>• الوقت: 30 - 45 دقيقة</Text>
+          </View>
+          
+          <View style={styles.spacer} />
 
-          <Button
-            title={connecting ? "جاري الإنشاء..." : "إنشاء غرفة جديدة 🚀"}
+          <MinimalButton
+            title={connecting ? "جاري الإنشاء..." : "إنشاء غرفة"}
             onPress={onCreateRoom}
             disabled={connecting}
             loading={connecting}
-            size="large"
-            fullWidth
-            style={styles.createButton}
+            size="medium"
           />
+        </MinimalCard>
 
-          <View style={styles.requirementsContainer}>
-            <Text style={styles.requirementsTitle}>المتطلبات:</Text>
-            <Text style={styles.requirementsText}>• 4-8 لاعبين</Text>
-            <Text style={styles.requirementsText}>• اتصال إنترنت مستقر</Text>
-            <Text style={styles.requirementsText}>• مدة اللعبة: 30-45 دقيقة</Text>
-          </View>
-        </Card>
+        {onBack && (
+          <MinimalButton
+            title="رجوع"
+            onPress={onBack}
+            variant="ghost"
+            size="small"
+            style={styles.backButton}
+            textStyle={styles.backButtonText}
+          />
+        )}
       </View>
-    </ScrollView>
+    </MinimalLayout>
   );
 };
 
 /**
- * شاشة غرفة انتظار المضيف
+ * HostLobbyScreen - Minimalist V3
  */
 export const HostLobbyScreen = ({ 
   roomCode, 
   players = [], 
-  onStartGame, 
-  onShareCode 
+  onStartGame,
+  onFillBots,
+  onBack,
 }) => {
+  const { isDesktop } = useResponsiveLayout();
   const canStart = players.length >= 4 && players.length <= 8;
-  const needsMorePlayers = players.length < 4;
+  const needsMore = 4 - players.length;
 
-  const handleShareCode = async () => {
+  const handleShare = async () => {
     try {
       await Share.share({
-        message: `انضم إلى لعبة PLOT! 🕵️\n\nرمز الغرفة: ${roomCode}\n\nاستخدم التطبيق للانضمام`,
+        message: `انضم إلى لعبة PLOT! 🕵️\nرمز الغرفة: ${roomCode}`,
       });
     } catch (error) {
       console.log('Error sharing:', error);
@@ -84,303 +77,248 @@ export const HostLobbyScreen = ({
   };
 
   return (
-    <ScrollView 
-      contentContainerStyle={styles.scrollContent}
-      showsVerticalScrollIndicator={false}
-    >
-      <View style={styles.container}>
-        <Card variant="paper" style={styles.card}>
-          {/* رأس الصفحة */}
-          <View style={styles.headerContainer}>
-            <Text style={styles.title}>غرفة العمليات</Text>
-            <Badge text={`👑 مضيف`} variant="warning" size="medium" />
+    <MinimalLayout>
+      <View style={[styles.lobbyContainer, { maxWidth: isDesktop ? 1000 : 600 }]}>
+        {/* Header Section */}
+        <View style={styles.headerSection}>
+          <MinimalHeader title="غرفة العمليات" />
+          
+          <View style={styles.codeSection}>
+             <View style={styles.codeBadge}>
+                <Text style={styles.codeLabel}>CODE</Text>
+                <Text style={styles.codeText}>{roomCode}</Text>
+             </View>
+             <MinimalButton 
+               title="مشاركة" 
+               onPress={handleShare} 
+               variant="secondary" 
+               size="small"
+               style={styles.shareBtn} 
+             />
+          </View>
+        </View>
+
+        {/* Players Area */}
+        <MinimalCard flex style={styles.playersCard}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.sectionTitle}>العملاء المتصلون ({players.length}/8)</Text>
+            {!canStart && needsMore > 0 && (
+              <View style={styles.warningBadge}>
+                <Text style={styles.warningText}>{needsMore} متبقي</Text>
+              </View>
+            )}
           </View>
 
-          {/* رمز الغرفة */}
-          <View style={styles.roomCodeContainer}>
-            <Text style={styles.roomCodeLabel}>رمز الغرفة:</Text>
-            <View style={styles.roomCodeBox}>
-              <Text style={styles.roomCodeText}>{roomCode}</Text>
+          {players.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>في انتظار انضمام العملاء...</Text>
             </View>
-            <Button
-              title="مشاركة 📤"
-              onPress={onShareCode || handleShareCode}
-              variant="secondary"
-              size="small"
-              style={styles.shareButton}
-            />
-          </View>
-
-          <Divider />
-
-          {/* قائمة اللاعبين */}
-          <View style={styles.playersSection}>
-            <Text style={styles.sectionTitle}>
-              العملاء المتصلون ({players.length}/8)
-            </Text>
-
-            {needsMorePlayers && (
-              <View style={styles.warningBox}>
-                <Text style={styles.warningText}>
-                  ⚠️ يلزم 4 لاعبين على الأقل لبدء اللعبة
-                </Text>
-              </View>
-            )}
-
-            {players.length === 0 ? (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyIcon}>👥</Text>
-                <Text style={styles.emptyText}>
-                  في انتظار انضمام اللاعبين...
-                </Text>
-                <Text style={styles.emptySubtext}>
-                  شارك رمز الغرفة مع الآخرين
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.playersList}>
-                {players.map((player, index) => (
-                  <ListItem
-                    key={player.id || index}
-                    title={player.name}
-                    subtitle={`متصل منذ ${getTimeAgo(player.joinedAt)}`}
-                    leftIcon={<Text style={styles.playerNumber}>#{index + 1}</Text>}
-                    rightIcon={<Text style={styles.playerIcon}>🕵️</Text>}
-                    style={styles.playerItem}
-                  />
-                ))}
-              </View>
-            )}
-          </View>
-
-          {/* زر بدء اللعبة */}
-          <Button
-            title={needsMorePlayers 
-              ? `يلزم ${4 - players.length} لاعبين آخرين` 
-              : "بدء العملية 🚀"}
-            onPress={onStartGame}
-            disabled={!canStart}
-            size="large"
-            variant="success"
-            fullWidth
-            style={styles.startButton}
-          />
-
-          {canStart && (
-            <Text style={styles.readyText}>
-              ✅ جاهز للبدء! اضغط للانطلاق
-            </Text>
+          ) : (
+            <View style={styles.playersGrid}>
+              {players.map((player, index) => (
+                <View key={player.id || index} style={styles.playerItem}>
+                  <Text style={styles.playerNumber}>#{index + 1}</Text>
+                  <Text style={styles.playerName} numberOfLines={1}>{player.name}</Text>
+                </View>
+              ))}
+            </View>
           )}
-        </Card>
+        </MinimalCard>
+
+        {/* Actions Footer */}
+        <View style={styles.actionsFooter}>
+          <View style={styles.mainActions}>
+             {players.length < 8 && (
+                <MinimalButton 
+                  title="+ بوت" 
+                  onPress={onFillBots} 
+                  variant="secondary"
+                  size="medium"
+                  style={styles.botBtn}
+                />
+             )}
+             <MinimalButton
+               title={canStart ? "بدء المهمة 🚀" : "بانتظار اكتمال العدد"}
+               onPress={onStartGame}
+               disabled={!canStart}
+               variant={canStart ? "primary" : "outline"}
+               size="medium"
+               style={styles.startBtn}
+             />
+          </View>
+          
+          <MinimalButton
+            title="إغلاق الغرفة"
+            onPress={onBack}
+            variant="ghost"
+            size="small"
+            textStyle={styles.closeBtnText}
+          />
+        </View>
+
       </View>
-    </ScrollView>
+    </MinimalLayout>
   );
 };
 
-// دالة مساعدة لحساب الوقت
-const getTimeAgo = (timestamp) => {
-  if (!timestamp) return 'الآن';
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 60) return 'الآن';
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} د`;
-  const hours = Math.floor(minutes / 60);
-  return `${hours} س`;
-};
-
 const styles = StyleSheet.create({
-  scrollContent: {
-    flexGrow: 1,
-    paddingVertical: spacing.l,
-  },
-  container: {
-    flex: 1,
-    padding: getContainerPadding(),
+  centerBox: {
+    width: '100%',
+    maxWidth: 450,
     alignItems: 'center',
-    justifyContent: 'center',
   },
-  card: {
-    width: '100%',
-    maxWidth: 600,
+  setupCard: {
+    padding: spacing.l,
   },
-
-  // العناوين
-  title: {
-    fontSize: fonts.xxlarge,
+  infoTitle: {
     fontFamily: theme.fonts.bold,
-    fontWeight: 'bold',
-    color: theme.colors.text,
-    marginBottom: spacing.s,
-    textAlign: 'center',
-  },
-  subtitle: {
     fontSize: fonts.medium,
+    color: theme.colors.text,
+    marginBottom: spacing.m,
+  },
+  infoRow: {
+    marginBottom: spacing.s,
+  },
+  infoText: {
     fontFamily: theme.fonts.main,
-    color: theme.colors.textLight,
-    textAlign: 'center',
-    marginBottom: spacing.l,
+    fontSize: fonts.small,
+    color: theme.colors.text,
   },
-
-  // الميزات
-  featuresContainer: {
+  spacer: {
+    height: spacing.l,
+  },
+  backButton: {
+    marginTop: spacing.m,
+  },
+  backButtonText: {
+    color: '#E8DCC8',
+    opacity: 0.8,
+  },
+  
+  // Lobby Styles
+  lobbyContainer: {
+    flex: 1,
     width: '100%',
-    marginVertical: spacing.l,
+    paddingVertical: spacing.m,
+    gap: spacing.m,
   },
-  featureItem: {
+  headerSection: {
+    alignItems: 'center',
+  },
+  codeSection: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: spacing.m,
-    padding: spacing.m,
-    backgroundColor: theme.colors.background,
+    gap: spacing.m,
+    marginTop: -spacing.s, // Pull up closer to header
+  },
+  codeBadge: {
+    backgroundColor: theme.colors.primary,
     borderRadius: borderRadius.medium,
+    paddingVertical: spacing.xs,
+    paddingHorizontal: spacing.l,
+    borderWidth: 2,
+    borderColor: theme.colors.primaryDark,
+    alignItems: 'center',
+    minWidth: 140,
   },
-  featureIcon: {
-    fontSize: moderateScale(32),
-    marginRight: spacing.m,
-  },
-  featureText: {
-    fontSize: fonts.medium,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-    flex: 1,
-  },
-
-  // الأزرار
-  createButton: {
-    marginTop: spacing.l,
-  },
-  startButton: {
-    marginTop: spacing.xl,
-  },
-
-  // المتطلبات
-  requirementsContainer: {
-    marginTop: spacing.l,
-    padding: spacing.m,
-    backgroundColor: theme.colors.accentYellow + '15',
-    borderRadius: borderRadius.medium,
-    borderWidth: 1,
-    borderColor: theme.colors.accentYellow + '40',
-  },
-  requirementsTitle: {
-    fontSize: fonts.medium,
-    fontFamily: theme.fonts.bold,
+  codeLabel: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.6)',
     fontWeight: 'bold',
-    color: theme.colors.text,
-    marginBottom: spacing.s,
   },
-  requirementsText: {
-    fontSize: fonts.small,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-    marginVertical: spacing.xs,
+  codeText: {
+    fontSize: fonts.large,
+    color: '#FFF',
+    fontWeight: '900',
+    letterSpacing: 2,
   },
-
-  // رمز الغرفة
-  headerContainer: {
+  shareBtn: {
+    height: 44,
+  },
+  
+  // Players Area
+  playersCard: {
+    backgroundColor: 'rgba(235, 225, 210, 0.95)',
+  },
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: spacing.l,
-  },
-  roomCodeContainer: {
-    alignItems: 'center',
-    marginBottom: spacing.l,
-  },
-  roomCodeLabel: {
-    fontSize: fonts.medium,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.textLight,
-    marginBottom: spacing.s,
-  },
-  roomCodeBox: {
-    backgroundColor: theme.colors.accentRed,
-    paddingHorizontal: spacing.xl,
-    paddingVertical: spacing.l,
-    borderRadius: borderRadius.large,
-    ...shadows.large,
     marginBottom: spacing.m,
-  },
-  roomCodeText: {
-    fontSize: fonts.title,
-    fontFamily: theme.fonts.bold,
-    fontWeight: 'bold',
-    color: theme.colors.white,
-    letterSpacing: moderateScale(8),
-  },
-  shareButton: {
-    minWidth: moderateScale(120),
-  },
-
-  // اللاعبون
-  playersSection: {
-    width: '100%',
-    marginTop: spacing.l,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.1)',
+    paddingBottom: spacing.s,
   },
   sectionTitle: {
-    fontSize: fonts.large,
     fontFamily: theme.fonts.bold,
-    fontWeight: 'bold',
+    fontSize: fonts.medium,
     color: theme.colors.text,
-    marginBottom: spacing.m,
   },
-  warningBox: {
-    backgroundColor: theme.colors.warning + '20',
-    padding: spacing.m,
-    borderRadius: borderRadius.medium,
+  warningBadge: {
+    backgroundColor: '#FFE5B4',
+    paddingHorizontal: spacing.s,
+    paddingVertical: 2,
+    borderRadius: borderRadius.small,
     borderWidth: 1,
-    borderColor: theme.colors.warning,
-    marginBottom: spacing.m,
+    borderColor: '#FFA500',
   },
   warningText: {
-    fontSize: fonts.small,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-    textAlign: 'center',
+    fontSize: fonts.tiny,
+    color: '#D2691E',
+    fontWeight: 'bold',
   },
-  playersList: {
-    width: '100%',
+  playersGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.s,
   },
   playerItem: {
-    marginBottom: spacing.s,
+    width: '48%',
+    backgroundColor: 'rgba(255,255,255,0.6)',
+    padding: spacing.s,
+    borderRadius: borderRadius.small,
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
   },
   playerNumber: {
-    fontSize: fonts.medium,
-    fontFamily: theme.fonts.bold,
     fontWeight: 'bold',
-    color: theme.colors.accentRed,
-    minWidth: moderateScale(30),
+    color: theme.colors.primary,
+    marginRight: spacing.s,
+    width: 24,
   },
-  playerIcon: {
-    fontSize: moderateScale(24),
+  playerName: {
+    flex: 1,
+    fontFamily: theme.fonts.main,
+    color: theme.colors.text,
   },
   emptyState: {
     alignItems: 'center',
     padding: spacing.xl,
   },
-  emptyIcon: {
-    fontSize: moderateScale(64),
-    marginBottom: spacing.m,
-  },
   emptyText: {
-    fontSize: fonts.large,
-    fontFamily: theme.fonts.bold,
-    fontWeight: 'bold',
-    color: theme.colors.text,
-    marginBottom: spacing.s,
-    textAlign: 'center',
+    color: theme.colors.textSecondary,
+    fontStyle: 'italic',
   },
-  emptySubtext: {
-    fontSize: fonts.medium,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.textLight,
-    textAlign: 'center',
+  
+  // Footer
+  actionsFooter: {
+    gap: spacing.s,
   },
-  readyText: {
-    fontSize: fonts.medium,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.success,
-    textAlign: 'center',
-    marginTop: spacing.m,
+  mainActions: {
+    flexDirection: 'row',
+    gap: spacing.m,
   },
+  botBtn: {
+    flex: 1,
+  },
+  startBtn: {
+    flex: 2,
+  },
+  closeBtnText: {
+    color: '#E8DCC8',
+    fontSize: fonts.tiny,
+    opacity: 0.6,
+  }
 });

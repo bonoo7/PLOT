@@ -11,41 +11,46 @@
     },
     "Bot 1 🤖": {
       "name": "Bot 1 🤖",
-      "gamesPlayed": 20,
+      "gamesPlayed": 27,
       "wins": 3,
-      "totalScore": 26000,
+      "totalScore": 56100,
       "rolesPlayed": {
         "SPY": 4,
         "WITNESS": 5,
         "DETECTIVE": 8,
-        "ARCHITECT": 3
+        "ARCHITECT": 3,
+        "CULPRIT": 2,
+        "CHIEF_DETECTIVE": 5
       }
     },
     "Bot 2 🤖": {
       "name": "Bot 2 🤖",
-      "gamesPlayed": 20,
-      "wins": 8,
-      "totalScore": 56000,
+      "gamesPlayed": 27,
+      "wins": 13,
+      "totalScore": 117300,
       "rolesPlayed": {
         "DETECTIVE": 5,
         "ARCHITECT": 5,
         "SPY": 3,
         "WITNESS": 6,
-        "TRICKSTER": 1
+        "TRICKSTER": 1,
+        "FORGER": 2,
+        "CULPRIT": 5
       }
     },
     "Bot 3 🤖": {
       "name": "Bot 3 🤖",
-      "gamesPlayed": 20,
+      "gamesPlayed": 27,
       "wins": 3,
-      "totalScore": 38000,
+      "totalScore": 90600,
       "rolesPlayed": {
         "ARCHITECT": 9,
         "SPY": 4,
         "DETECTIVE": 3,
-        "WITNESS": 1,
+        "WITNESS": 6,
         "TRICKSTER": 2,
-        "LAWYER": 1
+        "LAWYER": 1,
+        "INFILTRATOR": 2
       }
     },
     "Nuclei": {
@@ -188,44 +193,66 @@
     },
     "Bot 4 🤖": {
       "name": "Bot 4 🤖",
-      "gamesPlayed": 3,
+      "gamesPlayed": 5,
       "wins": 1,
-      "totalScore": 18500,
+      "totalScore": 24900,
       "rolesPlayed": {
         "CITIZEN": 1,
-        "ARCHITECT": 2
+        "ARCHITECT": 2,
+        "ANALYST": 2
       }
     },
     "Bot 5 🤖": {
       "name": "Bot 5 🤖",
-      "gamesPlayed": 3,
-      "wins": 2,
-      "totalScore": 27500,
+      "gamesPlayed": 5,
+      "wins": 4,
+      "totalScore": 50100,
       "rolesPlayed": {
         "DETECTIVE": 2,
-        "CITIZEN": 1
+        "CITIZEN": 1,
+        "LAWYER": 2
       }
     },
     "Bot 6 🤖": {
       "name": "Bot 6 🤖",
-      "gamesPlayed": 3,
+      "gamesPlayed": 5,
       "wins": 0,
-      "totalScore": 21000,
+      "totalScore": 28200,
       "rolesPlayed": {
         "SPY": 1,
         "ACCOMPLICE": 1,
-        "LAWYER": 1
+        "LAWYER": 1,
+        "OFFICER": 2
       }
     },
     "Bot 7 🤖": {
       "name": "Bot 7 🤖",
-      "gamesPlayed": 3,
+      "gamesPlayed": 5,
       "wins": 0,
-      "totalScore": 19000,
+      "totalScore": 26800,
       "rolesPlayed": {
         "LAWYER": 1,
         "CITIZEN": 1,
-        "ACCOMPLICE": 1
+        "ACCOMPLICE": 1,
+        "CHIEF_DETECTIVE": 2
+      }
+    },
+    "Bot 8 🤖": {
+      "name": "Bot 8 🤖",
+      "gamesPlayed": 2,
+      "wins": 0,
+      "totalScore": 16800,
+      "rolesPlayed": {
+        "ACCOMPLICE": 2
+      }
+    },
+    "والعظام": {
+      "name": "والعظام",
+      "gamesPlayed": 5,
+      "wins": 0,
+      "totalScore": 13700,
+      "rolesPlayed": {
+        "FORGER": 5
       }
     }
   },
@@ -830,6 +857,228 @@
         }
       ],
       "timestamp": "2026-02-01T12:30:24.553Z"
+    },
+    {
+      "roomCode": "VIEY",
+      "players": [
+        {
+          "name": "Bot 1 🤖",
+          "score": 5800,
+          "role": "CULPRIT"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 8900,
+          "role": "FORGER"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 9800,
+          "role": "INFILTRATOR"
+        },
+        {
+          "name": "Bot 4 🤖",
+          "score": 3200,
+          "role": "ANALYST"
+        },
+        {
+          "name": "Bot 5 🤖",
+          "score": 11300,
+          "role": "LAWYER"
+        },
+        {
+          "name": "Bot 6 🤖",
+          "score": 3600,
+          "role": "OFFICER"
+        },
+        {
+          "name": "Bot 7 🤖",
+          "score": 3900,
+          "role": "CHIEF_DETECTIVE"
+        },
+        {
+          "name": "Bot 8 🤖",
+          "score": 8400,
+          "role": "ACCOMPLICE"
+        }
+      ],
+      "timestamp": "2026-02-05T12:52:42.177Z"
+    },
+    {
+      "roomCode": "VIEY",
+      "players": [
+        {
+          "name": "Bot 1 🤖",
+          "score": 5800,
+          "role": "CULPRIT"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 8900,
+          "role": "FORGER"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 9800,
+          "role": "INFILTRATOR"
+        },
+        {
+          "name": "Bot 4 🤖",
+          "score": 3200,
+          "role": "ANALYST"
+        },
+        {
+          "name": "Bot 5 🤖",
+          "score": 11300,
+          "role": "LAWYER"
+        },
+        {
+          "name": "Bot 6 🤖",
+          "score": 3600,
+          "role": "OFFICER"
+        },
+        {
+          "name": "Bot 7 🤖",
+          "score": 3900,
+          "role": "CHIEF_DETECTIVE"
+        },
+        {
+          "name": "Bot 8 🤖",
+          "score": 8400,
+          "role": "ACCOMPLICE"
+        }
+      ],
+      "timestamp": "2026-02-05T12:52:43.323Z"
+    },
+    {
+      "roomCode": "BKSZ",
+      "players": [
+        {
+          "name": "والعظام",
+          "score": 2740,
+          "role": "FORGER"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 3700,
+          "role": "CHIEF_DETECTIVE"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 8700,
+          "role": "CULPRIT"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 6600,
+          "role": "WITNESS"
+        }
+      ],
+      "timestamp": "2026-02-08T05:57:40.376Z"
+    },
+    {
+      "roomCode": "BKSZ",
+      "players": [
+        {
+          "name": "والعظام",
+          "score": 2740,
+          "role": "FORGER"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 3700,
+          "role": "CHIEF_DETECTIVE"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 8700,
+          "role": "CULPRIT"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 6600,
+          "role": "WITNESS"
+        }
+      ],
+      "timestamp": "2026-02-08T05:57:41.984Z"
+    },
+    {
+      "roomCode": "BKSZ",
+      "players": [
+        {
+          "name": "والعظام",
+          "score": 2740,
+          "role": "FORGER"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 3700,
+          "role": "CHIEF_DETECTIVE"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 8700,
+          "role": "CULPRIT"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 6600,
+          "role": "WITNESS"
+        }
+      ],
+      "timestamp": "2026-02-08T05:57:48.620Z"
+    },
+    {
+      "roomCode": "BKSZ",
+      "players": [
+        {
+          "name": "والعظام",
+          "score": 2740,
+          "role": "FORGER"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 3700,
+          "role": "CHIEF_DETECTIVE"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 8700,
+          "role": "CULPRIT"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 6600,
+          "role": "WITNESS"
+        }
+      ],
+      "timestamp": "2026-02-08T05:57:49.257Z"
+    },
+    {
+      "roomCode": "BKSZ",
+      "players": [
+        {
+          "name": "والعظام",
+          "score": 2740,
+          "role": "FORGER"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 3700,
+          "role": "CHIEF_DETECTIVE"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 8700,
+          "role": "CULPRIT"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 6600,
+          "role": "WITNESS"
+        }
+      ],
+      "timestamp": "2026-02-08T05:57:49.614Z"
     }
   ]
 }

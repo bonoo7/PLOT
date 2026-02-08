@@ -1,720 +1,433 @@
-import React, { useState, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, StatusBar, TouchableOpacity, Platform, Dimensions, ImageBackground } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import MinimalLayout from '../components/minimal/MinimalLayout';
+import MinimalHeader from '../components/minimal/MinimalHeader';
+import MinimalCard from '../components/minimal/MinimalCard';
+import MinimalButton from '../components/minimal/MinimalButton';
 import { theme } from '../styles/theme';
-import { spacing, fonts, moderateScale, borderRadius, getContainerPadding } from '../styles/responsive';
-import { Card, Button } from '../ui';
+import { spacing, fonts, borderRadius, moderateScale } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
 /**
- * شاشة التصويت على جودة السيناريو (Quality Voting)
+ * QualityVotingScreen - V3
  */
 export const QualityVotingScreen = ({ 
   scenarios = [], 
   onVote, 
   hasVoted = false,
-  selectedScenario = null 
+  selectedScenario = null,
+  roleData
 }) => {
   const { isDesktop } = useResponsiveLayout();
-  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
-
   const [selected, setSelected] = useState(selectedScenario);
 
   const handleVote = () => {
-    if (selected !== null) {
-      onVote(selected);
-    }
+    if (selected !== null) onVote(selected);
   };
 
   return (
-    <ImageBackground
-      source={require('../../assets/desk_background_noir.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-        
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.container}>
-            {/* Header */}
-            <View style={styles.stampContainer}>
-              <Text style={styles.stampText}>مرحلة التقييم</Text>
-              <Text style={styles.stampSubtext}>EVALUATION PHASE</Text>
+    <MinimalLayout roleData={roleData}>
+      <View style={[styles.container, { maxWidth: isDesktop ? 1000 : 700 }]}>
+        <MinimalHeader title="التقييم" subtitle="اختر أفضل سيناريو" />
+
+        {/* Scenarios Grid/List - Using ScrollView here as lists can be long, 
+            but kept minimal visuals */}
+        <View style={styles.listContainer}>
+           <ScrollView 
+             showsVerticalScrollIndicator={true}
+             contentContainerStyle={styles.gridContent}
+           >
+             {scenarios.map((scenario, index) => (
+               <TouchableOpacity
+                 key={index}
+                 style={[
+                   styles.voteCard,
+                   selected === index && styles.voteCardSelected,
+                   hasVoted && styles.voteCardDisabled,
+                   isDesktop && styles.voteCardDesktop
+                 ]}
+                 onPress={() => !hasVoted && setSelected(index)}
+                 activeOpacity={0.8}
+                 disabled={hasVoted}
+               >
+                 <View style={styles.cardHeader}>
+                   <Text style={styles.cardIndex}>#{index + 1}</Text>
+                   {selected === index && !hasVoted && <Text style={styles.checkMark}>✓</Text>}
+                 </View>
+                 <Text style={styles.scenarioText}>
+                   {scenario.answer || scenario.text || '...'}
+                 </Text>
+               </TouchableOpacity>
+             ))}
+           </ScrollView>
+        </View>
+
+        <View style={styles.footer}>
+          {hasVoted ? (
+            <View style={styles.statusBadge}>
+              <Text style={styles.statusText}>تم تسجيل صوتك ✅</Text>
             </View>
-
-            {/* Instructions */}
-            <Card style={styles.instructionCard}>
-              <Text style={styles.instructionText}>
-                📋 اقرأ جميع السيناريوهات واختر الأفضل
-              </Text>
-              <Text style={styles.instructionSubtext}>
-                (الأسماء مخفية - اختر بناءً على الجودة فقط)
-              </Text>
-            </Card>
-
-            {/* Scenarios */}
-            {scenarios.map((scenario, index) => (
-              <TouchableOpacity
-                key={index}
-                style={[
-                  styles.scenarioCard,
-                  selected === index && styles.scenarioCardSelected,
-                  hasVoted && styles.scenarioCardDisabled,
-                ]}
-                onPress={() => !hasVoted && setSelected(index)}
-                disabled={hasVoted}
-                activeOpacity={0.7}
-              >
-                <View style={styles.scenarioHeader}>
-                  <Text style={styles.scenarioNumber}>تقرير #{index + 1}</Text>
-                  {selected === index && !hasVoted && (
-                    <Text style={styles.selectedBadge}>✓ محدد</Text>
-                  )}
-                </View>
-                <Text style={styles.scenarioText}>
-                  {scenario.answer || scenario.text || (typeof scenario === 'string' ? scenario : 'لا يوجد نص')}
-                </Text>
-              </TouchableOpacity>
-            ))}
-
-            {/* Vote Button */}
-            <Button
-              title={hasVoted ? "تم التصويت ✓" : "تأكيد التصويت 🗳️"}
+          ) : (
+            <MinimalButton
+              title="تأكيد التصويت"
               onPress={handleVote}
-              disabled={hasVoted || selected === null}
+              disabled={selected === null}
               size="large"
-              fullWidth
-              style={styles.voteButton}
+              style={styles.voteBtn}
             />
-
-            {hasVoted && (
-              <View style={styles.successBox}>
-                <Text style={styles.successText}>
-                  ✅ تم تسجيل صوتك! في انتظار باقي اللاعبين...
-                </Text>
-              </View>
-            )}
-          </View>
-        </ScrollView>
-      </SafeAreaView>
-    </ImageBackground>
+          )}
+        </View>
+      </View>
+    </MinimalLayout>
   );
 };
 
 /**
- * شاشة التصويت على الجاني (Culprit Voting)
+ * CulpritVotingScreen - V3
  */
 export const CulpritVotingScreen = ({ 
   scenarios = [], 
   onVote, 
   hasVoted = false, 
-  selectedCulprit = null 
+  selectedCulprit = null,
+  roleData
 }) => {
   const { isDesktop } = useResponsiveLayout();
-  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
-
   const [selected, setSelected] = useState(selectedCulprit);
 
   const handleVote = () => {
-    if (selected !== null) {
-      onVote(selected);
-    }
+    if (selected !== null) onVote(selected);
   };
 
   return (
-    <ImageBackground
-      source={require('../../assets/desk_background_noir.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={[styles.stampContainer, { backgroundColor: theme.colors.teamEvil }]}>
-            <Text style={styles.stampText}>من الجاني؟</Text>
-            <Text style={styles.stampSubtext}>WHO IS THE CULPRIT?</Text>
-          </View>
+    <MinimalLayout roleData={roleData}>
+      <View style={[styles.container, { maxWidth: isDesktop ? 1000 : 700 }]}>
+        <View style={styles.dangerHeader}>
+           <MinimalHeader title="من الجاني؟" subtitle="اكشف الحقيقة" />
+        </View>
 
-          {/* Instructions */}
-          <Card style={styles.instructionCard}>
-            <Text style={styles.instructionText}>
-              🔍 اقرأ السيناريوهات مع أسماء الكتّاب
-            </Text>
-            <Text style={styles.instructionSubtext}>
-              صوّت على من تعتقد أنه الجاني
-            </Text>
-          </Card>
+        <View style={styles.listContainer}>
+           <ScrollView 
+             showsVerticalScrollIndicator={true}
+             contentContainerStyle={styles.gridContent}
+           >
+             {scenarios.map((scenario, index) => (
+               <TouchableOpacity
+                 key={index}
+                 style={[
+                   styles.voteCard,
+                   selected === index && styles.voteCardSelectedDanger,
+                   hasVoted && styles.voteCardDisabled,
+                   isDesktop && styles.voteCardDesktop
+                 ]}
+                 onPress={() => !hasVoted && setSelected(index)}
+                 activeOpacity={0.8}
+                 disabled={hasVoted}
+               >
+                 <View style={styles.cardHeader}>
+                   <View style={styles.authorBadge}>
+                      <Text style={styles.authorIcon}>👤</Text>
+                      <Text style={styles.authorName}>{scenario.playerName || scenario.author || 'مجهول'}</Text>
+                   </View>
+                   {selected === index && !hasVoted && <Text style={styles.checkMarkDanger}>🎯</Text>}
+                 </View>
+                 <Text style={styles.scenarioText}>
+                   {scenario.answer || scenario.text || '...'}
+                 </Text>
+               </TouchableOpacity>
+             ))}
+           </ScrollView>
+        </View>
 
-          {/* Scenarios with Authors */}
-          {scenarios.map((scenario, index) => (
-            <TouchableOpacity
-              key={index}
-              style={[
-                styles.scenarioCard,
-                selected === index && styles.scenarioCardSelected,
-                hasVoted && styles.scenarioCardDisabled,
-              ]}
-              onPress={() => !hasVoted && setSelected(index)}
-              disabled={hasVoted}
-              activeOpacity={0.7}
-            >
-              <View style={styles.scenarioHeader}>
-                <View style={styles.authorInfo}>
-                  <Text style={styles.authorIcon}>🕵️</Text>
-                  <Text style={styles.authorName}>{scenario.author || scenario.name || 'مجهول'}</Text>
-                </View>
-                {selected === index && !hasVoted && (
-                  <Text style={styles.selectedBadge}>✓ محدد</Text>
-                )}
-              </View>
-              <Text style={styles.scenarioText}>
-                {scenario.answer || scenario.text || (typeof scenario === 'string' ? scenario : 'لا يوجد نص')}
-              </Text>
-            </TouchableOpacity>
-          ))}
-
-          {/* Vote Button */}
-          <Button
-            title={hasVoted ? "تم التصويت ✓" : "اتهم هذا اللاعب 👉"}
-            onPress={handleVote}
-            disabled={hasVoted || selected === null}
-            size="large"
-            fullWidth
-            style={styles.voteButton}
-          />
-
-          {hasVoted && (
-            <View style={styles.successBox}>
-              <Text style={styles.successText}>
-                ✅ تم تسجيل اتهامك! في انتظار النتائج...
-              </Text>
+        <View style={styles.footer}>
+          {hasVoted ? (
+            <View style={[styles.statusBadge, styles.statusBadgeDanger]}>
+              <Text style={styles.statusText}>تم توجيه الاتهام ⚖️</Text>
             </View>
-          )}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  </ImageBackground>
-  );
-};
-
-/**
- * شاشة انتظار العرض الدرامي
- */
-export const WaitingRevealScreen = () => {
-  const { isDesktop } = useResponsiveLayout();
-  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
-
-  return (
-    <ImageBackground
-      source={require('../../assets/desk_background_noir.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.container}>
-          <View style={styles.waitingContainer}>
-          <Text style={styles.waitingEmoji}>🎭</Text>
-          <Text style={styles.waitingTitle}>العرض الدرامي</Text>
-          <Text style={styles.waitingText}>
-            المضيف يعرض النتائج الآن...
-          </Text>
-          <Text style={styles.waitingSubtext}>
-            شاهد الشاشة الرئيسية
-          </Text>
-          </View>
-        </View>
-      </SafeAreaView>
-    </ImageBackground>
-  );
-};
-
-/**
- * شاشة النهاية
- */
-export const EndScreen = ({ results = null, onPlayAgain, onExit }) => {
-  const { isDesktop } = useResponsiveLayout();
-  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
-
-  return (
-    <ImageBackground
-      source={require('../../assets/desk_background_noir.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-        <View style={styles.container}>
-          {/* Trophy */}
-          <Text style={styles.trophyEmoji}>🏆</Text>
-
-          {/* Results Card */}
-          {results && (
-            <Card style={styles.card}>
-              <Text style={styles.resultsTitle}>النتائج النهائية</Text>
-              
-              {results.players && results.players.map((player, index) => (
-                <View key={index} style={styles.resultItem}>
-                  <View style={styles.resultRank}>
-                    <Text style={styles.resultRankText}>#{index + 1}</Text>
-                  </View>
-                  <View style={styles.resultInfo}>
-                    <Text style={styles.resultName}>{player.name}</Text>
-                    <Text style={styles.resultRole}>{player.role}</Text>
-                  </View>
-                  <Text style={styles.resultScore}>{player.score} نقطة</Text>
-                </View>
-              ))}
-            </Card>
-          )}
-
-          {/* Thank You Message */}
-          <Card style={styles.card}>
-            <Text style={styles.thankYouText}>
-              🎉 شكراً لمشاركتك في اللعبة!
-            </Text>
-            <Text style={styles.thankYouSubtext}>
-              نتمنى أن تكون قد استمتعت بالتحقيق
-            </Text>
-          </Card>
-
-          {/* Actions */}
-          <View style={styles.actionsContainer}>
-            {onPlayAgain && (
-              <Button
-                title="لعبة جديدة 🔄"
-                onPress={onPlayAgain}
-                variant="secondary"
-                size="large"
-                fullWidth
-                style={styles.actionButton}
-              />
-            )}
-            <Button
-              title="خروج 🚪"
-              onPress={onExit}
-              variant="outline"
+          ) : (
+            <MinimalButton
+              title="توجيه الاتهام"
+              onPress={handleVote}
+              disabled={selected === null}
+              variant="secondary" // Use danger/secondary color
               size="large"
-              fullWidth
-              style={styles.actionButton}
+              style={styles.voteBtnDanger}
             />
-          </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  </ImageBackground>
-  );
-};
-
-/**
- * شاشة مشاهدة العرض التشويقي للاعب
- */
-export const PlayerDramaticRevealScreen = () => {
-  const { isDesktop } = useResponsiveLayout();
-  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
-
-  return (
-    <ImageBackground
-      source={require('../../assets/desk_background_noir.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-        
-        <View style={styles.centeredContainer}>
-        {/* TV Icon */}
-        <Text style={styles.largeEmoji}>📺</Text>
-
-        {/* Main Message */}
-        <Card style={styles.messageCard}>
-          <Text style={styles.messageTitle}>🎬 العرض التشويقي</Text>
-          <Text style={styles.messageText}>
-            شاهد نتائج التصويت على الشاشة الرئيسية
-          </Text>
-        </Card>
-
-        {/* Waiting Indicator */}
-        <View style={styles.waitingContainer}>
-          <Text style={styles.waitingEmoji}>⏳</Text>
-          <Text style={styles.waitingText}>
-            سيتم الانتقال للتصويت التالي تلقائياً
-          </Text>
-        </View>
-
-        {/* Info Box */}
-        <View style={styles.revealInfoBox}>
-          <Text style={styles.revealInfoIcon}>💡</Text>
-          <Text style={styles.revealInfoText}>
-            تابع الشاشة الرئيسية لرؤية السيناريوهات والأصوات والكتّاب
-          </Text>
+          )}
         </View>
       </View>
-    </SafeAreaView>
-  </ImageBackground>
+    </MinimalLayout>
   );
 };
 
-const getStyles = (isDesktop) => StyleSheet.create({
-  backgroundImage: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#1a1410',
-  },
-  safeArea: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingVertical: isDesktop ? moderateScale(3) : spacing.xl,
-  },
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: getContainerPadding(),
-    alignItems: 'center',
-    maxWidth: isDesktop ? '90%' : 800,
-    alignSelf: 'center',
     width: '100%',
-  },
-
-  // Stamp
-  stampContainer: {
-    backgroundColor: theme.colors.stamp,
-    paddingHorizontal: spacing.xl,
     paddingVertical: spacing.m,
+    gap: spacing.m,
+  },
+  listContainer: {
+    flex: 1,
+    width: '100%',
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    borderRadius: borderRadius.medium,
+    padding: spacing.s,
+  },
+  gridContent: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.s,
+    paddingBottom: spacing.l,
+  },
+  
+  // Vote Card
+  voteCard: {
+    width: '100%', // Mobile: Stack vertically
+    backgroundColor: '#FDF5E6', // Old lace
     borderRadius: borderRadius.small,
-    transform: [{ rotate: '-3deg' }],
-    marginBottom: isDesktop ? moderateScale(2) : spacing.xl,
+    padding: spacing.m,
+    borderWidth: 1,
+    borderColor: '#D2B48C',
+  },
+  voteCardDesktop: {
+    width: '48%', // Desktop: 2 columns
+  },
+  voteCardSelected: {
+    borderColor: theme.colors.primary,
     borderWidth: 2,
-    borderColor: theme.colors.stamp,
-    shadowColor: theme.colors.black,
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
+    backgroundColor: '#FFF',
+    transform: [{ scale: 1.02 }],
   },
-  stampText: {
-    fontSize: isDesktop ? fonts.medium : fonts.xlarge,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '800',
-    color: theme.colors.paper,
-    textAlign: 'center',
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-  },
-  stampSubtext: {
-    fontSize: isDesktop ? moderateScale(7) : fonts.small,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.paper,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-  },
-
-  // Cards
-  card: {
-    width: '100%',
-    maxWidth: isDesktop ? '100%' : 600,
-    marginBottom: isDesktop ? moderateScale(2) : spacing.l,
-    paddingVertical: isDesktop ? moderateScale(4) : undefined,
-  },
-  instructionCard: {
-    width: '100%',
-    maxWidth: isDesktop ? '100%' : 600,
-    marginBottom: isDesktop ? moderateScale(2) : spacing.l,
-    backgroundColor: theme.colors.stickyNote + '20',
-    borderColor: theme.colors.stickyNote,
-  },
-  instructionText: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.xs,
-  },
-  instructionSubtext: {
-    fontSize: isDesktop ? moderateScale(7) : fonts.small,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-  },
-
-  // Scenario Cards
-  scenarioCard: {
-    width: '100%',
-    maxWidth: isDesktop ? '100%' : 600,
-    backgroundColor: theme.colors.paper,
-    borderRadius: borderRadius.small,
-    padding: isDesktop ? moderateScale(3) : spacing.l,
-    marginBottom: isDesktop ? moderateScale(1) : spacing.m,
+  voteCardSelectedDanger: {
+    borderColor: '#FF4444',
     borderWidth: 2,
-    borderColor: '#D4C5A9',
-    shadowColor: theme.colors.black,
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: '#FFF0F0',
+    transform: [{ scale: 1.02 }],
   },
-  scenarioCardSelected: {
-    borderColor: theme.colors.stamp,
-    borderWidth: 3,
-    backgroundColor: theme.colors.stamp + '05',
-  },
-  scenarioCardDisabled: {
+  voteCardDisabled: {
     opacity: 0.6,
   },
-  scenarioHeader: {
+  
+  cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: spacing.m,
+    marginBottom: spacing.xs,
   },
-  scenarioNumber: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.text,
-    textTransform: 'uppercase',
+  cardIndex: {
+    fontFamily: theme.fonts.bold,
+    color: '#8B4513',
   },
-  selectedBadge: {
-    fontSize: isDesktop ? moderateScale(7) : fonts.small,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.stamp,
-    fontWeight: '700',
+  checkMark: {
+    color: theme.colors.primary,
+    fontWeight: 'bold',
+  },
+  checkMarkDanger: {
+    fontSize: 16,
   },
   scenarioText: {
-    fontSize: isDesktop ? fonts.tiny : fonts.regular,
     fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-    lineHeight: fonts.regular * 1.5,
+    fontSize: fonts.small,
+    color: '#333',
+    lineHeight: 20,
   },
-
-  // Author Info
-  authorInfo: {
+  
+  // Author Badge
+  authorBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    paddingHorizontal: spacing.s,
+    paddingVertical: 2,
+    borderRadius: borderRadius.small,
   },
   authorIcon: {
-    fontSize: moderateScale(20),
-    marginRight: spacing.s,
+    fontSize: 12,
+    marginRight: 4,
   },
   authorName: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.main,
-    fontWeight: '700',
-    color: theme.colors.text,
+    fontSize: fonts.tiny,
+    fontFamily: theme.fonts.bold,
+    color: '#555',
   },
-
-  // Vote Button
-  voteButton: {
-    maxWidth: isDesktop ? 400 : 600,
-    width: '100%',
-    marginTop: spacing.m,
-    alignSelf: 'center',
+  
+  // Footer
+  footer: {
+    paddingTop: spacing.s,
   },
-
-  // Success Box
-  successBox: {
-    backgroundColor: theme.colors.teamGood + '20',
-    padding: spacing.l,
-    borderRadius: borderRadius.medium,
-    borderWidth: 1,
-    borderColor: theme.colors.teamGood,
-    marginTop: spacing.l,
-    maxWidth: 600,
-    width: '100%',
-  },
-  successText: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.teamGood,
-    textAlign: 'center',
-  },
-
-  // Waiting Screen
-  waitingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: isDesktop ? moderateScale(3) : spacing.xxl,
-    maxWidth: isDesktop ? '90%' : 800,
-    alignSelf: 'center',
-    width: '100%',
-  },
-  waitingEmoji: {
-    fontSize: moderateScale(80),
-    marginBottom: isDesktop ? moderateScale(2) : spacing.xl,
-  },
-  waitingTitle: {
-    fontSize: isDesktop ? fonts.medium : fonts.title,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.text,
-    marginBottom: spacing.m,
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-  },
-  waitingText: {
-    fontSize: isDesktop ? fonts.small : fonts.large,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.s,
-  },
-  waitingSubtext: {
-    fontSize: isDesktop ? fonts.tiny : fonts.regular,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-  },
-
-  // End Screen
-  trophyEmoji: {
-    fontSize: moderateScale(100),
-    marginBottom: isDesktop ? moderateScale(2) : spacing.xl,
-  },
-  resultsTitle: {
-    fontSize: isDesktop ? fonts.medium : fonts.xxlarge,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.l,
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-  },
-  resultItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  statusBadge: {
+    backgroundColor: theme.colors.primary,
     padding: spacing.m,
-    backgroundColor: theme.colors.background,
-    borderRadius: borderRadius.small,
-    marginBottom: spacing.s,
-  },
-  resultRank: {
-    width: moderateScale(40),
-    height: moderateScale(40),
-    borderRadius: moderateScale(20),
-    backgroundColor: theme.colors.stamp,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.m,
-  },
-  resultRankText: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.paper,
-  },
-  resultInfo: {
-    flex: 1,
-  },
-  resultName: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.main,
-    fontWeight: '700',
-    color: theme.colors.text,
-  },
-  resultRole: {
-    fontSize: isDesktop ? moderateScale(7) : fonts.small,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
-  },
-  resultScore: {
-    fontSize: isDesktop ? fonts.small : fonts.large,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.stickyNote,
-  },
-  thankYouText: {
-    fontSize: isDesktop ? fonts.small : fonts.large,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.s,
-  },
-  thankYouSubtext: {
-    fontSize: isDesktop ? fonts.tiny : fonts.regular,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-  },
-  actionsContainer: {
-    width: '100%',
-    maxWidth: 400,
-    alignSelf: 'center',
-  },
-  actionButton: {
-    marginBottom: spacing.m,
-  },
-
-  // Player Dramatic Reveal Screen
-  centeredContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: getContainerPadding(),
-  },
-  largeEmoji: {
-    fontSize: moderateScale(120),
-    marginBottom: spacing.xxl,
-  },
-  messageCard: {
-    width: '100%',
-    maxWidth: isDesktop ? '100%' : 500,
-    padding: isDesktop ? moderateScale(6) : spacing.xxl,
-    alignItems: 'center',
-    marginBottom: isDesktop ? moderateScale(2) : spacing.xl,
-  },
-  messageTitle: {
-    fontSize: isDesktop ? fonts.medium : fonts.xxlarge,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.text,
-    textAlign: 'center',
-    marginBottom: spacing.m,
-    textTransform: 'uppercase',
-  },
-  messageText: {
-    fontSize: isDesktop ? fonts.small : fonts.large,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-    textAlign: 'center',
-    lineHeight: fonts.large * 1.5,
-  },
-  revealInfoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.stickyNote + '20',
-    padding: isDesktop ? moderateScale(3) : spacing.l,
     borderRadius: borderRadius.medium,
-    borderWidth: 1,
-    borderColor: theme.colors.stickyNote,
-    maxWidth: isDesktop ? '100%' : 500,
-    width: '100%',
+    alignItems: 'center',
   },
-  revealInfoIcon: {
-    fontSize: moderateScale(24),
-    marginLeft: spacing.m,
+  statusBadgeDanger: {
+    backgroundColor: '#8B0000',
   },
-  revealInfoText: {
-    flex: 1,
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
+  statusText: {
+    color: '#FFF',
+    fontFamily: theme.fonts.bold,
+    fontSize: fonts.medium,
   },
+  voteBtn: {
+    backgroundColor: theme.colors.primary,
+  },
+  voteBtnDanger: {
+    backgroundColor: '#8B0000', // Dark Red
+    borderColor: '#FF0000',
+  },
+  dangerHeader: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,0,0,0.3)',
+    paddingBottom: spacing.s,
+  }
 });
+
+/**
+ * WaitingRevealScreen - V3
+ */
+export const WaitingRevealScreen = ({ message = "انتظر قليلاً...", roleData }) => {
+    return (
+      <MinimalLayout roleData={roleData}>
+        <View style={styles.centerContainer}>
+            <Text style={styles.waitingTitle}>⏳</Text>
+            <Text style={styles.waitingText}>{message}</Text>
+        </View>
+      </MinimalLayout>
+    );
+};
+
+/**
+ * EndScreen - V3
+ */
+export const EndScreen = ({ results, onRestart }) => {
+    return (
+        <MinimalLayout>
+           <View style={styles.centerContainer}>
+              <MinimalHeader title="النهاية" subtitle="نتيجة اللعبة" />
+              <View style={styles.resultBox}>
+                  {/* Simplistic result display for now */}
+                  <Text style={styles.resultText}>انتهت اللعبة!</Text>
+              </View>
+              <MinimalButton title="عودة للرئيسية" onPress={onRestart} />
+           </View>
+        </MinimalLayout>
+    );
+};
+
+/**
+ * PlayerDramaticRevealScreen - V3
+ */
+export const PlayerDramaticRevealScreen = ({ revealedRole, roleData }) => {
+    return (
+        <MinimalLayout roleData={roleData}>
+             <View style={styles.centerContainer}>
+                 <Text style={styles.dramaTitle}>⚠️</Text>
+                 <Text style={styles.dramaText}>كشف الحقائق...</Text>
+             </View>
+        </MinimalLayout>
+    );
+};
+
+/**
+ * PlayerResultsScreen - V3
+ */
+export const PlayerResultsScreen = ({ results, roleData }) => {
+    if (!results) return <WaitingRevealScreen message="جاري حساب النتائج..." roleData={roleData} />;
+
+    const { winner, reason, eliminatedPlayer, scores } = results;
+    
+    // Detailed Eliminated Info
+    const detailedEliminated = scores?.find(p => p.isEliminated);
+    const eliminatedTeam = detailedEliminated ? detailedEliminated.teamName : '';
+    const eliminatedRole = detailedEliminated ? detailedEliminated.role : '';
+
+    // Determine Color & Title
+    let bgColor = '#444';
+    let title = 'نهاية الجولة';
+    let emoji = '🏁';
+    
+    if (winner === 'JUSTICE') {
+        bgColor = '#1E90FF';
+        title = 'فاز فريق العدالة!';
+        emoji = '⚖️';
+    } else if (winner === 'CRIME') {
+        bgColor = '#8B0000';
+        title = 'فاز فريق الجريمة!';
+        emoji = '🕵️‍♂️';
+    } else if (winner === 'CONTINUE') {
+        bgColor = '#FFA500'; // Orange
+        title = 'اللعبة مستمرة...';
+        emoji = '🔄';
+    }
+
+    return (
+        <MinimalLayout roleData={roleData}>
+             <View style={styles.centerContainer}>
+                 <View style={[styles.resultBox, { backgroundColor: bgColor }]}>
+                     <Text style={styles.dramaTitle}>{emoji}</Text>
+                     <Text style={[styles.dramaText, { color: '#FFF' }]}>{title}</Text>
+                     
+                     {eliminatedPlayer && (
+                         <View style={{ marginTop: 20, padding: 10, backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 8, alignItems: 'center' }}>
+                             <Text style={[styles.waitingText, { fontWeight: 'bold' }]}>
+                                 تم استبعاد: {eliminatedPlayer.name}
+                             </Text>
+                             
+                             <View style={{flexDirection: 'row', gap: 5, marginTop: 5}}>
+                                <Text style={{ color: '#FFD700', fontWeight: 'bold' }}>{eliminatedTeam}</Text>
+                                {detailedEliminated && detailedEliminated.isCulprit && (
+                                    <Text style={{ color: '#FF6347' }}>- {eliminatedRole}</Text>
+                                )}
+                             </View>
+                         </View>
+                     )}
+
+                     <Text style={[styles.waitingText, { marginTop: 15, textAlign: 'center', fontSize: 14 }]}>{reason}</Text>
+                 </View>
+                 
+                 <Text style={styles.waitingText}>انتظر تعليمات المضيف...</Text>
+             </View>
+        </MinimalLayout>
+    );
+};
+
+// Add these new styles to the StyleSheet
+const extraStyles = {
+    centerContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+        gap: spacing.l,
+    },
+    waitingTitle: {
+        fontSize: 48,
+    },
+    waitingText: {
+        fontFamily: theme.fonts.main,
+        fontSize: fonts.large,
+        color: '#EBE1D2',
+    },
+    resultBox: {
+        padding: spacing.xl,
+        backgroundColor: 'rgba(0,0,0,0.3)',
+        borderRadius: borderRadius.medium,
+        width: '100%',
+        alignItems: 'center',
+    },
+    resultText: {
+        color: '#FFF',
+        fontSize: fonts.large,
+        fontFamily: theme.fonts.bold,
+    },
+    dramaTitle: {
+        fontSize: 64,
+    },
+    dramaText: {
+        color: '#FF4444',
+        fontSize: fonts.xlarge,
+        fontFamily: theme.fonts.bold,
+    },
+};
+
+Object.assign(styles, extraStyles);

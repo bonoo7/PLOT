@@ -127,14 +127,12 @@ function startDraftingPhase(roomCode) {
         }
     }, 1000);
 
-    // 🎁 قدرة المزور - التركيب الذكي: كلمة رابعة بعد 60 ثانية
-    const forger = room.players.find(p => p.role === ROLE_TYPES.FORGER || p.role === 'ARCHITECT');
-    if (forger && room.currentScenario.keywords.length >= 4) {
-        setTimeout(() => {
-            const fourthKeyword = room.currentScenario.keywords[3];
-            io.to(forger.id).emit('forgerBonus', { keyword: fourthKeyword });
-            console.log(`✨ قدرة المزور: تم إرسال الكلمة الرابعة "${fourthKeyword}" لـ ${forger.name}`);
-        }, 30000); // بعد 30 ثانية (معدّل من 60 لأن المدة الكلية 90)
+    // Witness Flash Memory (V4)
+    const witness = room.players.find(p => p.role === ROLE_TYPES.WITNESS);
+    if (witness) {
+        io.to(witness.id).emit('witnessFlash', { 
+            keywords: room.currentScenario.keywords 
+        });
     }
 
     // Handle Bots - مع تأخير متدرج لتجنب Rate Limit
@@ -306,7 +304,7 @@ function startDramaticReveal(roomCode) {
                 step: 'SCENARIO',
                 data: {
                     index: scenario.index,
-                    answer: scenario.answer,
+                    text: scenario.answer,
                     position: idx + 1,
                     total: scenariosWithVotes.length
                 }
@@ -333,7 +331,7 @@ function startDramaticReveal(roomCode) {
                 step: 'AUTHOR',
                 data: {
                     index: scenario.index,
-                    authorName: scenario.playerName
+                    author: scenario.playerName
                 }
             });
         }, currentDelay);
@@ -357,10 +355,46 @@ function startDramaticReveal(roomCode) {
         currentDelay += 3000;
     }
 
-    // بعد انتهاء العرض: بدء المرحلة الثانية
+    // بعد انتهاء العرض: بدء مرحلة النقاش (بدلاً من التصويت على الجاني مباشرة)
     setTimeout(() => {
-        startCulpritVoting(roomCode);
+        startDiscussion(roomCode);
     }, currentDelay + 1000);
+}
+
+// ============================================
+// 🗣️ DISCUSSION PHASE
+// ============================================
+function startDiscussion(roomCode) {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    room.state = 'DISCUSSION';
+
+    // 🕵️‍♂️ RESOLVE DETECTIVE & SABOTEUR ABILITIES
+    const detective = room.players.find(p => p.role === ROLE_TYPES.DETECTIVE);
+    if (detective && detective.investigatedTarget) {
+        const target = room.players.find(p => p.id === detective.investigatedTarget);
+        if (target) {
+            let roleInfo = getRoleInfo(target.role);
+            let resultTeam = roleInfo ? roleInfo.team : TEAMS.JUSTICE;
+            
+            // Check Sabotage (Misdirection)
+            // If target was sabotaged, flip the result
+            if (target.sabotagedBy) {
+                // If Crime -> Justice, If Justice -> Crime
+                resultTeam = (resultTeam === TEAMS.CRIME) ? TEAMS.JUSTICE : TEAMS.CRIME;
+                console.log(`Sabotage Effect: ${target.name} team flipped to ${resultTeam}`);
+            }
+
+            io.to(detective.id).emit('detectiveResult', {
+                targetName: target.name,
+                resultTeam: resultTeam,
+                teamName: (resultTeam === TEAMS.CRIME) ? 'فريق الجريمة' : 'فريق العدالة'
+            });
+        }
+    }
+
+    io.to(roomCode).emit('discussionStarted');
 }
 
 // ============================================
@@ -431,18 +465,94 @@ function checkCulpritVotingComplete(roomCode) {
     console.log(`🔍 Culprit Voting: ${votesReceived}/${totalPlayers} votes received`);
     
     if (votesReceived === totalPlayers) {
-        console.log(`✅ All votes received, ending round...`);
-        endRound(roomCode);
+        console.log(`✅ All votes received, processing result...`);
+        handleVotingResult(roomCode);
     }
 }
 
-function calculateScores(room) {
+function handleVotingResult(roomCode) {
+    const room = rooms[roomCode];
+    // Count votes
+    const counts = {};
+    Object.values(room.culpritVotes).forEach(targetId => {
+        counts[targetId] = (counts[targetId] || 0) + 1;
+    });
+
+    // Find max
+    let maxVotes = 0;
+    let candidates = [];
+    Object.entries(counts).forEach(([id, count]) => {
+        if (count > maxVotes) {
+            maxVotes = count;
+            candidates = [id];
+        } else if (count === maxVotes) {
+            candidates.push(id);
+        }
+    });
+
+    // Handle Tie
+    if (candidates.length > 1) {
+        if (!room.isReVote) {
+             room.isReVote = true;
+             // Reset votes
+             room.culpritVotes = {};
+             io.to(roomCode).emit('votingTie', { candidates });
+             startDiscussion(roomCode);
+             return;
+        } else {
+             // Tie again -> Crime Wins
+             endRound(roomCode, { winner: TEAMS.CRIME, reason: 'TIE_BREAK' }); 
+             return;
+        }
+    }
+
+    const eliminatedId = candidates[0];
+    const eliminatedPlayer = room.players.find(p => p.id === eliminatedId);
+    const roleInfo = getRoleInfo(eliminatedPlayer.role);
+    
+    if (eliminatedPlayer.role === ROLE_TYPES.CULPRIT) {
+        // Justice Wins
+        endRound(roomCode, { 
+            winner: TEAMS.JUSTICE, 
+            reason: 'تم القبض على الجاني!',
+            eliminatedPlayer: {
+                name: eliminatedPlayer.name,
+                roleName: getRoleName(eliminatedPlayer.role)
+            }
+        });
+    } else if (roleInfo.team === TEAMS.JUSTICE) {
+        // Crime Wins
+        endRound(roomCode, { 
+            winner: TEAMS.CRIME, 
+            reason: `تم القضاء على ${eliminatedPlayer.name} (عضو في فريق العدالة)!`, 
+            victim: eliminatedPlayer.name,
+            eliminatedPlayer: {
+                name: eliminatedPlayer.name,
+                roleName: getRoleName(eliminatedPlayer.role)
+            }
+        });
+    } else if (roleInfo.team === TEAMS.CRIME) {
+        // Crime Member (not Culprit) -> Continue
+        eliminatedPlayer.isEliminated = true;
+        
+        // End round with CONTINUE status so players see who was eliminated
+        endRound(roomCode, { 
+            winner: 'CONTINUE', 
+            reason: 'تم استبعاد عضو من عصابة الجريمة، لكنه ليس الجاني!', 
+            eliminatedPlayer: { 
+                name: eliminatedPlayer.name, 
+                roleName: getRoleName(eliminatedPlayer.role) 
+            } 
+        });
+    }
+}
+
+function calculateScores(room, result) {
     const scores = {};
-    const breakdown = {};  // تفصيل النقاط لكل لاعب
+    const breakdown = {};
     const teamScores = {
         [TEAMS.CRIME]: 0,
-        [TEAMS.INVESTIGATION]: 0,
-        [TEAMS.NEUTRAL]: 0
+        [TEAMS.JUSTICE]: 0
     };
 
     // Initialize for all players
@@ -451,260 +561,82 @@ function calculateScores(room) {
         breakdown[p.id] = [];
     });
 
-    // Find key roles using new role IDs (with fallback to old ones)
-    const culprit = room.players.find(p => p.role === ROLE_TYPES.CULPRIT || p.role === 'WITNESS');
-    const forger = room.players.find(p => p.role === ROLE_TYPES.FORGER || p.role === 'ARCHITECT');
-    const chiefDetective = room.players.find(p => p.role === ROLE_TYPES.CHIEF_DETECTIVE || p.role === 'DETECTIVE');
-    const infiltrator = room.players.find(p => p.role === ROLE_TYPES.INFILTRATOR || p.role === 'SPY');
-    const accomplice = room.players.find(p => p.role === ROLE_TYPES.ACCOMPLICE || p.role === 'ACCOMPLICE');
-    const lawyer = room.players.find(p => p.role === ROLE_TYPES.LAWYER || p.role === 'LAWYER');
-    const saboteur = room.players.find(p => p.role === ROLE_TYPES.SABOTEUR || p.role === 'TRICKSTER');
-
-    // ============================================
-    // 1. نقاط أصوات الجودة (Quality Votes)
-    // ============================================
-    // حساب عدد الأصوات لكل سيناريو
-    const qualityVoteCounts = {}; // { scenarioIndex: count }
-    
+    // 1. Quality Votes (نقاط جودة السيناريو)
+    const qualityVoteCounts = {}; 
     room.players.forEach((player, index) => {
         qualityVoteCounts[index] = 0;
     });
 
-    Object.values(room.qualityVotes).forEach(scenarioIndex => {
-        qualityVoteCounts[scenarioIndex]++;
-    });
-
-    // منح النقاط لكل لاعب حسب عدد أصوات الجودة
-    room.players.forEach((player, index) => {
-        const count = qualityVoteCounts[index] || 0;
-        if (count > 0) {
-            const points = count * 200; // 200 نقطة لكل صوت جودة
-            scores[player.id] += points;
-            breakdown[player.id].push(`✨ جودة السيناريو: +${points} (${count} × 200)`);
-        }
-    });
-
-    // نقاط الكتابة في الوقت المناسب (+100 لكل من أرسل)
-    room.players.forEach(p => {
-        if (room.answers[p.id]) {
-            scores[p.id] += 100;
-            breakdown[p.id].push(`⏰ كتابة في الوقت: +100`);
-        }
-    });
-
-    // ============================================
-    // 2. تحليل أصوات الجاني (Culprit Votes)
-    // ============================================
-    const culpritVoteCounts = {}; // { playerId: count }
-    
-    room.players.forEach(p => {
-        culpritVoteCounts[p.id] = 0;
-    });
-
-    Object.values(room.culpritVotes).forEach(playerId => {
-        culpritVoteCounts[playerId]++;
-    });
-
-    // تحديد من حصل على أكثر الأصوات
-    const totalPlayers = room.players.length;
-    const culpritVotes = culpritVoteCounts[culprit?.id] || 0;
-    const culpritCaught = culprit && culpritVotes >= (totalPlayers / 2); // 50% أو أكثر
-
-    // ============================================
-    // 3. منطق فوز/خسارة الفرق
-    // ============================================
-    let crimeTeamWon = false;
-    let investigationTeamWon = false;
-
-    // تحديد الفريق الفائز (بناءً على الأغلبية)
-    if (culpritCaught) {
-        investigationTeamWon = true;
-        breakdown[culprit.id] = breakdown[culprit.id] || [];
-        breakdown[culprit.id].push(`🚨 تم القبض عليك من المحقق!`);
-    } else if (!culpritCaught) {
-        crimeTeamWon = true;
-        breakdown[culprit.id] = breakdown[culprit.id] || [];
-        breakdown[culprit.id].push(`✅ نجوت من الاتهام!`);
-    }
-
-    // ============================================
-    // 4. مكافآت ومعاقبات الفرق
-    // ============================================
-    if (crimeTeamWon) {
-        const crimeMembers = room.players.filter(p => {
-            const roleInfo = getRoleInfo(p.role);
-            return roleInfo && roleInfo.team === TEAMS.CRIME;
+    if (room.qualityVotes) {
+        Object.values(room.qualityVotes).forEach(scenarioIndex => {
+            qualityVoteCounts[scenarioIndex]++;
         });
 
-        // مكافأة جماعية للفريق (+2500 لكل عضو)
-        crimeMembers.forEach(p => {
-            scores[p.id] += 2500;
-            breakdown[p.id].push(`🔴 فوز فريق الجريمة: +2500`);
-            teamScores[TEAMS.CRIME] += 2500;
-        });
-
-        // مكافأة الجاني (إضافية)
-        if (culprit) {
-            scores[culprit.id] += 500;
-            breakdown[culprit.id].push(`🎭 الجاني نجا: +500 إضافية`);
-        }
-
-        // مكافأة المزور إذا تفوق على الجاني (في Quality Votes)
-        const culpritQualityVotes = qualityVoteCounts[room.players.findIndex(p => p.id === culprit?.id)] || 0;
-        const forgerIndex = room.players.findIndex(p => p.id === forger?.id);
-        const forgerQualityVotes = qualityVoteCounts[forgerIndex] || 0;
-        
-        if (forger && forgerQualityVotes >= culpritQualityVotes && forgerQualityVotes > 0) {
-            scores[forger.id] += 2000;
-            breakdown[forger.id].push(`🧩 المزور تفوق: +2000 (${forgerQualityVotes} أصوات)`);
-            
-            // مكافأة للفريق
-            crimeMembers.forEach(p => {
-                if (p.id !== forger.id) {
-                    scores[p.id] += 500;
-                    breakdown[p.id].push(`🧩 المزور نجح: +500`);
-                }
-            });
-        }
-    } else if (investigationTeamWon) {
-        // عقوبة فريق الجريمة
-        const crimeMembers = room.players.filter(p => {
-            const roleInfo = getRoleInfo(p.role);
-            return roleInfo && roleInfo.team === TEAMS.CRIME;
-        });
-
-        // الجاني يخسر 60%
-        if (culprit) {
-            const culpritScore = scores[culprit.id];
-            const penalty = Math.floor(culpritScore * 0.6);
-            scores[culprit.id] -= penalty;
-            breakdown[culprit.id].push(`❌ تم القبض عليك: -60% (-${penalty} نقطة)`);
-        }
-
-        // الشريك يخسر 30%
-        if (accomplice) {
-            const accompliceScore = scores[accomplice.id];
-            const penalty = Math.floor(accompliceScore * 0.3);
-            scores[accomplice.id] -= penalty;
-            breakdown[accomplice.id].push(`⚠️ فشل في حماية الجاني: -30% (-${penalty} نقطة)`);
-        }
-    }
-
-    // ============================================
-    // 5. مكافآت فريق التحقيق
-    // ============================================
-    if (investigationTeamWon) {
-        const investigationMembers = room.players.filter(p => {
-            const roleInfo = getRoleInfo(p.role);
-            return roleInfo && roleInfo.team === TEAMS.INVESTIGATION;
-        });
-
-        // مكافأة جماعية للفريق (+2000 لكل عضو)
-        investigationMembers.forEach(p => {
-            scores[p.id] += 2000;
-            breakdown[p.id].push(`🔵 فوز فريق التحقيق: +2000`);
-            teamScores[TEAMS.INVESTIGATION] += 2000;
-        });
-
-        // مكافأة المحقق الرئيسي إذا صوّت للجاني الصحيح (+500)
-        if (chiefDetective && room.culpritVotes[chiefDetective.id] === culprit?.id) {
-            scores[chiefDetective.id] += 500;
-            breakdown[chiefDetective.id].push(`🎯 المحقق صوّت صح: +500 إضافية`);
-        }
-    } else if (crimeTeamWon) {
-        // لا عقوبة على المحقق (الأغلبية هي من فشلت)
-    }
-
-    // نقاط استنتاج عامة (لجميع اللاعبين الذين صوّتوا صح)
-    room.players.forEach(p => {
-        if (room.culpritVotes[p.id] === culprit?.id) {
-            // لا نعطي نقاط إضافية هنا لأن الفوز الجماعي يعطي مكافأة للفريق
-            // لكن يمكن إضافة نقاط صغيرة للتشجيع
-            if (p.id !== chiefDetective?.id) { // المحقق أخذ مكافأته
-                scores[p.id] += 100;
-                breakdown[p.id].push(`✅ صوّت للجاني الصحيح: +100`);
+        room.players.forEach((player, index) => {
+            const count = qualityVoteCounts[index] || 0;
+            if (count > 0) {
+                const points = count * 200;
+                scores[player.id] += points;
+                breakdown[player.id].push(`✨ جودة السيناريو: +${points} (${count} × 200)`);
             }
-        }
-    });
-
-    // ============================================
-    // 6. مكافآت خاصة للأدوار
-    // ============================================
-
-    // المحامي - حماية الموكل
-    if (lawyer && lawyer.lawyerClient) {
-        const clientVotes = culpritVoteCounts[lawyer.lawyerClient] || 0;
-        if (clientVotes === 0 || !culpritCaught) {
-            scores[lawyer.id] += 1500;
-            breakdown[lawyer.id].push(`⚖️ حماية الموكل: +1500`);
-        }
+        });
     }
 
-    // المخترق - تقليد الجاني (Quality Votes)
-    const infiltratorIndex = room.players.findIndex(p => p.id === infiltrator?.id);
-    const culpritIndex = room.players.findIndex(p => p.id === culprit?.id);
-    
-    const infiltratorVotes = qualityVoteCounts[infiltratorIndex] || 0;
-    const culpritQualityVotes = qualityVoteCounts[culpritIndex] || 0;
-    
-    if (infiltrator && Math.abs(infiltratorVotes - culpritQualityVotes) <= 1 && infiltratorVotes > 0) {
-        scores[infiltrator.id] += 1500;
-        breakdown[infiltrator.id].push(`🕵️ تقليد ممتاز: +1500 (${infiltratorVotes} أصوات)`);
-    }
-
-    // المخرب - الفوضى الإبداعية (Quality Votes)
-    const saboteurIndex = room.players.findIndex(p => p.id === saboteur?.id);
-    const saboteurVotes = qualityVoteCounts[saboteurIndex] || 0;
-    
-    if (saboteur && saboteurVotes >= 2) {
-        scores[saboteur.id] += 3000;
-        breakdown[saboteur.id].push(`😈 الفوضى الناجحة: +3000 (${saboteurVotes} أصوات)`);
+    // 2. Win/Loss Logic (Result based)
+    if (result) {
+        const winnerTeam = result.winner;
         
-        // مكافأة إضافية إذا لم يكتشف
-        if (identityVotes[saboteur.id] === 0) {
-            scores[saboteur.id] += 1500;
-            breakdown[saboteur.id].push(`😈 لم يكتشف: +1500`);
+        // Team Win Bonus
+        room.players.forEach(p => {
+            const roleInfo = getRoleInfo(p.role);
+            if (roleInfo && roleInfo.team === winnerTeam) {
+                const bonus = 2000;
+                scores[p.id] += bonus;
+                breakdown[p.id].push(`🏆 فوز الفريق: +${bonus}`);
+                teamScores[winnerTeam] += bonus;
+            }
+        });
+
+        // Culprit Bonus
+        if (winnerTeam === TEAMS.CRIME) {
+            const culprit = room.players.find(p => p.role === ROLE_TYPES.CULPRIT);
+            if (culprit) {
+                scores[culprit.id] += 2500;
+                breakdown[culprit.id].push(`🎭 نجاة الجاني: +2500`);
+            }
+        } else if (winnerTeam === TEAMS.JUSTICE) {
+             const culprit = room.players.find(p => p.role === ROLE_TYPES.CULPRIT);
+             if (culprit) {
+                 scores[culprit.id] -= 1000; // Penalty?
+                 breakdown[culprit.id].push(`👮 تم القبض عليك: -1000`);
+             }
         }
     }
-
-    // استخدام القدرات بنجاح (+300)
-    room.players.forEach(p => {
-        if (room.abilitiesUsed && room.abilitiesUsed[p.id]) {
-            scores[p.id] += 300;
-            breakdown[p.id].push(`⚡ استخدام قدرة: +300`);
-        }
-    });
-
-    // Add 0 score note for players with no breakdown
-    room.players.forEach(p => {
-        if (!breakdown[p.id] || breakdown[p.id].length === 0) {
-            if (!breakdown[p.id]) breakdown[p.id] = [];
-            breakdown[p.id].push(`لم يحصل على نقاط إضافية`);
-        }
-    });
 
     return { 
         scores, 
-        breakdown,
-        teamScores,
-        crimeTeamWon,
-        investigationTeamWon,
-        culpritCaught // تم تعريفه في السطر 475
+        breakdown, 
+        teamScores, 
+        crimeTeamWon: result ? result.winner === TEAMS.CRIME : false, 
+        investigationTeamWon: result ? result.winner === TEAMS.JUSTICE : false,
+        culpritCaught: result ? result.winner === TEAMS.JUSTICE : false
     };
 }
 
-function endRound(roomCode) {
+function endRound(roomCode, result) {
     const room = rooms[roomCode];
     if (!room) return;
 
-    const { scores: roundScores, breakdown, teamScores, crimeTeamWon, investigationTeamWon, culpritCaught } = calculateScores(room);
+    room.roundOutcome = result.winner; // Save outcome for Next Round Logic
+
+    const { scores: roundScores, breakdown, teamScores, crimeTeamWon, investigationTeamWon, culpritCaught } = calculateScores(room, result);
 
     // Update total scores
     room.players.forEach(p => {
         p.score += (roundScores[p.id] || 0);
     });
 
-    // حساب أعضاء الفرق
+    // Get members
     const crimeMembers = room.players.filter(p => {
         const roleInfo = getRoleInfo(p.role);
         return roleInfo && roleInfo.team === TEAMS.CRIME;
@@ -712,11 +644,10 @@ function endRound(roomCode) {
     
     const investigationMembers = room.players.filter(p => {
         const roleInfo = getRoleInfo(p.role);
-        return roleInfo && roleInfo.team === TEAMS.INVESTIGATION;
+        return roleInfo && roleInfo.team === TEAMS.JUSTICE;
     });
 
     const results = room.players.map(p => {
-        // Ensure breakdown is valid
         let playerBreakdown = breakdown[p.id];
         if (!playerBreakdown || !Array.isArray(playerBreakdown) || playerBreakdown.length === 0) {
             playerBreakdown = ["لم يحصل على نقاط إضافية"];
@@ -728,24 +659,30 @@ function endRound(roomCode) {
             name: p.name,
             role: getRoleName(p.role),
             roleId: p.role,
-            team: roleInfo ? roleInfo.team : TEAMS.NEUTRAL,
-            teamName: roleInfo && roleInfo.team === TEAMS.CRIME ? 'فريق الجريمة' : 
-                     roleInfo && roleInfo.team === TEAMS.INVESTIGATION ? 'فريق التحقيق' : 'محايد',
+            team: roleInfo ? roleInfo.team : TEAMS.JUSTICE,
+            teamName: roleInfo && roleInfo.team === TEAMS.CRIME ? 'فريق الجريمة' : 'فريق العدالة',
             roundScore: roundScores[p.id] || 0,
             totalScore: p.score,
-            breakdown: playerBreakdown
+            breakdown: playerBreakdown,
+            // Reveal info if they were the eliminated one or it's the culprit
+            isEliminated: result && result.eliminatedPlayer && result.eliminatedPlayer.name === p.name,
+            isCulprit: p.role === ROLE_TYPES.CULPRIT
         };
     }).sort((a, b) => b.totalScore - a.totalScore);
 
-    // إرسال النتائج مع معلومات الفريق
+    // Send Results
     io.to(roomCode).emit('roundResults', { 
+        winner: result ? result.winner : null,
         results,
         teamScores,
         crimeTeamWon,
         investigationTeamWon,
         culpritCaught,
-        crimeMembers: crimeMembers.map(p => ({ name: p.name, score: p.score })),
-        investigationMembers: investigationMembers.map(p => ({ name: p.name, score: p.score }))
+        crimeMembers: crimeMembers.map(p => ({ id: p.id, name: p.name, score: p.score, roleName: getRoleName(p.role) })),
+        investigationMembers: investigationMembers.map(p => ({ id: p.id, name: p.name, score: p.score, roleName: getRoleName(p.role) })),
+        reason: result ? result.reason : null,
+        victim: result ? result.victim : null,
+        eliminatedPlayer: result ? result.eliminatedPlayer : null
     });
     room.state = 'RESULTS';
 }
@@ -761,6 +698,22 @@ io.on('connection', (socket) => {
     
     socket.on('connect_error', (error) => {
         console.error('❌ Connection error:', socket.id, error);
+    });
+
+    // Discussion Controls
+    socket.on('setSpeaker', ({ roomCode, playerId }) => {
+        const room = rooms[roomCode];
+        if (!room) return;
+
+        io.to(roomCode).emit('speakerUpdated', { playerId });
+    });
+
+    socket.on('endDiscussion', ({ roomCode }) => {
+        const room = rooms[roomCode];
+        if (!room) return;
+
+        // Transition to Culprit Voting
+        startCulpritVoting(roomCode);
     });
 
     // Host creates a room
@@ -881,6 +834,7 @@ io.on('connection', (socket) => {
                 room.isTutorial = true;
                 room.totalRounds = 1;
                 player.role = desiredRole;
+                player.preferredRole = desiredRole; // Persist preference
 
                 // Add player first
                 room.players.push(player);
@@ -1139,72 +1093,58 @@ io.on('connection', (socket) => {
 
         room.usedScenarios.push(room.currentScenario.id);
 
-        // Assign Roles (NEW SYSTEM - Teams)
+        // Assign Roles (V4 - Team System)
         let shuffledPlayers = [...room.players].sort(() => 0.5 - Math.random());
-        const rolesForCount = getRolesForPlayerCount(shuffledPlayers.length);
+        let rolesForCount = [...getRolesForPlayerCount(shuffledPlayers.length)];
         
-        // Shuffle roles
-        let shuffledRoles = [...rolesForCount].sort(() => 0.5 - Math.random());
-
-        // Handle Tutorial Forced Role
-        if (room.isTutorial && room.tutorialData) {
-            const { userId, role } = room.tutorialData;
-            const targetPlayerIndex = shuffledPlayers.findIndex(p => p.id === userId);
-
-            if (targetPlayerIndex !== -1) {
-                // Remove target player from shuffle list temporarily
-                const targetPlayer = shuffledPlayers[targetPlayerIndex];
-                shuffledPlayers.splice(targetPlayerIndex, 1);
-
-                // Assign role to target player
-                targetPlayer.role = role;
-
-                // Remove that role from available roles
-                const roleIndex = shuffledRoles.indexOf(role);
-                if (roleIndex !== -1) {
-                    shuffledRoles.splice(roleIndex, 1);
+        // 1️⃣ Assign Preferred Roles first
+        shuffledPlayers.forEach(p => {
+            if (p.preferredRole) {
+                p.role = p.preferredRole;
+                
+                // Remove from pool if exists, otherwise remove least important role
+                const index = rolesForCount.indexOf(p.preferredRole);
+                if (index !== -1) {
+                    rolesForCount.splice(index, 1);
                 } else {
-                    shuffledRoles.shift();
+                    rolesForCount.pop(); // Remove last added role (least important)
                 }
-
-                // Assign roles to others
-                shuffledPlayers.forEach((player, index) => {
-                    player.role = shuffledRoles[index];
-                });
-
-                // Add target player back
-                shuffledPlayers.push(targetPlayer);
-            } else {
-                // Fallback if player not found
-                shuffledPlayers.forEach((player, index) => {
-                    player.role = shuffledRoles[index];
-                });
             }
-        } else {
-            // Standard Assignment
-            shuffledPlayers.forEach((player, index) => {
-                player.role = shuffledRoles[index];
-            });
-        }
+        });
 
-        // Find special roles for relationship logic
-        const culpritPlayer = shuffledPlayers.find(p => p.role === ROLE_TYPES.CULPRIT);
-        const accomplicePlayer = shuffledPlayers.find(p => p.role === ROLE_TYPES.ACCOMPLICE);
-        const lawyerPlayer = shuffledPlayers.find(p => p.role === ROLE_TYPES.LAWYER);
+        // 2️⃣ Shuffle remaining roles
+        rolesForCount.sort(() => 0.5 - Math.random());
 
-        // Assign Lawyer's Client (if Lawyer exists)
-        if (lawyerPlayer) {
-            // Pick a random player from Crime team (excluding Lawyer himself)
-            const crimeTeamMembers = shuffledPlayers.filter(p => {
-                const roleInfo = getRoleInfo(p.role);
-                return roleInfo && roleInfo.team === TEAMS.CRIME && p.id !== lawyerPlayer.id;
-            });
+        // 3️⃣ Assign remaining roles to players without role
+        let roleIndex = 0;
+        shuffledPlayers.forEach((player) => {
+            if (!player.preferredRole) {
+                player.role = rolesForCount[roleIndex];
+                roleIndex++;
+            }
             
-            if (crimeTeamMembers.length > 0) {
-                const client = crimeTeamMembers[Math.floor(Math.random() * crimeTeamMembers.length)];
-                lawyerPlayer.lawyerClient = client.id;
+            player.score = 0; 
+            
+            // Set starting points for Minister/Beneficiary
+            const roleInfo = getRoleInfo(player.role);
+            if (roleInfo && roleInfo.startPoints) {
+                player.score = roleInfo.startPoints;
             }
-        }
+
+            // Reset ability usage flags
+            player.abilityUsed = false;
+            player.sabotagedBy = null;
+            player.investigatedBy = null;
+        });
+
+        // Special Role Intel Logic
+        const crimeTeam = shuffledPlayers.filter(p => {
+             const info = getRoleInfo(p.role);
+             return info && info.team === TEAMS.CRIME;
+        });
+        
+        const beneficiary = shuffledPlayers.find(p => p.role === ROLE_TYPES.BENEFICIARY);
+        const detective = shuffledPlayers.find(p => p.role === ROLE_TYPES.DETECTIVE);
 
         // Assign and send role data
         shuffledPlayers.forEach((player) => {
@@ -1216,6 +1156,28 @@ io.on('connection', (socket) => {
                 return;
             }
 
+            let specialInfo = null;
+
+            // Culprit gets full story
+            if (role === ROLE_TYPES.CULPRIT) {
+                specialInfo = room.currentScenario.fullStory; 
+            } 
+            // Mastermind gets Crime Team list
+            else if (role === ROLE_TYPES.MASTERMIND) {
+                specialInfo = {
+                    type: 'MASTERMIND_INTEL',
+                    crimeTeam: crimeTeam.map(p => ({ id: p.id, name: p.name, role: p.role }))
+                };
+            }
+            // Minister gets Beneficiary & Detective
+            else if (role === ROLE_TYPES.MINISTER) {
+                specialInfo = {
+                    type: 'MINISTER_INTEL',
+                    beneficiary: beneficiary ? { id: beneficiary.id, name: beneficiary.name } : null,
+                    detective: detective ? { id: detective.id, name: detective.name } : null
+                };
+            }
+
             let roleData = {
                 role: role,
                 roleName: roleInfo.nameAr,
@@ -1223,57 +1185,20 @@ io.on('connection', (socket) => {
                 description: roleInfo.description,
                 goal: roleInfo.goal,
                 team: roleInfo.team,
-                teamName: roleInfo.team === TEAMS.CRIME ? 'فريق الجريمة' : 
-                         roleInfo.team === TEAMS.INVESTIGATION ? 'فريق التحقيق' : 'محايد',
+                teamName: roleInfo.team === TEAMS.CRIME ? 'فريق الجريمة' : 'فريق العدالة',
                 emoji: roleInfo.emoji,
                 ability: roleInfo.ability,
                 info: null,
+                specialInfo: specialInfo,
                 round: room.currentRound,
                 totalRounds: room.totalRounds,
                 isTutorial: room.isTutorial
             };
 
-            // Assign role-specific information
-            if (role === ROLE_TYPES.CULPRIT) {
-                roleData.info = room.currentScenario.story;
-            } else if (role === ROLE_TYPES.FORGER) {
-                roleData.info = `كلماتك المفتاحية: ${room.currentScenario.keywords.join(' - ')}`;
-            } else if (role === ROLE_TYPES.CHIEF_DETECTIVE || role === ROLE_TYPES.ANALYST || role === ROLE_TYPES.OFFICER) {
-                roleData.info = `عنوان القضية: ${room.currentScenario.title}`;
-            } else if (role === ROLE_TYPES.ACCOMPLICE) {
-                roleData.info = `الجاني هو: ${culpritPlayer ? culpritPlayer.name : 'غير معروف'}. احمه!`;
-                roleData.targetPlayer = culpritPlayer ? culpritPlayer.name : null;
-            } else if (role === ROLE_TYPES.LAWYER) {
-                const clientPlayer = shuffledPlayers.find(p => p.id === player.lawyerClient);
-                roleData.info = `موكلك هو: ${clientPlayer ? clientPlayer.name : 'غير معروف'}. دافع عنه!`;
-                roleData.targetPlayer = clientPlayer ? clientPlayer.name : null;
-            } else if (role === ROLE_TYPES.SABOTEUR) {
-                roleData.info = `كلمتك الدخيلة: ${room.currentScenario.tricksterWord}`;
-            } else if (role === ROLE_TYPES.WITNESS) {
-                roleData.info = "لا توجد معلومات إضافية. راقب وحلل.";
-            } else {
-                roleData.info = "انتظر التعليمات...";
-            }
-
             io.to(player.id).emit('roleAssigned', roleData);
         });
 
-        // 😈 قدرة المخرب - الفوضى الإبداعية: رؤية جميع الأدوار لمدة 2 ثانية
-        const saboteur = shuffledPlayers.find(p => p.role === ROLE_TYPES.SABOTEUR || p.role === 'TRICKSTER');
-        if (saboteur && room.currentRound === 1) {
-            // فقط في الجولة الأولى
-            const allRoles = shuffledPlayers.map(p => ({
-                name: p.name,
-                role: getRoleName(p.role),
-                emoji: getRoleInfo(p.role)?.emoji || '❓'
-            }));
-            
-            io.to(saboteur.id).emit('saboteurReveal', { 
-                roles: allRoles, 
-                duration: 2000  // 2 ثانية
-            });
-            console.log(`😈 قدرة المخرب: كشف الأدوار لـ ${saboteur.name}`);
-        }
+
 
         // Notify Host
         io.to(roomCode).emit('gameStarted', {
@@ -1345,6 +1270,54 @@ io.on('connection', (socket) => {
         // ... (logic moved to startNewRound)
     });
     */
+
+    // ============================================
+    // 🛡️ V4 ABILITIES HANDLERS
+    // ============================================
+    socket.on('saboteurSabotage', ({ roomCode, targetId }) => {
+        const room = rooms[roomCode];
+        if (!room) return;
+        const player = room.players.find(p => p.id === socket.id);
+        if (player && player.role === ROLE_TYPES.SABOTEUR) {
+            const target = room.players.find(p => p.id === targetId);
+            if (target) {
+                target.sabotagedBy = player.id;
+                player.abilityUsed = true;
+                console.log(`Saboteur ${player.name} sabotaged ${target.name}`);
+            }
+        }
+    });
+
+    socket.on('detectiveCheck', ({ roomCode, targetId }) => {
+        const room = rooms[roomCode];
+        if (!room) return;
+        const player = room.players.find(p => p.id === socket.id);
+        if (player && player.role === ROLE_TYPES.DETECTIVE) {
+            const target = room.players.find(p => p.id === targetId);
+            if (target) {
+                player.investigatedTarget = targetId;
+                player.abilityUsed = true;
+                console.log(`Detective ${player.name} checked ${target.name}`);
+            }
+        }
+    });
+
+    socket.on('seerReveal', ({ roomCode }) => {
+        const room = rooms[roomCode];
+        if (!room) return;
+        const player = room.players.find(p => p.id === socket.id);
+        if (player && player.role === ROLE_TYPES.SEER) {
+            // Auto-submit real story
+            const realStory = room.currentScenario.fullStory || room.currentScenario.story; // Fallback
+            // Ensure we handle arrays or strings correctly
+            const answerText = Array.isArray(realStory) ? realStory.join('\n') : realStory;
+            
+            room.answers[socket.id] = answerText;
+            io.to(room.hostId).emit('playerSubmitted', { playerId: player.id, playerName: player.name });
+            checkDraftingComplete(roomCode);
+            console.log(`Seer ${player.name} used Revelation`);
+        }
+    });
 
     socket.on('submitAnswer', ({ roomCode, answer }) => {
         const room = rooms[roomCode];
@@ -1481,6 +1454,21 @@ io.on('connection', (socket) => {
         }
     });
 
+    // Discussion Phase Controls
+    socket.on('setSpeaker', ({ roomCode, playerId }) => {
+        const room = rooms[roomCode];
+        if (room && (room.hostId === socket.id || room.players.find(p => p.id === socket.id && p.isLeader))) {
+            io.to(roomCode).emit('speakerUpdated', { playerId });
+        }
+    });
+
+    socket.on('endDiscussion', ({ roomCode }) => {
+        const room = rooms[roomCode];
+        if (room && (room.hostId === socket.id || room.players.find(p => p.id === socket.id && p.isLeader))) {
+            startCulpritVoting(roomCode);
+        }
+    });
+
     // ============================================
     // المرحلة الأولى: Quality Voting
     // ============================================
@@ -1563,7 +1551,15 @@ io.on('connection', (socket) => {
         }
 
         if (roomCode) {
-            startNewRound(roomCode);
+            const room = rooms[roomCode];
+            // Check if game should continue (e.g. Crime member eliminated but not Culprit)
+            if (room.roundOutcome === 'CONTINUE') {
+                room.roundOutcome = null; // Reset so we don't loop forever if next vote is also continue (actually we want to loop if continues again)
+                // Return to Discussion
+                startDiscussion(roomCode);
+            } else {
+                startNewRound(roomCode);
+            }
         }
     });
 

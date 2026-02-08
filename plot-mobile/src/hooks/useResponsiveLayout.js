@@ -10,11 +10,14 @@ export const useResponsiveLayout = () => {
   const { width, height } = useWindowDimensions();
   
   const isWeb = Platform.OS === 'web';
-  const isDesktop = isWeb && width >= 768;
+  // Consider landscape on mobile as "desktop-like" or at least wide
+  const isLandscape = width > height;
+  const isDesktop = (isWeb && width >= 768) || (isLandscape && width >= 600);
   
   return {
     isDesktop,
     isWeb,
+    isLandscape,
     width,
     height
   };

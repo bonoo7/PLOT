@@ -1,208 +1,108 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, StatusBar, Platform, Dimensions, ImageBackground } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, Modal, TouchableOpacity } from 'react-native';
+import MinimalLayout from '../components/minimal/MinimalLayout';
+import MinimalHeader from '../components/minimal/MinimalHeader';
+import MinimalCard from '../components/minimal/MinimalCard';
+import MinimalButton from '../components/minimal/MinimalButton';
+import { TextInput, Badge } from '../ui';
 import { theme } from '../styles/theme';
-import { spacing, fonts, moderateScale, borderRadius, getContainerPadding } from '../styles/responsive';
-import { Card, Button, TextInput, Badge } from '../ui';
+import { spacing, fonts, borderRadius } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
 /**
- * شاشة عرض الدور المحسّنة (للاعب)
+ * GameScreen - Role Reveal V3
  */
 export const GameScreen = ({ roleData, onReady }) => {
   const { isDesktop } = useResponsiveLayout();
-  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
 
   if (!roleData) {
     return (
-    <ImageBackground
-      source={require('../../assets/desk_background_noir.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.centeredContainer}>
-          <Text style={styles.largeEmoji}>⏳</Text>
-          <Text style={styles.loadingText}>جاري تحميل دورك...</Text>
-        </View>
-      </SafeAreaView>
-    </ImageBackground>
+      <MinimalLayout>
+        <Text style={styles.loadingText}>جاري استلام الملف السري...</Text>
+      </MinimalLayout>
     );
   }
 
-  const { role, roleName, description, info, team } = roleData;
+  const { role, roleName, description, info, specialInfo } = roleData;
+  const emoji = getRoleEmoji(role);
 
-  // Get role emoji
-  const getRoleEmoji = (role) => {
-    const emojiMap = {
-      'CULPRIT': '🎭',
-      'FORGER': '🧩',
-      'INFILTRATOR': '🕵️',
-      'ACCOMPLICE': '🤝',
-      'LAWYER': '⚖️',
-      'CHIEF_DETECTIVE': '🔍',
-      'ANALYST': '📊',
-      'OFFICER': '👮',
-      'WITNESS': '👁️',
-      'SABOTEUR': '😈',
-    };
-    return emojiMap[role] || '🎭';
+  const renderSpecialInfo = () => {
+      if (!specialInfo && !info) return null;
+      
+      // Legacy string info
+      if (typeof info === 'string') return <Text style={styles.intelText}>{info}</Text>;
+      if (typeof specialInfo === 'string') return <Text style={styles.intelText}>{specialInfo}</Text>;
+      if (Array.isArray(specialInfo)) return <Text style={styles.intelText}>{specialInfo.join('\n')}</Text>;
+
+      // Object info
+      if (specialInfo?.type === 'MASTERMIND_INTEL') {
+          return (
+              <View>
+                  <Text style={styles.intelTitle}>أعضاء فريق الجريمة:</Text>
+                  {specialInfo.crimeTeam.map(p => (
+                      <Text key={p.id} style={styles.intelText}>• {p.name} ({p.role})</Text>
+                  ))}
+              </View>
+          );
+      }
+      if (specialInfo?.type === 'MINISTER_INTEL') {
+          return (
+              <View>
+                  <Text style={styles.intelTitle}>معلومات سرية:</Text>
+                  <Text style={styles.intelText}>• المستفيد: {specialInfo.beneficiary?.name || 'غير معروف'}</Text>
+                  <Text style={styles.intelText}>• المحقق: {specialInfo.detective?.name || 'غير معروف'}</Text>
+              </View>
+          );
+      }
+      return <Text style={styles.intelText}>{JSON.stringify(specialInfo)}</Text>;
   };
-
-  // Parse keywords from info string
-  const extractKeywords = (infoText) => {
-    if (!infoText || typeof infoText !== 'string') return [];
-    
-    // Try to extract keywords from patterns like "كلماتك المفتاحية: كلمة1 - كلمة2 - كلمة3"
-    const keywordMatch = infoText.match(/كلماتك المفتاحية:\s*(.+)/);
-    if (keywordMatch) {
-      return keywordMatch[1].split('-').map(k => k.trim()).filter(Boolean);
-    }
-    
-    // Try pattern with commas
-    const commaMatch = infoText.match(/كلماتك المفتاحية:\s*(.+)/);
-    if (commaMatch) {
-      return commaMatch[1].split(',').map(k => k.trim()).filter(Boolean);
-    }
-    
-    return [];
-  };
-
-  // Check role type for special rendering
-  const isForger = role === 'FORGER';
-  const isCulprit = role === 'CULPRIT';
-  const isAccomplice = role === 'ACCOMPLICE' || role === 'LAWYER';
-  const isInfiltrator = role === 'INFILTRATOR';
-  
-  const keywords = isForger ? extractKeywords(info) : [];
 
   return (
-    <ImageBackground
-      source={require('../../assets/desk_background_noir.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-        <View style={styles.container}>
-          {/* Header with Role Emoji */}
-          <View style={styles.header}>
-            <Text style={styles.roleEmoji}>{getRoleEmoji(role)}</Text>
-            <Text style={styles.roleTitle}>دورك: {roleName || role}</Text>
-          </View>
+    <MinimalLayout roleData={roleData}>
+      <View style={[styles.container, { maxWidth: isDesktop ? 900 : 600 }]}>
+        
+        {/* Top Section: Role Identity */}
+        <View style={styles.identitySection}>
+          <Text style={styles.roleEmoji}>{emoji}</Text>
+          <MinimalHeader title={roleName} subtitle="هويتك السرية" />
+        </View>
 
-          {/* Secret Information Card */}
-          <Card style={styles.secretCard}>
-            <View style={styles.secretHeader}>
-              <Badge text="سري للغاية" variant="primary" />
-            </View>
+        {/* Content Card */}
+        <MinimalCard flex style={styles.dossierCard}>
+           <View style={styles.stampWrapper}>
+             <Badge text="TOP SECRET" variant="primary" />
+           </View>
 
-            {/* Description */}
-            <View style={styles.descriptionContainer}>
-              <Text style={styles.descriptionLabel}>مهمتك:</Text>
-              <Text style={styles.description}>{description || 'انتظر التعليمات...'}</Text>
-            </View>
+           <View style={styles.missionSection}>
+             <Text style={styles.label}>المهمة:</Text>
+             <Text style={styles.missionText}>{description}</Text>
+           </View>
 
-            {/* Special Info based on role */}
-            {info && (
-              <>
-                <View style={styles.divider} />
-                
-                {/* Culprit: Full Story */}
-                {isCulprit && (
-                  <View style={styles.storyContainer}>
-                    <Text style={styles.infoLabel}>📖 القصة الكاملة:</Text>
-                    <View style={styles.storyBox}>
-                      <Text style={styles.storyText}>{info}</Text>
-                    </View>
-                  </View>
-                )}
+           <View style={styles.intelSection}>
+               <Text style={styles.label}>معلومات استخباراتية:</Text>
+               <View style={styles.intelBox}>
+                   {renderSpecialInfo()}
+               </View>
+           </View>
+        </MinimalCard>
 
-                {/* Forger: Keywords */}
-                {isForger && keywords.length > 0 && (
-                  <View style={styles.keywordsContainer}>
-                    <Text style={styles.infoLabel}>🧩 كلماتك المفتاحية:</Text>
-                    <View style={styles.keywordsList}>
-                      {keywords.map((keyword, index) => (
-                        <View key={index} style={styles.keywordBadge}>
-                          <Text style={styles.keywordText}>{keyword}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  </View>
-                )}
-
-                {/* Infiltrator: Scrambled Text */}
-                {isInfiltrator && (
-                  <View style={styles.infiltratorContainer}>
-                    <Text style={styles.infoLabel}>🕵️ المعلومات المشوشة:</Text>
-                    <View style={styles.scrambledBox}>
-                      <Text style={styles.scrambledText}>{info}</Text>
-                    </View>
-                  </View>
-                )}
-
-                {/* Accomplice/Lawyer: Culprit Name */}
-                {isAccomplice && (
-                  <View style={styles.accompliceContainer}>
-                    <Text style={styles.infoLabel}>🤝 معلوماتك:</Text>
-                    <View style={styles.accompliceBox}>
-                      <Text style={styles.accompliceText}>{info}</Text>
-                    </View>
-                  </View>
-                )}
-
-                {/* Other roles: General info */}
-                {!isCulprit && !isForger && !isInfiltrator && !isAccomplice && (
-                  <View style={styles.generalInfoContainer}>
-                    <Text style={styles.generalInfo}>{info}</Text>
-                  </View>
-                )}
-              </>
-            )}
-          </Card>
-
-          {/* Instructions Card */}
-          <Card style={styles.instructionsCard}>
-            <Text style={styles.instructionsTitle}>📝 ماذا بعد؟</Text>
-            <Text style={styles.instructionsText}>
-              {isCulprit && 'اكتب الحقيقة بأسلوب غامض دون أن ينكشف أمرك'}
-              {isForger && 'ابنِ قصة متماسكة باستخدام الكلمات المفتاحية'}
-              {isInfiltrator && 'استخدم المعلومات الجزئية لكتابة سيناريو مقنع'}
-              {isAccomplice && 'ساعد الجاني بكتابة سيناريو داعم'}
-              {!isCulprit && !isForger && !isInfiltrator && !isAccomplice && 'اكتب سيناريو مقنع بناءً على عنوان القضية'}
-            </Text>
-          </Card>
-
-          {/* Ready Button */}
-          <Button
-            title="جاهز - ابدأ الكتابة ✍️"
+        {/* Action Footer */}
+        <View style={styles.footer}>
+          <MinimalButton
+            title="فهمت المهمة - ابدأ"
             onPress={onReady}
             size="large"
-            fullWidth
-            style={styles.readyButton}
+            style={styles.readyBtn}
           />
-
-          {/* Info Box */}
-          <View style={styles.infoBox}>
-            <Text style={styles.infoIcon}>💡</Text>
-            <Text style={styles.infoText}>
-              ستبدأ مرحلة الكتابة تلقائياً بعد لحظات
-            </Text>
-          </View>
         </View>
-      </ScrollView>
-    </SafeAreaView>
-  </ImageBackground>
+
+      </View>
+    </MinimalLayout>
   );
 };
 
 /**
- * شاشة كتابة التقرير (Drafting)
+ * DraftingScreen - V3
  */
 export const DraftingScreen = ({ 
   answer, 
@@ -210,463 +110,353 @@ export const DraftingScreen = ({
   onSubmit, 
   timeLeft, 
   isSubmitted,
-  scenario 
+  scenario,
+  roleData,
+  players,
+  socket,
+  roomCode
 }) => {
   const { isDesktop } = useResponsiveLayout();
-  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
+  const [witnessKeywords, setWitnessKeywords] = useState([]);
+  const [showWitnessModal, setShowWitnessModal] = useState(false);
+  const [targetId, setTargetId] = useState(null);
+  const [abilityUsed, setAbilityUsed] = useState(false);
 
-  const maxLength = 500;
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
+  const timeString = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+  
+  const timerColor = timeLeft < 30 ? '#FF4444' : '#FFD700';
+
+  useEffect(() => {
+    if (!socket) return;
+    const handleFlash = ({ keywords }) => {
+        setWitnessKeywords(keywords);
+        setShowWitnessModal(true);
+        setTimeout(() => setShowWitnessModal(false), 2000);
+    };
+    socket.on('witnessFlash', handleFlash);
+    return () => socket.off('witnessFlash', handleFlash);
+  }, [socket]);
+
+  const handleUseAbility = () => {
+    if ((!targetId && roleData?.role !== 'SEER') || abilityUsed) return;
+    
+    if (roleData?.role === 'DETECTIVE') {
+        socket.emit('detectiveCheck', { roomCode, targetId });
+    } else if (roleData?.role === 'SABOTEUR') {
+        socket.emit('saboteurSabotage', { roomCode, targetId });
+    } else if (roleData?.role === 'SEER') {
+        socket.emit('seerReveal', { roomCode });
+    }
+    setAbilityUsed(true);
+  };
+
+  const showAbilityControls = !isSubmitted && roleData && !abilityUsed && 
+    ['DETECTIVE', 'SABOTEUR', 'SEER'].includes(roleData.role);
 
   return (
-    <ImageBackground
-      source={require('../../assets/desk_background_noir.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-        <View style={styles.container}>
-          {/* Timer */}
-          <View style={styles.timerContainer}>
-            <Text style={styles.timerIcon}>⏱️</Text>
-            <Text style={styles.timerText}>
-              {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')}
-            </Text>
-          </View>
-
-          {/* Scenario */}
-          {scenario && (
-            <Card style={styles.card}>
-              <Text style={styles.sectionTitle}>📝 السيناريو:</Text>
-              <Text style={styles.scenarioText}>{scenario}</Text>
-            </Card>
-          )}
-
-          {/* Drafting Area */}
-          <Card style={styles.card}>
-            <Text style={styles.instructionText}>
-              اكتب تقريرك السري عن الأحداث:
-            </Text>
-
-            <TextInput
-              value={answer}
-              onChangeText={setAnswer}
-              placeholder="اكتب هنا..."
-              maxLength={maxLength}
-              multiline
-              numberOfLines={8}
-              editable={!isSubmitted}
-            />
-
-            <Button
-              title={isSubmitted ? "تم التسليم ✓" : "تسليم التقرير 📤"}
-              onPress={onSubmit}
-              disabled={isSubmitted || answer.trim().length < 10}
-              size="large"
-              fullWidth
-              style={styles.submitButton}
-            />
-          </Card>
-
-          {isSubmitted && (
-            <View style={styles.successBox}>
-              <Text style={styles.successText}>
-                ✅ تم تسليم تقريرك بنجاح! في انتظار باقي اللاعبين...
-              </Text>
+    <MinimalLayout roleData={roleData}>
+      <View style={[styles.container, { maxWidth: isDesktop ? 1000 : 700 }]}>
+        
+        <Modal visible={showWitnessModal} transparent animationType="fade">
+            <View style={styles.flashModal}>
+                <Text style={styles.flashText}>{witnessKeywords.join(' - ')}</Text>
             </View>
-          )}
+        </Modal>
+
+        <View style={styles.draftHeader}>
+          <View style={styles.timerBadge}>
+             <Text style={[styles.timerText, { color: timerColor }]}>{timeString}</Text>
+          </View>
+          <MinimalHeader title="كتابة التقرير" />
         </View>
-      </ScrollView>
-    </SafeAreaView>
-  </ImageBackground>
+
+        <View style={styles.splitLayout}>
+           <MinimalCard style={[styles.scenarioCard, isDesktop && styles.scenarioCardDesktop]}>
+             <Text style={styles.label}>ملف القضية:</Text>
+             <Text style={styles.scenarioText}>{scenario || "جاري تحميل البيانات..."}</Text>
+           </MinimalCard>
+
+           <MinimalCard flex style={styles.inputCard}>
+             <TextInput
+               value={answer}
+               onChangeText={setAnswer}
+               placeholder={roleData?.role === 'SEER' ? "اضغط زر الوحي لنسخ السيناريو..." : "اكتب تبريرك هنا..."}
+               multiline
+               maxLength={500}
+               editable={!isSubmitted && roleData?.role !== 'SEER'}
+               style={styles.textArea}
+               inputStyle={{ minHeight: 150, textAlignVertical: 'top' }}
+             />
+           </MinimalCard>
+        </View>
+
+        {showAbilityControls && (
+            <View style={styles.abilityBox}>
+                <Text style={styles.abilityTitle}>
+                    {roleData.role === 'DETECTIVE' ? '🕵️ التحقيق السري' : 
+                     roleData.role === 'SABOTEUR' ? '😈 التضليل' : '🔮 الوحي'}
+                </Text>
+                
+                {roleData.role === 'SEER' ? (
+                    <MinimalButton title="استخدام الوحي (نسخ الحقيقة)" onPress={handleUseAbility} size="small" />
+                ) : (
+                    <View style={styles.targetList}>
+                        {players?.filter(p => p.id !== socket?.id).map(p => (
+                            <TouchableOpacity 
+                                key={p.id} 
+                                style={[styles.targetChip, targetId === p.id && styles.targetChipSelected]}
+                                onPress={() => setTargetId(p.id)}
+                            >
+                                <Text style={[styles.targetText, targetId === p.id && styles.targetTextSelected]}>{p.name}</Text>
+                            </TouchableOpacity>
+                        ))}
+                        <MinimalButton 
+                            title="نفّذ" 
+                            onPress={handleUseAbility} 
+                            disabled={!targetId} 
+                            size="small" 
+                        />
+                    </View>
+                )}
+            </View>
+        )}
+
+        <View style={styles.footer}>
+           {isSubmitted ? (
+             <View style={styles.submittedBadge}>
+               <Text style={styles.submittedText}>✅ تم إرسال التقرير</Text>
+             </View>
+           ) : (
+             <MinimalButton
+               title="إرسال التقرير"
+               onPress={onSubmit}
+               disabled={(answer.trim().length < 5 && roleData?.role !== 'SEER')}
+               size="large"
+               style={styles.submitBtn}
+             />
+           )}
+        </View>
+
+      </View>
+    </MinimalLayout>
   );
 };
 
-const getStyles = (isDesktop) => StyleSheet.create({
-  backgroundImage: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#1a1410',
-  },
-  safeArea: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingVertical: isDesktop ? moderateScale(3) : spacing.xl,
-  },
+// Helper
+const getRoleEmoji = (role) => {
+  const map = {
+    'CULPRIT': '🎭', 'FORGER': '🧩', 'INFILTRATOR': '🕵️',
+    'ACCOMPLICE': '🤝', 'LAWYER': '⚖️', 'CHIEF_DETECTIVE': '🔍',
+    'ANALYST': '📊', 'OFFICER': '👮', 'WITNESS': '👁️', 'SABOTEUR': '😈',
+  };
+  return map[role] || '👤';
+};
+
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: getContainerPadding(),
-    alignItems: 'center',
-    maxWidth: isDesktop ? '90%' : 800,
-    alignSelf: 'center',
     width: '100%',
-  },
-
-  // Stamp
-  stampContainer: {
-    backgroundColor: theme.colors.stamp,
-    paddingHorizontal: spacing.xl,
     paddingVertical: spacing.m,
-    borderRadius: borderRadius.small,
-    transform: [{ rotate: '-5deg' }],
-    marginBottom: isDesktop ? moderateScale(2) : spacing.xl,
-    borderWidth: 2,
-    borderColor: theme.colors.stamp,
-    shadowColor: theme.colors.black,
-    shadowOffset: { width: 2, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
-  },
-  stampText: {
-    fontSize: isDesktop ? fonts.medium : fonts.xlarge,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '800',
-    color: theme.colors.paper,
-    textAlign: 'center',
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-  },
-  stampSubtext: {
-    fontSize: isDesktop ? fonts.tiny : fonts.small,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.paper,
-    textAlign: 'center',
-    marginTop: spacing.xs,
-  },
-
-  // Avatar
-  avatarContainer: {
-    marginBottom: isDesktop ? moderateScale(2) : spacing.l,
-  },
-
-  // Card
-  card: {
-    width: '100%',
-    maxWidth: isDesktop ? '100%' : 500,
-    marginBottom: isDesktop ? moderateScale(1) : spacing.l,
-    paddingVertical: isDesktop ? moderateScale(2) : undefined,
-  },
-
-  // Role Info
-  roleTitle: {
-    fontSize: isDesktop ? fonts.medium : fonts.xxlarge,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.text,
-    textAlign: 'center',
-    marginBottom: isDesktop ? spacing.xs : spacing.m,
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-  },
-  teamBadge: {
-    paddingHorizontal: spacing.l,
-    paddingVertical: spacing.s,
-    borderRadius: borderRadius.medium,
-    alignSelf: 'center',
-    marginBottom: spacing.m,
-  },
-  teamText: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.main,
-    fontWeight: '700',
-  },
-
-  // Sections
-  divider: {
-    height: 1,
-    backgroundColor: theme.colors.text + '20',
-    marginVertical: isDesktop ? moderateScale(2) : spacing.m,
-  },
-  sectionTitle: {
-    fontSize: isDesktop ? fonts.small : fonts.large,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.text,
-    marginBottom: spacing.s,
-    textTransform: 'uppercase',
-  },
-  description: {
-    fontSize: isDesktop ? fonts.tiny : fonts.regular,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-    lineHeight: isDesktop ? fonts.tiny * 1.6 : fonts.regular * 1.6,
-  },
-
-  // Abilities
-  abilityItem: {
-    marginBottom: spacing.s,
-  },
-  abilityText: {
-    fontSize: isDesktop ? fonts.tiny : fonts.regular,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-  },
-
-  // Timer
-  timerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.stickyNote + '30',
-    paddingHorizontal: spacing.l,
-    paddingVertical: spacing.m,
-    borderRadius: borderRadius.medium,
-    marginBottom: spacing.l,
-    borderWidth: 1,
-    borderColor: theme.colors.stickyNote,
-  },
-  timerIcon: {
-    fontSize: moderateScale(24),
-    marginRight: spacing.m,
-  },
-  timerText: {
-    fontSize: isDesktop ? fonts.medium : fonts.xlarge,
-    fontFamily: theme.fonts.main,
-    fontWeight: '700',
-    color: theme.colors.text,
-  },
-
-  // Scenario
-  scenarioText: {
-    fontSize: fonts.regular,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-    lineHeight: fonts.regular * 1.6,
-  },
-
-  // Instructions
-  instructionText: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-    marginBottom: spacing.m,
-  },
-
-  // Submit Button
-  submitButton: {
-    marginTop: spacing.m,
-    maxWidth: isDesktop ? 400 : undefined,
-    width: '100%',
-    alignSelf: 'center',
-  },
-
-  // Info/Success Boxes
-  infoBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: theme.colors.stickyNote + '20',
-    padding: isDesktop ? moderateScale(3) : spacing.m,
-    borderRadius: borderRadius.small,
-    borderWidth: 1,
-    borderColor: theme.colors.stickyNote,
-    maxWidth: isDesktop ? '100%' : 450,
-    width: '100%',
-  },
-  infoIcon: {
-    fontSize: moderateScale(20),
-    marginLeft: spacing.s,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: fonts.regular,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-  },
-  successBox: {
-    backgroundColor: theme.colors.teamGood + '20',
-    padding: isDesktop ? moderateScale(3) : spacing.l,
-    borderRadius: borderRadius.medium,
-    borderWidth: 1,
-    borderColor: theme.colors.teamGood,
-    maxWidth: isDesktop ? '100%' : 450,
-    width: '100%',
-  },
-  successText: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.teamGood,
-    textAlign: 'center',
-  },
-
-  // GameScreen (Role Reveal) - New Styles
-  centeredContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: getContainerPadding(),
-    maxWidth: isDesktop ? '90%' : 800,
-    alignSelf: 'center',
-    width: '100%',
-  },
-  largeEmoji: {
-    fontSize: isDesktop ? moderateScale(48) : moderateScale(80),
-    marginBottom: isDesktop ? moderateScale(1) : spacing.xl,
-  },
-  loadingText: {
-    fontSize: isDesktop ? fonts.small : fonts.large,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: isDesktop ? moderateScale(1) : spacing.xl,
-  },
-  roleEmoji: {
-    fontSize: isDesktop ? moderateScale(48) : moderateScale(80),
-    marginBottom: isDesktop ? spacing.s : spacing.m,
-  },
-  secretCard: {
-    width: '100%',
-    maxWidth: isDesktop ? '100%' : 600,
-    padding: isDesktop ? moderateScale(4) : spacing.xl,
-    marginBottom: isDesktop ? moderateScale(2) : spacing.l,
-  },
-  secretHeader: {
-    alignItems: 'center',
-    marginBottom: isDesktop ? moderateScale(1) : spacing.l,
-  },
-  descriptionContainer: {
-    marginBottom: spacing.m,
-  },
-  descriptionLabel: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.stamp,
-    marginBottom: spacing.s,
-    textTransform: 'uppercase',
-  },
-  infoLabel: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.stamp,
-    marginBottom: spacing.m,
-  },
-  storyContainer: {
-    marginTop: spacing.m,
-  },
-  storyBox: {
-    backgroundColor: theme.colors.background,
-    padding: spacing.l,
-    borderRadius: borderRadius.medium,
-    borderWidth: 1,
-    borderColor: theme.colors.stamp + '40',
-  },
-  storyText: {
-    fontSize: fonts.regular,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-    lineHeight: fonts.regular * 1.6,
-  },
-  keywordsContainer: {
-    marginTop: spacing.m,
-  },
-  keywordsList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
     gap: spacing.m,
   },
-  keywordBadge: {
-    backgroundColor: theme.colors.accentYellow,
-    paddingHorizontal: spacing.l,
-    paddingVertical: spacing.m,
-    borderRadius: borderRadius.medium,
-    borderWidth: 2,
-    borderColor: theme.colors.accentYellow,
-    shadowColor: theme.colors.black,
-    shadowOffset: { width: 1, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 2,
-  },
-  keywordText: {
-    fontSize: isDesktop ? fonts.small : fonts.large,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.text,
-    textTransform: 'uppercase',
-  },
-  infiltratorContainer: {
-    marginTop: spacing.m,
-  },
-  scrambledBox: {
-    backgroundColor: theme.colors.background,
-    padding: spacing.l,
-    borderRadius: borderRadius.medium,
-    borderWidth: 1,
-    borderColor: theme.colors.textSecondary + '40',
-  },
-  scrambledText: {
-    fontSize: fonts.regular,
+  loadingText: {
+    color: '#E8DCC8',
     fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
-    lineHeight: fonts.regular * 1.6,
-    fontStyle: 'italic',
+    fontSize: fonts.medium,
   },
-  accompliceContainer: {
-    marginTop: spacing.m,
+  
+  // Identity Section
+  identitySection: {
+    alignItems: 'center',
   },
-  accompliceBox: {
-    backgroundColor: theme.colors.stamp + '10',
+  roleEmoji: {
+    fontSize: 60,
+    marginBottom: -10,
+    zIndex: 1,
+  },
+  
+  // Dossier Card
+  dossierCard: {
+    backgroundColor: '#F5F5DC', // Beige file color
+    borderWidth: 4,
+    borderColor: '#D2B48C', // Tan border
     padding: spacing.l,
-    borderRadius: borderRadius.medium,
-    borderWidth: 2,
-    borderColor: theme.colors.stamp,
+    position: 'relative',
   },
-  accompliceText: {
-    fontSize: isDesktop ? fonts.small : fonts.large,
+  stampWrapper: {
+    position: 'absolute',
+    top: spacing.m,
+    right: spacing.m,
+    transform: [{ rotate: '-15deg' }],
+    opacity: 0.8,
+  },
+  missionSection: {
+    marginTop: spacing.xl,
+    marginBottom: spacing.l,
+  },
+  label: {
+    fontFamily: theme.fonts.bold,
+    color: '#8B4513',
+    marginBottom: spacing.xs,
+    textTransform: 'uppercase',
+    fontSize: fonts.small,
+  },
+  missionText: {
     fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.stamp,
+    fontSize: fonts.medium,
+    color: '#2F4F4F',
+    lineHeight: 28,
+  },
+  intelSection: {
+    flex: 1,
+  },
+  intelBox: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    padding: spacing.m,
+    borderLeftWidth: 3,
+    borderLeftColor: '#8B4513',
+    borderRadius: borderRadius.small,
+  },
+  intelTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: fonts.small,
+    color: '#8B4513',
+    marginBottom: 4,
+  },
+  intelText: {
+    fontFamily: theme.fonts.main,
+    fontSize: fonts.small,
+    color: '#333',
+    lineHeight: 24,
+  },
+  
+  // Footer
+  footer: {
+    paddingTop: spacing.s,
+  },
+  readyBtn: {
+    backgroundColor: '#2F4F4F',
+    borderColor: '#1A2F2F',
+  },
+  
+  // Drafting Styles
+  draftHeader: {
+    alignItems: 'center',
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  timerBadge: {
+    position: 'absolute',
+    left: 0,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    paddingHorizontal: spacing.m,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.large,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  timerText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: fonts.large,
+    fontVariant: ['tabular-nums'],
+  },
+  
+  splitLayout: {
+    flex: 1,
+    gap: spacing.m,
+  },
+  scenarioCard: {
+    backgroundColor: 'rgba(255,255,255,0.9)',
+    maxHeight: '30%', // Limit height on mobile
+  },
+  scenarioCardDesktop: {
+    maxHeight: '40%',
+  },
+  scenarioText: {
+    fontFamily: theme.fonts.main,
+    fontSize: fonts.small,
+    color: '#333',
+    lineHeight: 22,
+  },
+  inputCard: {
+    padding: 0, // Remove padding to let input fill
+    overflow: 'hidden',
+    backgroundColor: '#FFF',
+  },
+  textArea: {
+    flex: 1,
+    backgroundColor: '#FFF',
+    borderWidth: 0,
+    fontSize: fonts.medium,
+    fontFamily: theme.fonts.main,
+  },
+  submittedBadge: {
+    backgroundColor: '#4CAF50',
+    padding: spacing.m,
+    borderRadius: borderRadius.medium,
+    alignItems: 'center',
+  },
+  submittedText: {
+    color: '#FFF',
+    fontFamily: theme.fonts.bold,
+    fontSize: fonts.medium,
+  },
+  submitBtn: {
+    backgroundColor: '#8B4513', // Leather brown
+  },
+  // New Styles
+  flashModal: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  flashText: {
+    color: '#FFF',
+    fontSize: 32,
+    fontFamily: theme.fonts.bold,
     textAlign: 'center',
   },
-  generalInfoContainer: {
-    marginTop: spacing.m,
+  abilityBox: {
+    backgroundColor: '#FFF',
+    padding: 15,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#DDD',
+    marginTop: 10,
   },
-  generalInfo: {
-    fontSize: fonts.regular,
+  abilityTitle: {
+    fontFamily: theme.fonts.bold,
+    marginBottom: 10,
+    fontSize: 16,
+    color: '#333',
+  },
+  targetList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    alignItems: 'center',
+  },
+  targetChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    backgroundColor: '#F0F0F0',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#CCC',
+  },
+  targetChipSelected: {
+    backgroundColor: '#2F4F4F',
+    borderColor: '#2F4F4F',
+  },
+  targetText: {
     fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-    lineHeight: fonts.regular * 1.6,
+    color: '#333',
   },
-  instructionsCard: {
-    width: '100%',
-    maxWidth: 600,
-    padding: spacing.l,
-    marginBottom: spacing.l,
-    backgroundColor: theme.colors.stickyNote + '15',
-    borderColor: theme.colors.stickyNote,
-  },
-  instructionsTitle: {
-    fontSize: isDesktop ? fonts.small : fonts.large,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.text,
-    marginBottom: spacing.s,
-  },
-  instructionsText: {
-    fontSize: fonts.regular,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-    lineHeight: fonts.regular * 1.5,
-  },
-  readyButton: {
-    maxWidth: isDesktop ? 400 : 500,
-    width: '100%',
-    marginBottom: spacing.l,
-    alignSelf: 'center',
-  },
+  targetTextSelected: {
+    color: '#FFF',
+  }
 });

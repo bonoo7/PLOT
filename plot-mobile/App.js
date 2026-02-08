@@ -12,13 +12,14 @@ import {
 import io from 'socket.io-client';
 import { registerRootComponent } from 'expo';
 import { theme } from './src/styles/theme';
-import { RoleSelectScreen } from './src/screens/RoleSelectScreen_v2';
-import { LoginScreen, LobbyScreen } from './src/screens/PlayerScreens_v2';
-import { HostSetupScreen, HostLobbyScreen } from './src/screens/HostScreens_v2';
+import { RoleSelectScreen } from './src/screens/RoleSelectScreen';
+import { LoginScreen, LobbyScreen } from './src/screens/PlayerScreens';
+import { HostSetupScreen, HostLobbyScreen } from './src/screens/HostScreens';
 import { TrainingRoleSelectScreen, TrainingJoinScreen } from './src/screens/TrainingScreens';
 import { GameScreen, DraftingScreen } from './src/screens/GameScreens';
-import { QualityVotingScreen, CulpritVotingScreen, WaitingRevealScreen, EndScreen, PlayerDramaticRevealScreen } from './src/screens/VotingScreens';
+import { QualityVotingScreen, CulpritVotingScreen, WaitingRevealScreen, EndScreen, PlayerDramaticRevealScreen, PlayerResultsScreen } from './src/screens/VotingScreens';
 import { HostGameScreen, HostVotingScreen, HostResultsScreen, HostGameIntroScreen, HostDraftingScreen, HostDramaticRevealScreen } from './src/screens/HostGameScreens';
+import { DiscussionScreen } from './src/screens/DiscussionScreen';
 import GlobalLayout from './src/components/GlobalLayout';
 
 // Force RTL
@@ -57,6 +58,7 @@ const SCREENS = {
   HOST_GAME: 'HOST_GAME',
   HOST_DRAFTING: 'HOST_DRAFTING',
   HOST_DRAMATIC_REVEAL: 'HOST_DRAMATIC_REVEAL',
+  HOST_DISCUSSION: 'HOST_DISCUSSION', // NEW
   HOST_QUALITY_VOTING: 'HOST_QUALITY_VOTING',
   HOST_CULPRIT_VOTING: 'HOST_CULPRIT_VOTING',
   HOST_RESULTS: 'HOST_RESULTS',
@@ -69,6 +71,7 @@ const SCREENS = {
   DRAFTING: 'DRAFTING',
   QUALITY_VOTING: 'QUALITY_VOTING',
   PLAYER_DRAMATIC_REVEAL: 'PLAYER_DRAMATIC_REVEAL',
+  DISCUSSION: 'DISCUSSION', // NEW
   CULPRIT_VOTING: 'CULPRIT_VOTING',
   WAITING: 'WAITING',
   END: 'END',
@@ -105,6 +108,9 @@ function App() {
   const [timeLeft, setTimeLeft] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
   
+  // Discussion State (NEW)
+  const [speakingPlayerId, setSpeakingPlayerId] = useState(null);
+
   // Voting state
   const [scenarios, setScenarios] = useState([]);
   const [selectedScenario, setSelectedScenario] = useState(null);
@@ -295,6 +301,22 @@ function App() {
         }))]);
       }
     });
+
+    // Discussion Phase Listeners
+    socket.on('discussionStarted', () => {
+      console.log('🗣️ Discussion started');
+      setSpeakingPlayerId(null);
+      if (userRole === 'HOST') {
+        setScreen(SCREENS.HOST_DISCUSSION);
+      } else {
+        setScreen(SCREENS.DISCUSSION);
+      }
+    });
+
+    socket.on('speakerUpdated', (data) => {
+      console.log('🎤 Speaker updated:', data.playerId);
+      setSpeakingPlayerId(data.playerId);
+    });
     
     socket.on('culpritVotingStarted', (data) => {
       console.log('🔍 Culprit voting started');
@@ -358,6 +380,8 @@ function App() {
       socket.off('startPresentation');
       socket.off('dramaticRevealStarted');
       socket.off('revealStep');
+      socket.off('discussionStarted');
+      socket.off('speakerUpdated');
       socket.off('error');
       socket.off('connect_error');
     };
@@ -377,6 +401,13 @@ function App() {
   const handleSelectTraining = () => {
     setUserRole('PLAYER');
     setScreen(SCREENS.TRAINING_ROLE_SELECT);
+  };
+  
+  const handleBackToRoleSelect = () => {
+    setUserRole(null);
+    setScreen(SCREENS.ROLE_SELECT);
+    setPlayerName('');
+    setRoomCode('');
   };
   
   const handleTrainingRoleSelect = (roleId) => {
@@ -501,6 +532,19 @@ function App() {
     setIsSubmitted(false);
     setHasVoted(false);
   };
+
+  // Discussion Handlers
+  const handleSelectSpeaker = (playerId) => {
+    if (!socket) return;
+    console.log('📤 Emitting setSpeaker event:', playerId);
+    socket.emit('setSpeaker', { roomCode: generatedRoomCode, playerId });
+  };
+
+  const handleEndDiscussion = () => {
+    if (!socket) return;
+    console.log('📤 Emitting endDiscussion event');
+    socket.emit('endDiscussion', { roomCode: generatedRoomCode });
+  };
   
   // Render screens
   const renderScreen = () => {
@@ -543,6 +587,7 @@ function App() {
           <HostSetupScreen
             onCreateRoom={handleCreateRoom}
             connecting={connecting}
+            onBack={handleBackToRoleSelect}
           />
         );
       
@@ -553,6 +598,7 @@ function App() {
             players={players}
             onStartGame={handleStartGame}
             onFillBots={handleFillBots}
+            onBack={handleBackToRoleSelect}
           />
         );
       
@@ -582,6 +628,18 @@ function App() {
           />
         );
       
+      case SCREENS.HOST_DISCUSSION:
+        return (
+           <DiscussionScreen
+             isHost={true}
+             players={players}
+             speakingPlayerId={speakingPlayerId}
+             onSelectSpeaker={handleSelectSpeaker}
+             onEndDiscussion={handleEndDiscussion}
+             scenarios={revealedScenarios}
+           />
+        );
+
       case SCREENS.HOST_QUALITY_VOTING:
         return (
           <HostVotingScreen
@@ -620,6 +678,7 @@ function App() {
             setRoomCode={setRoomCode}
             onJoinRoom={handleJoinRoom}
             connecting={connecting}
+            onBack={handleBackToRoleSelect}
           />
         );
       
@@ -648,6 +707,10 @@ function App() {
             timeLeft={timeLeft}
             isSubmitted={isSubmitted}
             scenario={scenario}
+            roleData={roleData}
+            players={players}
+            socket={socket}
+            roomCode={roomCode}
           />
         );
       
@@ -658,11 +721,23 @@ function App() {
             onVote={handleVoteQuality}
             hasVoted={hasVoted}
             selectedScenario={selectedScenario}
+            roleData={roleData}
           />
         );
       
       case SCREENS.PLAYER_DRAMATIC_REVEAL:
-        return <PlayerDramaticRevealScreen />;
+        return <PlayerDramaticRevealScreen roleData={roleData} />;
+        
+      case SCREENS.DISCUSSION:
+        return (
+           <DiscussionScreen
+             isHost={false}
+             players={players}
+             speakingPlayerId={speakingPlayerId}
+             scenarios={revealedScenarios}
+             roleData={roleData}
+           />
+        );
       
       case SCREENS.CULPRIT_VOTING:
         return (
@@ -671,11 +746,15 @@ function App() {
             onVote={handleVoteCulprit}
             hasVoted={hasVoted}
             selectedCulprit={selectedCulprit}
+            roleData={roleData}
           />
         );
       
       case SCREENS.WAITING:
-        return <WaitingRevealScreen />;
+        if (roundResults) {
+            return <PlayerResultsScreen results={roundResults} roleData={roleData} />;
+        }
+        return <WaitingRevealScreen roleData={roleData} />;
       
       case SCREENS.END:
         return (

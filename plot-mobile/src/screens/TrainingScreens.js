@@ -1,104 +1,77 @@
-import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, SafeAreaView, Image, ImageBackground } from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import MinimalLayout from '../components/minimal/MinimalLayout';
+import MinimalHeader from '../components/minimal/MinimalHeader';
+import MinimalCard from '../components/minimal/MinimalCard';
+import MinimalButton from '../components/minimal/MinimalButton';
 import { theme } from '../styles/theme';
-import { spacing, fonts, moderateScale, borderRadius, getContainerPadding } from '../styles/responsive';
-import { Button, TextInput, Card } from '../ui';
+import { spacing, fonts, borderRadius, moderateScale } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
-// خريطة صور الأدوار
-const ROLE_IMAGES = {
-  WITNESS: require('../../assets/roles/WITNESS.png'),
-  ARCHITECT: require('../../assets/roles/ARCHITECT.png'),
-  DETECTIVE: require('../../assets/roles/DETECTIVE.png'),
-  SPY: require('../../assets/roles/SPY.png'),
-  ACCOMPLICE: require('../../assets/roles/ACCOMPLICE.png'),
-  LAWYER: require('../../assets/roles/LAWYER.png'),
-  TRICKSTER: require('../../assets/roles/TRICKSTER.png'),
-  CITIZEN: require('../../assets/roles/CITIZEN.png'),
-};
-
 /**
- * شاشة اختيار الدور للتدريب
+ * TrainingRoleSelectScreen - V3
  */
 export const TrainingRoleSelectScreen = ({ onSelectRole, onBack }) => {
   const { isDesktop } = useResponsiveLayout();
-  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
 
   const roles = [
-    { id: 'CULPRIT', nameAr: 'الجاني', description: 'تعرف القصة الكاملة', image: ROLE_IMAGES.TRICKSTER },
-    { id: 'FORGER', nameAr: 'المزور', description: 'احصل على كلمات مفتاحية', image: ROLE_IMAGES.ARCHITECT },
-    { id: 'CHIEF_DETECTIVE', nameAr: 'المحقق الرئيسي', description: 'اكتشف الحقيقة', image: ROLE_IMAGES.DETECTIVE },
-    { id: 'INFILTRATOR', nameAr: 'المخترق', description: 'تجسس على الفريق', image: ROLE_IMAGES.SPY },
-    { id: 'ACCOMPLICE', nameAr: 'الشريك', description: 'ساعد الجاني', image: ROLE_IMAGES.ACCOMPLICE },
-    { id: 'SABOTEUR', nameAr: 'المخرب', description: 'أربك الجميع', image: ROLE_IMAGES.LAWYER },
+    { id: 'CULPRIT', nameAr: 'الجاني', description: 'فريق الجريمة: تعرف القصة الكاملة', icon: '🕵️‍♂️' },
+    { id: 'MASTERMIND', nameAr: 'العقل المدبر', description: 'فريق الجريمة: تعرف أعضاء عصابتك', icon: '🧠' },
+    { id: 'SABOTEUR', nameAr: 'المخرب', description: 'فريق الجريمة: تقلب نتائج التحقيق', icon: '💣' },
+    { id: 'BENEFICIARY', nameAr: 'المستفيد', description: 'فريق الجريمة: تبدأ بنقاط إضافية', icon: '💰' },
+    { id: 'DETECTIVE', nameAr: 'المحقق', description: 'فريق العدالة: تكشف هوية الفرق', icon: '🔍' },
+    { id: 'WITNESS', nameAr: 'الشاهد', description: 'فريق العدالة: تلمح كلمات القصة', icon: '👁️' },
+    { id: 'SEER', nameAr: 'العراف', description: 'فريق العدالة: تنسخ القصة الحقيقية', icon: '🔮' },
+    { id: 'MINISTER', nameAr: 'الوزير', description: 'فريق العدالة: تعرف شخصيات هامة', icon: '📜' },
   ];
 
   return (
-    <ImageBackground
-      source={require('../../assets/desk_background_noir.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={styles.safeArea}>
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>تدريب فردي</Text>
-            <Text style={styles.subtitle}>اختر الدور الذي تريد لعبه</Text>
-          </View>
+    <MinimalLayout>
+      <View style={[styles.container, isDesktop && styles.containerDesktop]}>
+        <MinimalHeader title="تدريب فردي" subtitle="اختر الدور الذي تريد لعبه" />
 
-          {/* Roles Grid */}
-          <View style={styles.rolesGrid}>
+        <ScrollView 
+            contentContainerStyle={styles.gridContainer} 
+            showsVerticalScrollIndicator={false}
+        >
             {roles.map((role) => (
               <TouchableOpacity
                 key={role.id}
-                style={styles.roleCard}
+                style={[styles.roleCard, isDesktop && styles.roleCardDesktop]}
                 onPress={() => onSelectRole(role.id)}
                 activeOpacity={0.8}
               >
-                {role.image && (
-                  <Image 
-                    source={role.image} 
-                    style={styles.roleImage}
-                    resizeMode="contain"
-                  />
-                )}
+                <Text style={styles.roleIcon}>{role.icon}</Text>
                 <Text style={styles.roleName}>{role.nameAr}</Text>
-                <Text style={styles.roleDescription}>{role.description}</Text>
+                <Text style={styles.roleDesc}>{role.description}</Text>
               </TouchableOpacity>
             ))}
             
             {/* Random Role */}
             <TouchableOpacity
-              style={[styles.roleCard, styles.randomCard]}
+              style={[styles.roleCard, styles.randomCard, isDesktop && styles.roleCardDesktop]}
               onPress={() => onSelectRole(null)}
               activeOpacity={0.8}
             >
-              <Text style={styles.roleName}>دور عشوائي</Text>
-              <Text style={styles.roleDescription}>اختيار عشوائي</Text>
+              <Text style={styles.roleIcon}>🎲</Text>
+              <Text style={styles.roleName}>عشوائي</Text>
+              <Text style={styles.roleDesc}>اختيار عشوائي</Text>
             </TouchableOpacity>
-          </View>
+        </ScrollView>
 
-          {/* Back Button */}
-          <Button
-            title="رجوع"
-            onPress={onBack}
-            variant="secondary"
+        <MinimalButton 
+            title="رجوع" 
+            onPress={onBack} 
+            variant="secondary" 
             style={styles.backButton}
-          />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  </ImageBackground>
+        />
+      </View>
+    </MinimalLayout>
   );
 };
 
 /**
- * شاشة الانضمام للغرفة للتدريب
+ * TrainingJoinScreen - V3
  */
 export const TrainingJoinScreen = ({ 
   selectedRole, 
@@ -111,16 +84,17 @@ export const TrainingJoinScreen = ({
   onBack 
 }) => {
   const { isDesktop } = useResponsiveLayout();
-  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
-
+  
   const getRoleInfo = (roleId) => {
     const roles = {
       'CULPRIT': { nameAr: 'الجاني' },
-      'FORGER': { nameAr: 'المزور' },
-      'CHIEF_DETECTIVE': { nameAr: 'المحقق الرئيسي' },
-      'INFILTRATOR': { nameAr: 'المخترق' },
-      'ACCOMPLICE': { nameAr: 'الشريك' },
+      'MASTERMIND': { nameAr: 'العقل المدبر' },
       'SABOTEUR': { nameAr: 'المخرب' },
+      'BENEFICIARY': { nameAr: 'المستفيد' },
+      'DETECTIVE': { nameAr: 'المحقق' },
+      'WITNESS': { nameAr: 'الشاهد' },
+      'SEER': { nameAr: 'العراف' },
+      'MINISTER': { nameAr: 'الوزير' },
     };
     return roles[roleId] || { nameAr: 'دور عشوائي' };
   };
@@ -128,228 +102,144 @@ export const TrainingJoinScreen = ({
   const roleInfo = getRoleInfo(selectedRole);
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>تدريب فردي</Text>
-            <Text style={styles.subtitle}>الدور المختار</Text>
-          </View>
+    <MinimalLayout>
+      <View style={[styles.container, { maxWidth: 500 }]}>
+        <MinimalHeader title="تدريب فردي" subtitle="إعداد اللعبة" />
 
-          {/* Selected Role Card */}
-          <Card style={styles.selectedRoleCard}>
-            <Text style={styles.selectedRoleName}>{roleInfo.nameAr}</Text>
-          </Card>
+        <MinimalCard>
+            <Text style={styles.label}>الدور المختار</Text>
+            <View style={styles.selectedRoleBox}>
+                <Text style={styles.selectedRoleText}>{roleInfo.nameAr}</Text>
+            </View>
 
-          {/* Input Fields */}
-          <View style={styles.form}>
-            <TextInput
-              label="اسمك"
-              value={playerName}
-              onChangeText={setPlayerName}
-              placeholder="أدخل اسمك"
-              maxLength={20}
-            />
-            
-            <TextInput
-              label="رمز الغرفة"
-              value={roomCode}
-              onChangeText={(text) => setRoomCode(text.toUpperCase())}
-              placeholder="مثال: ABCD"
-              maxLength={6}
-              autoCapitalize="characters"
-              style={styles.codeInput}
-            />
-          </View>
+            <View style={styles.inputGroup}>
+                <Text style={styles.label}>اسمك</Text>
+                <MinimalTextInput 
+                    value={playerName} 
+                    onChangeText={setPlayerName} 
+                    placeholder="أدخل اسمك"
+                />
+            </View>
 
-          {/* Info Box */}
-          <View style={styles.infoBox}>
-            <Text style={styles.infoText}>
-              يجب على المضيف إنشاء الغرفة أولاً وإضافة البوتات (3 على الأقل)
-            </Text>
-          </View>
-
-          {/* Buttons */}
-          <View style={styles.buttons}>
-            <Button
-              title={connecting ? 'جاري الانضمام...' : 'انضم للغرفة'}
-              onPress={onJoin}
-              loading={connecting}
-              disabled={connecting || !playerName.trim() || !roomCode.trim()}
-            />
-            
-            <Button
-              title="رجوع"
-              onPress={onBack}
-              variant="secondary"
-              style={styles.backButton}
-            />
-          </View>
+            <View style={styles.inputGroup}>
+                <Text style={styles.label}>رمز الغرفة</Text>
+                <MinimalTextInput 
+                    value={roomCode} 
+                    onChangeText={(t) => setRoomCode(t.toUpperCase())} 
+                    placeholder="مثال: ABCD"
+                    maxLength={6}
+                />
+            </View>
+        </MinimalCard>
+        
+        <View style={styles.infoBox}>
+            <Text style={styles.infoText}>⚠️ يجب أن يقوم المضيف بإضافة البوتات</Text>
         </View>
-      </ScrollView>
-    </SafeAreaView>
+
+        <View style={styles.buttonGroup}>
+            <MinimalButton 
+                title={connecting ? 'جاري الانضمام...' : 'انضم للغرفة'} 
+                onPress={onJoin}
+                disabled={connecting || !playerName.trim() || !roomCode.trim()}
+            />
+            <MinimalButton 
+                title="رجوع" 
+                onPress={onBack} 
+                variant="secondary"
+            />
+        </View>
+      </View>
+    </MinimalLayout>
   );
 };
 
-const getStyles = (isDesktop) => StyleSheet.create({
-  backgroundImage: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#1a1410',
-  },
-  safeArea: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingVertical: isDesktop ? spacing.xs : spacing.xl,
-    justifyContent: 'center',
-  },
+// Helper Input Component for V3
+const MinimalTextInput = ({ value, onChangeText, placeholder, maxLength }) => (
+    <TextInput 
+        style={styles.textInput}
+        value={value}
+        onChangeText={onChangeText}
+        placeholder={placeholder}
+        maxLength={maxLength}
+        placeholderTextColor="#999"
+    />
+);
+
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: getContainerPadding(),
-    maxWidth: isDesktop ? '90%' : 900,
-    alignSelf: 'center',
     width: '100%',
-  },
-
-  // Header
-  header: {
+    padding: spacing.m,
+    gap: spacing.m,
     alignItems: 'center',
-    marginBottom: isDesktop ? moderateScale(1) : spacing.xxl,
   },
-  title: {
-    fontSize: isDesktop ? fonts.medium : fonts.xxlarge,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: spacing.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 2,
+  containerDesktop: {
+    maxWidth: 1000,
   },
-  subtitle: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.main,
-    color: '#E8DCC8',
-  },
-
-  // Roles Grid
-  rolesGrid: {
+  
+  // Grid
+  gridContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginBottom: spacing.xl,
+    justifyContent: 'center',
+    gap: spacing.m,
+    paddingBottom: spacing.l,
   },
   roleCard: {
-    width: isDesktop ? '22%' : '48%',
-    minWidth: 150,
-    backgroundColor: 'rgba(235, 225, 210, 0.95)',
+    width: '45%', 
+    minWidth: 140,
+    backgroundColor: '#FDF5E6',
     borderRadius: borderRadius.small,
-    padding: isDesktop ? moderateScale(2) : spacing.s,
-    marginBottom: isDesktop ? moderateScale(2) : spacing.s,
-    borderWidth: 2,
-    borderColor: '#8B7355',
+    padding: spacing.m,
     alignItems: 'center',
-    shadowColor: theme.colors.black,
-    shadowOffset: { width: 2, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 5,
+    borderWidth: 2,
+    borderColor: '#D2B48C',
+  },
+  roleCardDesktop: {
+    width: '30%',
+    minWidth: 200,
   },
   randomCard: {
-    backgroundColor: 'rgba(255, 240, 200, 0.95)',
-    borderColor: theme.colors.accentYellow,
-    borderWidth: 2,
+    backgroundColor: '#FFF8DC',
+    borderColor: '#DAA520',
   },
-  roleImage: {
-    width: isDesktop ? moderateScale(60) : moderateScale(70),
-    height: isDesktop ? moderateScale(60) : moderateScale(70),
-    marginBottom: spacing.xs,
-  },
-  roleName: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: '#2C1810',
-    marginBottom: spacing.xs,
-    textAlign: 'center',
-  },
-  roleDescription: {
-    fontSize: isDesktop ? moderateScale(7) : fonts.small,
-    fontFamily: theme.fonts.main,
-    color: '#5C4A3A',
-    textAlign: 'center',
-  },
+  roleIcon: { fontSize: 32, marginBottom: spacing.s },
+  roleName: { fontFamily: theme.fonts.bold, fontSize: fonts.medium, color: '#333', marginBottom: 4 },
+  roleDesc: { fontFamily: theme.fonts.main, fontSize: fonts.tiny, color: '#666', textAlign: 'center' },
+  backButton: { width: '100%', maxWidth: 300 },
 
-  // Selected Role Card
-  selectedRoleCard: {
-    alignItems: 'center',
-    padding: spacing.l,
-    marginBottom: spacing.l,
-    backgroundColor: theme.colors.accentYellow + '15',
-    borderColor: theme.colors.accentYellow,
-    borderWidth: 1.5,
-    maxWidth: isDesktop ? 500 : undefined,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  selectedRoleName: {
-    fontSize: fonts.xlarge,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.text,
-  },
-
-  // Form
-  form: {
-    marginBottom: spacing.l,
-    maxWidth: isDesktop ? 400 : undefined,
-    width: '100%',
-    alignSelf: 'center',
-  },
-  codeInput: {
-    marginTop: spacing.m,
-  },
-
-  // Info Box
-  infoBox: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 215, 0, 0.15)',
-    padding: isDesktop ? moderateScale(3) : spacing.m,
+  // Join Screen
+  label: { color: '#8B4513', marginBottom: spacing.xs, fontFamily: theme.fonts.bold },
+  selectedRoleBox: { 
+    backgroundColor: 'rgba(0,0,0,0.05)', 
+    padding: spacing.m, 
     borderRadius: borderRadius.small,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.3)',
-    marginBottom: isDesktop ? moderateScale(2) : spacing.xl,
     alignItems: 'center',
-    maxWidth: isDesktop ? 600 : '100%',
-    width: '100%',
-    alignSelf: 'center',
+    marginBottom: spacing.m,
+    width: '100%'
   },
-  infoText: {
-    flex: 1,
-    fontSize: fonts.small,
+  selectedRoleText: { fontSize: fonts.large, fontFamily: theme.fonts.bold, color: theme.colors.primary },
+  inputGroup: { width: '100%', marginBottom: spacing.m },
+  // Custom Input Styles
+  textInput: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#CCC',
+    borderRadius: borderRadius.small,
+    padding: spacing.m,
     fontFamily: theme.fonts.main,
-    color: '#FFD700',
-    lineHeight: fonts.small * 1.5,
-    textAlign: 'center',
-  },
-
-  // Buttons
-  buttons: {
-    gap: isDesktop ? moderateScale(3) : spacing.m,
-    maxWidth: isDesktop ? 400 : undefined,
+    fontSize: fonts.medium,
     width: '100%',
-    alignSelf: 'center',
+    textAlign: 'right' // Arabic support
   },
-  backButton: {
-    marginTop: isDesktop ? moderateScale(3) : spacing.m,
-    maxWidth: isDesktop ? '100%' : 450,
-    alignSelf: 'center',
+  infoBox: { 
+    backgroundColor: 'rgba(255, 215, 0, 0.15)', 
+    padding: spacing.s, 
+    borderRadius: borderRadius.small, 
+    borderWidth: 1, 
+    borderColor: '#DAA520',
+    marginBottom: spacing.m
   },
+  infoText: { color: '#DAA520', fontSize: fonts.small, textAlign: 'center' },
+  buttonGroup: { width: '100%', gap: spacing.s }
 });

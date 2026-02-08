@@ -1,66 +1,46 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView, SafeAreaView, StatusBar, FlatList, Animated, Platform, Dimensions, ImageBackground } from 'react-native';
+import React, { useMemo } from 'react';
+import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import MinimalLayout from '../components/minimal/MinimalLayout';
+import MinimalHeader from '../components/minimal/MinimalHeader';
+import MinimalCard from '../components/minimal/MinimalCard';
+import MinimalButton from '../components/minimal/MinimalButton';
 import { theme } from '../styles/theme';
-import { spacing, fonts, moderateScale, borderRadius, getContainerPadding } from '../styles/responsive';
-import { Card, Button, Badge } from '../ui';
+import { spacing, fonts, borderRadius, moderateScale } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
 /**
- * شاشة بداية الجولة للمضيف
+ * HostGameIntroScreen - V3
  */
 export const HostGameIntroScreen = ({ 
   scenarioTitle = '',
   round = 1,
   totalRounds = 3
 }) => {
-  const { isDesktop } = useResponsiveLayout();
-  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
-
   return (
-    <ImageBackground
-      source={require('../../assets/desk_background_noir.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
+    <MinimalLayout>
+      <View style={styles.centerContent}>
+        <View style={styles.badgeContainer}>
+          <Text style={styles.badgeText}>الجولة {round} / {totalRounds}</Text>
+        </View>
         
-        <View style={styles.centeredContainer}>
-        {/* Round Badge */}
-        <View style={styles.roundBadge}>
-          <Text style={styles.roundText}>الجولة {round} من {totalRounds}</Text>
-        </View>
+        <Text style={styles.emojiDisplay}>🎮</Text>
+        
+        <MinimalCard style={styles.introCard}>
+          <Text style={styles.introLabel}>عنوان القضية</Text>
+          <Text style={styles.introTitle}>{scenarioTitle || 'جاري التحميل...'}</Text>
+        </MinimalCard>
 
-        {/* Main Icon */}
-        <Text style={styles.largeEmoji}>🎮</Text>
-
-        {/* Scenario Title Card */}
-        <Card style={styles.scenarioCard}>
-          <Text style={styles.scenarioLabel}>عنوان القضية</Text>
-          <Text style={styles.scenarioTitle}>{scenarioTitle || 'جاري التحميل...'}</Text>
-        </Card>
-
-        {/* Status Message */}
-        <View style={styles.statusContainer}>
-          <Text style={styles.statusEmoji}>⚙️</Text>
-          <Text style={styles.statusText}>جارٍ توزيع الأدوار على اللاعبين...</Text>
-        </View>
-
-        {/* Info Box */}
-        <View style={styles.infoBox}>
-          <Text style={styles.infoIcon}>💡</Text>
-          <Text style={styles.infoText}>
-            سيتم البدء في مرحلة الكتابة تلقائياً
-          </Text>
+        <View style={styles.statusRow}>
+          <Text style={styles.statusIcon}>⚙️</Text>
+          <Text style={styles.statusText}>جارٍ توزيع الأدوار...</Text>
         </View>
       </View>
-    </SafeAreaView>
-  </ImageBackground>
+    </MinimalLayout>
   );
 };
 
 /**
- * شاشة مراقبة مرحلة الكتابة للمضيف
+ * HostDraftingScreen - V3
  */
 export const HostDraftingScreen = ({ 
   players = [],
@@ -68,361 +48,83 @@ export const HostDraftingScreen = ({
   timeLeft = 90
 }) => {
   const { isDesktop } = useResponsiveLayout();
-  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
-  
   const submittedCount = players.length - waitingFor.length;
   const progress = players.length > 0 ? (submittedCount / players.length) * 100 : 0;
 
-  // Format time as MM:SS
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Timer color based on time left
-  const getTimerColor = () => {
-    if (timeLeft > 60) return theme.colors.teamGood;
-    if (timeLeft > 30) return theme.colors.accentYellow;
-    return theme.colors.primary;
-  };
-
   return (
-    <ImageBackground
-      source={require('../../assets/desk_background_noir.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>مرحلة الكتابة</Text>
-          </View>
+    <MinimalLayout>
+      <View style={[styles.container, isDesktop && styles.containerDesktop]}>
+        <MinimalHeader title="مرحلة الكتابة" subtitle="يراقب المضيف" />
 
-          {/* Cards Grid Container */}
-          <View style={styles.cardsGrid}>
-            {/* Timer Card */}
-            <Card style={[styles.timerCard, styles.gridCard]}>
-              <View style={styles.timerRow}>
-                <Text style={styles.timerLabel}>الوقت المتبقي:</Text>
-                <Text style={[styles.timerText, { color: getTimerColor() }]}>
-                  {formatTime(timeLeft)}
-                </Text>
-              </View>
-              <View style={styles.timerBar}>
-                <View 
-                  style={[
-                    styles.timerBarFill,
-                    { 
-                      width: `${(timeLeft / 90) * 100}%`,
-                      backgroundColor: getTimerColor()
-                    }
-                  ]} 
-                />
-              </View>
-            </Card>
+        <View style={styles.gridContainer}>
+          {/* Timer & Progress */}
+          <MinimalCard style={styles.dashboardCard}>
+             <View style={styles.timerRow}>
+                <Text style={styles.timerLabel}>الوقت المتبقي</Text>
+                <Text style={styles.timerValue}>{formatTime(timeLeft)}</Text>
+             </View>
+             <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: `${(timeLeft / 90) * 100}%` }]} />
+             </View>
+             
+             <View style={styles.divider} />
+             
+             <View style={styles.statsRow}>
+                <Text style={styles.statsLabel}>تم التسليم</Text>
+                <Text style={styles.statsValue}>{submittedCount} / {players.length}</Text>
+             </View>
+             <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: `${progress}%`, backgroundColor: theme.colors.primary }]} />
+             </View>
+          </MinimalCard>
 
-            {/* Progress Card */}
-            <Card style={[styles.card, styles.gridCard]}>
-              <View style={styles.compactHeader}>
-                <Text style={styles.sectionTitle}>التقارير المقدمة</Text>
-                <Text style={styles.progressText}>
-                  {submittedCount} / {players.length}
-                </Text>
-              </View>
-              
-              <View style={styles.progressBar}>
-                <View 
-                  style={[
-                    styles.progressFill, 
-                    { width: `${progress}%` }
-                  ]} 
-                />
-              </View>
-            </Card>
-
-            {/* Players Status */}
-            <Card style={[styles.card, styles.fullWidthCard]}>
-              <Text style={styles.sectionTitle}>حالة اللاعبين</Text>
-              
-              <View style={styles.playersGrid}>
+          {/* Players List */}
+          <View style={styles.playersListContainer}>
+             <Text style={styles.sectionHeader}>حالة اللاعبين</Text>
+             <ScrollView style={styles.scrollList}>
                 {players.map((player, index) => {
                   const hasSubmitted = !waitingFor.includes(player.id);
                   return (
-                    <View 
-                      key={player.id || index} 
-                      style={[
-                        styles.playerItem,
-                        hasSubmitted && styles.playerItemSubmitted
-                      ]}
-                    >
-                      <Text style={styles.playerNumber}>#{index + 1}</Text>
-                      <Text style={styles.playerName}>{player.name}</Text>
-                      <View style={styles.playerStatus}>
-                        <Text style={styles.statusIcon}>
-                          {hasSubmitted ? '✅' : '⏳'}
-                        </Text>
-                        <Text style={[
-                          styles.statusText,
-                          hasSubmitted && styles.statusTextSubmitted
-                        ]}>
-                          {hasSubmitted ? 'تم' : '...'}
-                        </Text>
-                      </View>
+                    <View key={player.id || index} style={styles.playerRow}>
+                       <Text style={styles.playerIndex}>#{index + 1}</Text>
+                       <Text style={styles.playerName}>{player.name}</Text>
+                       <Text style={hasSubmitted ? styles.statusDone : styles.statusWait}>
+                         {hasSubmitted ? 'تم ✅' : '...'}
+                       </Text>
                     </View>
                   );
                 })}
-              </View>
-            </Card>
+             </ScrollView>
           </View>
-
-          {submittedCount < players.length && (
-            <View style={styles.infoBox}>
-              <Text style={styles.infoIcon}>⏳</Text>
-              <Text style={styles.infoText}>
-                في انتظار {players.length - submittedCount} لاعبين...
-              </Text>
-            </View>
-          )}
-
-          {submittedCount === players.length && (
-            <View style={[styles.infoBox, styles.successBox]}>
-              <Text style={styles.infoIcon}>✅</Text>
-              <Text style={styles.infoText}>
-                جميع اللاعبين سلّموا تقاريرهم! الانتقال للتصويت...
-              </Text>
-            </View>
-          )}
         </View>
-      </ScrollView>
-    </SafeAreaView>
-  </ImageBackground>
+      </View>
+    </MinimalLayout>
   );
 };
 
 /**
- * شاشة العرض التشويقي للمضيف
- */
-export const HostDramaticRevealScreen = ({ 
-  revealedScenarios = [],
-  currentReveal = null
-}) => {
-  const { isDesktop } = useResponsiveLayout();
-  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
-
-  return (
-    <ImageBackground
-      source={require('../../assets/desk_background_noir.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>نتائج التصويت</Text>
-          </View>
-
-          {/* Current Reveal (if any) */}
-          {currentReveal && (
-            <Card style={styles.currentRevealCard}>
-              {currentReveal.position && (
-                <Text style={styles.positionText}>
-                  {currentReveal.position} من {currentReveal.total}
-                </Text>
-              )}
-              
-              <Text style={styles.currentRevealText}>
-                {currentReveal.text}
-              </Text>
-              
-              {currentReveal.voteCount !== undefined && (
-                <View style={styles.votesContainer}>
-                  <Text style={styles.votesLabel}>الأصوات:</Text>
-                  <Badge 
-                    text={`${currentReveal.voteCount} ${currentReveal.voteCount === 1 ? 'صوت' : 'أصوات'}`}
-                    variant="primary"
-                  />
-                  {currentReveal.voters && currentReveal.voters.length > 0 && (
-                    <Text style={styles.votersText}>
-                      {currentReveal.voters.join(' • ')}
-                    </Text>
-                  )}
-                </View>
-              )}
-              
-              {currentReveal.author && (
-                <View style={styles.authorContainer}>
-                  <Text style={styles.authorLabel}>الكاتب:</Text>
-                  <Text style={styles.authorName}>{currentReveal.author}</Text>
-                </View>
-              )}
-            </Card>
-          )}
-
-          {/* Revealed Scenarios List */}
-          {revealedScenarios.length > 0 && (
-            <Card style={styles.card}>
-              <Text style={styles.sectionTitle}>السيناريوهات المكشوفة</Text>
-              
-              <View style={styles.playersGrid}>
-                {revealedScenarios.map((scenario, index) => (
-                  <View key={index} style={styles.revealedScenario}>
-                    <View style={styles.revealedHeader}>
-                      <Badge 
-                        text={`#${index + 1}`}
-                        variant="secondary"
-                      />
-                      {scenario.voteCount !== undefined && (
-                        <Badge 
-                          text={`${scenario.voteCount} ${scenario.voteCount === 1 ? 'صوت' : 'أصوات'}`}
-                          variant="primary"
-                        />
-                      )}
-                    </View>
-                    
-                    <Text style={styles.revealedText}>
-                      {scenario.text}
-                    </Text>
-                    
-                    {scenario.author && (
-                      <Text style={styles.revealedAuthor}>
-                        ✍️ {scenario.author}
-                      </Text>
-                    )}
-                  </View>
-                ))}
-              </View>
-            </Card>
-          )}
-
-          {/* Waiting Message */}
-          {revealedScenarios.length === 0 && !currentReveal && (
-            <View style={styles.centeredContainer}>
-              <Text style={styles.largeEmoji}>⏳</Text>
-              <Text style={styles.waitingText}>
-                جاري تحضير العرض التشويقي...
-              </Text>
-            </View>
-          )}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  </ImageBackground>
-  );
-};
-
-/**
- * شاشة مراقبة اللعب للمضيف (الموجودة سابقاً - تم الاحتفاظ بها)
+ * HostGameScreen - V3 (Monitoring)
  */
 export const HostGameScreen = ({ players = [], waitingFor = [] }) => {
-  const { isDesktop } = useResponsiveLayout();
-  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
-
-  const submittedCount = players.length - waitingFor.length;
-
-  return (
-    <ImageBackground
-      source={require('../../assets/desk_background_noir.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>مراقبة اللعب</Text>
-          </View>
-
-          {/* Progress Card */}
-          <Card style={styles.card}>
-            <Text style={styles.sectionTitle}>
-              📝 التقارير المقدمة
-            </Text>
-            <View style={styles.progressContainer}>
-              <Text style={styles.progressText}>
-                {submittedCount} / {players.length}
-              </Text>
-            </View>
-            
-            <View style={styles.progressBar}>
-              <View 
-                style={[
-                  styles.progressFill, 
-                  { width: `${(submittedCount / players.length) * 100}%` }
-                ]} 
-              />
-            </View>
-          </Card>
-
-          {/* Players Status */}
-          <Card style={styles.card}>
-            <Text style={styles.sectionTitle}>حالة اللاعبين</Text>
-            
-            <View style={styles.playersGrid}>
-              {players.map((player, index) => {
-                const hasSubmitted = !waitingFor.includes(player.id);
-                return (
-                  <View key={player.id || index} style={styles.playerItem}>
-                    <Text style={styles.playerNumber}>#{index + 1}</Text>
-                    <Text style={styles.playerName}>{player.name}</Text>
-                    <View style={[
-                      styles.statusBadge,
-                      { backgroundColor: hasSubmitted ? theme.colors.teamGood : theme.colors.warning }
-                    ]}>
-                      <Text style={styles.statusText}>
-                        {hasSubmitted ? '✓ تم' : '⏳ ينتظر'}
-                      </Text>
-                    </View>
-                  </View>
-                );
-              })}
-            </View>
-          </Card>
-
-          <View style={styles.infoBox}>
-            <Text style={styles.infoText}>
-              ⏳ في انتظار تسليم جميع اللاعبين لتقاريرهم...
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  </ImageBackground>
-  );
+  return <HostDraftingScreen players={players} waitingFor={waitingFor} timeLeft={0} />;
 };
 
 /**
- * شاشة التصويت المباشر للمضيف
+ * HostVotingScreen - V3
  */
 export const HostVotingScreen = ({ 
-  votingType = 'quality', // 'quality' or 'culprit'
+  votingType = 'quality', 
   scenarios = [],
   liveVotes = [],
   players = []
 }) => {
   const { isDesktop } = useResponsiveLayout();
-  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
-
   const votedCount = liveVotes.length;
   const totalPlayers = players.length;
 
@@ -431,107 +133,66 @@ export const HostVotingScreen = ({
   };
 
   return (
-    <ImageBackground
-      source={require('../../assets/desk_background_noir.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-        <View style={styles.container}>
-          {/* Header */}
-          <View style={styles.header}>
-            <Text style={styles.title}>
-              {votingType === 'quality' ? 'تصويت الجودة' : 'تصويت الجاني'}
-            </Text>
-          </View>
+    <MinimalLayout>
+      <View style={[styles.container, isDesktop && styles.containerDesktop]}>
+        <MinimalHeader 
+          title={votingType === 'quality' ? 'تصويت الجودة' : 'تصويت الجاني'} 
+          subtitle={`${votedCount} من ${totalPlayers} صوتوا`}
+        />
 
-          {/* Cards Grid Container */}
-          <View style={styles.cardsGrid}>
-            {/* Progress */}
-            <Card style={[styles.card, styles.gridCard]}>
-              <View style={styles.compactHeader}>
-                <Text style={styles.sectionTitle}>التقدم</Text>
-                <Text style={styles.progressText}>
-                  {votedCount} / {totalPlayers}
-                </Text>
-              </View>
-              
-              <View style={styles.progressBar}>
-                <View 
-                  style={[
-                    styles.progressFill, 
-                    { width: `${(votedCount / totalPlayers) * 100}%` }
-                  ]} 
-                />
-              </View>
-            </Card>
+        <View style={styles.gridContainer}>
+           <View style={styles.leftColumn}>
+              <MinimalCard style={styles.voteStatsCard}>
+                 <Text style={styles.cardTitle}>تقدم التصويت</Text>
+                 <View style={styles.progressBarBg}>
+                    <View style={[styles.progressBarFill, { width: `${(votedCount / totalPlayers) * 100}%`, backgroundColor: theme.colors.primary }]} />
+                 </View>
+                 <View style={styles.votersList}>
+                    {players.map(p => {
+                       const hasVoted = liveVotes.some(v => v.playerId === p.id);
+                       return (
+                         <Text key={p.id} style={[styles.miniVoter, hasVoted && styles.miniVoterDone]}>
+                           {p.name} {hasVoted ? '✓' : ''}
+                         </Text>
+                       );
+                    })}
+                 </View>
+              </MinimalCard>
+           </View>
 
-            {/* Voters List */}
-            <Card style={[styles.card, styles.gridCard]}>
-              <Text style={styles.sectionTitle}>من صوّت؟</Text>
-              
-              <View style={styles.votersList}>
-                {players.map((player, index) => {
-                  const hasVoted = liveVotes.some(vote => vote.playerId === player.id);
-                  return (
-                    <View key={player.id || index} style={styles.voterItem}>
-                      <Text style={styles.voterIcon}>{hasVoted ? '✓' : '○'}</Text>
-                      <Text style={[
-                        styles.voterName,
-                        hasVoted && styles.voterNameVoted
-                      ]}>
-                        {player.name}
-                      </Text>
-                    </View>
-                  );
-                })}
-              </View>
-            </Card>
-
-            {/* Live Votes */}
-            <Card style={[styles.card, styles.fullWidthCard]}>
-              <Text style={styles.sectionTitle}>الأصوات الحية</Text>
-              
-              <View style={styles.playersGrid}>
-                {scenarios.map((scenario, index) => {
-                  const votes = getVotesForScenario(index);
-                  return (
-                    <View key={index} style={styles.voteItem}>
-                      <Text style={styles.voteLabel}>
-                        {votingType === 'quality' 
-                          ? `تقرير #${index + 1}` 
-                          : scenario.playerName || scenario.author || `لاعب ${index + 1}`}
-                      </Text>
-                      <View style={styles.voteBar}>
-                        <View 
-                          style={[
-                            styles.voteBarFill, 
-                            { width: totalPlayers > 0 ? `${(votes / totalPlayers) * 100}%` : '0%' }
-                          ]} 
-                        />
-                      </View>
-                      <Text style={styles.voteCount}>{votes}</Text>
-                    </View>
-                  );
-                })}
-              </View>
-            </Card>
-          </View>
+           <View style={styles.rightColumn}>
+              <ScrollView style={styles.resultsScroll}>
+                 {scenarios.map((scenario, index) => {
+                    const votes = getVotesForScenario(index);
+                    const label = votingType === 'quality' 
+                        ? `سيناريو #${index + 1}` 
+                        : scenario.playerName || `لاعب ${index + 1}`;
+                    
+                    return (
+                       <View key={index} style={styles.resultBarContainer}>
+                          <View style={styles.resultBarLabelRow}>
+                             <Text style={styles.resultLabel}>{label}</Text>
+                             <Text style={styles.resultCount}>{votes}</Text>
+                          </View>
+                          <View style={styles.resultBarBg}>
+                             <View style={[
+                               styles.resultBarFill, 
+                               { width: totalPlayers > 0 ? `${(votes / totalPlayers) * 100}%` : '0%' }
+                             ]} />
+                          </View>
+                       </View>
+                    );
+                 })}
+              </ScrollView>
+           </View>
         </View>
-      </ScrollView>
-    </SafeAreaView>
-  </ImageBackground>
+      </View>
+    </MinimalLayout>
   );
 };
 
 /**
- * شاشة النتائج للمضيف
+ * HostResultsScreen - V3
  */
 export const HostResultsScreen = ({ 
   roundResults = null,
@@ -539,619 +200,549 @@ export const HostResultsScreen = ({
   isLastRound = false
 }) => {
   const { isDesktop } = useResponsiveLayout();
-  const styles = useMemo(() => getStyles(isDesktop), [isDesktop]);
+  const [revealStep, setRevealStep] = React.useState(0);
+  
+  // Reset sequence when new results arrive
+  React.useEffect(() => {
+    if (roundResults) {
+        setRevealStep(0);
+        // Sequence:
+        // 0: Initial (Empty/Loading)
+        // 1: Show "Most Voted" Name (Delay 1s)
+        // 2: Reveal Role/Team (Delay 3s)
+        // 3: Show Full Results Banner (Delay 6s)
+        
+        const t1 = setTimeout(() => setRevealStep(1), 500);
+        const t2 = setTimeout(() => setRevealStep(2), 3500);
+        const t3 = setTimeout(() => setRevealStep(3), 7500);
+        
+        return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+    }
+  }, [roundResults]);
+
+  if (!roundResults) return null;
+
+  const { winner, reason, eliminatedPlayer, crimeTeam, justiceTeam, scores } = roundResults;
+  
+  // Find the eliminated player details from the scores array if available
+  const detailedEliminated = scores?.find(p => p.isEliminated);
+  const eliminatedTeam = detailedEliminated ? detailedEliminated.teamName : '';
+  const eliminatedRole = detailedEliminated ? detailedEliminated.role : '';
+
+  const getTeamColor = (team) => team === 'CRIME' ? '#8B0000' : '#1E90FF'; // Red vs Blue
+  const getTeamName = (team) => team === 'CRIME' ? 'فريق الجريمة' : 'فريق العدالة';
 
   return (
-    <ImageBackground
-      source={require('../../assets/desk_background_noir.png')}
-      style={styles.backgroundImage}
-      resizeMode="cover"
-    >
-      <SafeAreaView style={styles.safeArea}>
-        <StatusBar barStyle="light-content" backgroundColor="transparent" translucent />
-      
-        <ScrollView 
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
-        <View style={styles.container}>
-          {/* Header */}
-          <Text style={styles.title}>نتائج الجولة</Text>
-
-          {/* Winner & Culprit Row */}
-          <View style={styles.cardsGrid}>
-            {/* Winner Scenario */}
-            {roundResults && roundResults.bestScenario && (
-              <Card style={[styles.card, styles.gridCard]}>
-                <Text style={styles.sectionTitle}>🥇 أفضل سيناريو</Text>
-                <View style={styles.winnerBox}>
-                  <Text style={styles.winnerName}>{roundResults.bestScenario.author}</Text>
-                  <Text style={styles.winnerScore}>+{roundResults.bestScenario.points} نقطة</Text>
+    <MinimalLayout>
+      <View style={[styles.container, { maxWidth: 1000 }]}>
+         <MinimalHeader title="نتائج الجولة" />
+         
+         <ScrollView style={styles.scrollList}>
+            {/* 1️⃣ Suspense Phase: Eliminated Player Reveal */}
+            {eliminatedPlayer && (
+                <View style={styles.eliminatedBox}>
+                    <Text style={styles.eliminatedLabel}>أكثر شخص تم التصويت عليه هو...</Text>
+                    
+                    {revealStep >= 1 && (
+                        <Text style={[styles.eliminatedName, { fontSize: 40 }]}>{eliminatedPlayer.name}</Text>
+                    )}
+                    
+                    {revealStep >= 2 && (
+                        <View style={styles.eliminatedRevealRow}>
+                            <Text style={styles.eliminatedTeam}>{eliminatedTeam}</Text>
+                            {detailedEliminated && detailedEliminated.isCulprit && (
+                                <Text style={styles.eliminatedRole}> - {eliminatedRole}</Text>
+                            )}
+                        </View>
+                    )}
                 </View>
-              </Card>
             )}
 
-            {/* Culprit Result */}
-            {roundResults && roundResults.culpritVote && (
-              <Card style={[styles.card, styles.gridCard]}>
-                <Text style={styles.sectionTitle}>🔍 نتيجة التصويت</Text>
-                <View style={styles.culpritBox}>
-                  <Text style={styles.culpritText}>
-                    المتهم: {roundResults.culpritVote.accused}
-                  </Text>
-                  <Text style={styles.culpritSubtext}>
-                    {roundResults.culpritVote.isCorrect 
-                      ? '✓ صحيح!' 
-                      : '✗ خطأ!'}
-                  </Text>
-                </View>
-              </Card>
-            )}
-          </View>
-
-          {/* Current Standings */}
-          {roundResults && roundResults.standings && (
-            <Card style={[styles.card, styles.fullWidthCard]}>
-              <Text style={styles.sectionTitle}>📊 الترتيب الحالي</Text>
-              
-              <View style={styles.playersGrid}>
-                {roundResults.standings.map((player, index) => (
-                  <View key={index} style={styles.standingItem}>
-                    <View style={styles.standingRank}>
-                      <Text style={styles.standingRankText}>#{index + 1}</Text>
+            {/* 2️⃣ Final Result Phase */}
+            {revealStep >= 3 && (
+                <>
+                    {/* Main Result Banner */}
+                    <View style={[
+                        styles.resultBanner, 
+                        { backgroundColor: winner === 'CONTINUE' ? '#FFA500' : getTeamColor(winner) }
+                    ]}>
+                        <Text style={styles.resultBannerTitle}>
+                            {winner === 'CONTINUE' ? 'اللعبة مستمرة!' : `فاز ${getTeamName(winner)}!`}
+                        </Text>
+                        <Text style={styles.resultBannerReason}>{reason}</Text>
                     </View>
-                    <Text style={styles.standingName}>{player.name}</Text>
-                    <Text style={styles.standingScore}>{player.totalScore}</Text>
-                  </View>
-                ))}
-              </View>
-            </Card>
-          )}
 
-          {/* Continue Button */}
-          <Button
-            title={isLastRound ? "النتائج النهائية 🎉" : "الجولة التالية ➡️"}
-            onPress={onContinue}
-            size="large"
-            fullWidth
-            style={styles.continueButton}
-          />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  </ImageBackground>
+                    {/* Team Rosters (Reveal) */}
+                    <View style={styles.teamsContainer}>
+                        <MinimalCard style={[styles.teamCard, { borderColor: '#8B0000', borderWidth: 1 }]}>
+                            <Text style={[styles.teamHeader, { color: '#8B0000' }]}>فريق الجريمة 🕵️‍♂️</Text>
+                            {crimeTeam?.length > 0 ? crimeTeam.map(p => (
+                                <View key={p.id} style={styles.playerResultRow}>
+                                    <Text style={styles.playerResultName}>{p.name}</Text>
+                                    <Text style={styles.playerResultRole}>{p.roleName}</Text>
+                                </View>
+                            )) : <Text style={styles.noPlayersText}>لا يوجد لاعبين</Text>}
+                        </MinimalCard>
+                        
+                        <MinimalCard style={[styles.teamCard, { borderColor: '#1E90FF', borderWidth: 1 }]}>
+                            <Text style={[styles.teamHeader, { color: '#1E90FF' }]}>فريق العدالة ⚖️</Text>
+                            {justiceTeam?.length > 0 ? justiceTeam.map(p => (
+                                <View key={p.id} style={styles.playerResultRow}>
+                                    <Text style={styles.playerResultName}>{p.name}</Text>
+                                    <Text style={styles.playerResultRole}>{p.roleName}</Text>
+                                </View>
+                            )) : <Text style={styles.noPlayersText}>لا يوجد لاعبين</Text>}
+                        </MinimalCard>
+                    </View>
+
+                    {/* Standings Table with detailed score breakdown */}
+                    <View style={styles.standingsContainer}>
+                         <Text style={styles.sectionHeader}>تفاصيل النقاط</Text>
+                         {scores?.map((player, index) => (
+                           <View key={index} style={styles.scoreRowDetailed}>
+                              <View style={styles.scoreRowHeader}>
+                                  <Text style={styles.rank}>#{index + 1}</Text>
+                                  <Text style={styles.standingName}>{player.playerName}</Text>
+                                  <Text style={styles.standingScore}>{player.totalScore}</Text>
+                              </View>
+                              {/* Breakdown badges */}
+                              <View style={styles.breakdownRow}>
+                                  {player.breakdown?.map((item, i) => (
+                                      <View key={i} style={styles.scoreBadge}>
+                                          <Text style={styles.scoreBadgeText}>{item.reason}: {item.points > 0 ? '+' : ''}{item.points}</Text>
+                                      </View>
+                                  ))}
+                              </View>
+                           </View>
+                         ))}
+                    </View>
+                </>
+            )}
+         </ScrollView>
+
+         {revealStep >= 3 && (
+             <View style={styles.footer}>
+                <MinimalButton 
+                  title={winner === 'CONTINUE' ? "إكمال اللعبة (نقاش)" : (isLastRound ? "إنهاء اللعبة" : "جولة جديدة")} 
+                  onPress={onContinue} 
+                />
+             </View>
+         )}
+      </View>
+    </MinimalLayout>
   );
 };
 
-const getStyles = (isDesktop) => StyleSheet.create({
-  backgroundImage: {
-    flex: 1,
-    width: '100%',
-    height: '100%',
-    backgroundColor: '#1a1410',
-  },
-  safeArea: {
-    flex: 1,
-    backgroundColor: 'transparent',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingVertical: isDesktop ? moderateScale(3) : spacing.xl,
-  },
+/**
+ * HostDramaticRevealScreen - V3
+ */
+export const HostDramaticRevealScreen = ({ 
+  revealedScenarios = [],
+  currentReveal = null
+}) => {
+  // currentReveal structure updates over time: { text, index, voters, voteCount, author }
+  // We determine what to show based on what properties exist
+
+  const showVoters = currentReveal?.voters !== undefined;
+  const showAuthor = currentReveal?.author !== undefined;
+
+  return (
+    <MinimalLayout>
+       <View style={styles.centerContent}>
+          <MinimalHeader title="كشف النتائج" />
+          
+          {currentReveal ? (
+             <MinimalCard style={[styles.revealCard, showAuthor && styles.revealCardComplete]}>
+                {/* 1. Scenario Text */}
+                <Text style={styles.revealText}>"{currentReveal.text}"</Text>
+                
+                {/* 2. Voters (Reveal Step 2) */}
+                {showVoters && (
+                    <View style={styles.votersSection}>
+                         <Text style={styles.votersLabel}>صوّت له:</Text>
+                         <View style={styles.votersListHorizontal}>
+                             {currentReveal.voters.length > 0 ? (
+                                 currentReveal.voters.map((v, i) => (
+                                     <Text key={i} style={styles.voterTag}>{v}</Text>
+                                 ))
+                             ) : (
+                                 <Text style={styles.noVotesText}>لا أحد</Text>
+                             )}
+                         </View>
+                         <Text style={styles.voteCountBig}>{currentReveal.voteCount} صوت</Text>
+                    </View>
+                )}
+
+                {/* 3. Author (Reveal Step 3 - Prominent) */}
+                {showAuthor && (
+                    <View style={styles.authorSection}>
+                        <Text style={styles.authorLabel}>الكاتب هو...</Text>
+                        <Text style={styles.authorNameBig}>{currentReveal.author}</Text>
+                    </View>
+                )}
+             </MinimalCard>
+          ) : (
+             <Text style={styles.waitingText}>جاري التحضير...</Text>
+          )}
+
+          {/* History (Previous Scenarios) */}
+          <ScrollView style={styles.revealHistory} horizontal contentContainerStyle={{ gap: 10 }}>
+             {revealedScenarios.map((s, i) => (
+                <View key={i} style={styles.miniRevealCard}>
+                   <Text numberOfLines={2} style={styles.miniRevealText}>{s.text}</Text>
+                   <Text style={styles.miniRevealAuthor}>{s.author}</Text>
+                </View>
+             ))}
+          </ScrollView>
+       </View>
+    </MinimalLayout>
+  );
+};
+
+const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: getContainerPadding(),
-    alignItems: 'center',
-    maxWidth: isDesktop ? 1200 : 800,
-    alignSelf: 'center',
     width: '100%',
+    padding: spacing.m,
+    gap: spacing.m,
   },
-
-  // Header
-  header: {
-    alignItems: 'center',
-    marginBottom: isDesktop ? moderateScale(1) : spacing.xl,
+  containerDesktop: {
+    maxWidth: 1000,
   },
-  title: {
-    fontSize: isDesktop ? fonts.medium : fonts.xxlarge,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.text,
-    textTransform: 'uppercase',
-    letterSpacing: 2,
-  },
-
-  // Card
-  card: {
-    width: '100%',
-    maxWidth: isDesktop ? 700 : 600,
-    marginBottom: isDesktop ? moderateScale(1) : spacing.l,
-    paddingVertical: isDesktop ? moderateScale(2) : undefined,
-    paddingHorizontal: isDesktop ? moderateScale(3) : undefined,
-  },
-
-  // Section Title
-  sectionTitle: {
-    fontSize: isDesktop ? fonts.small : fonts.large,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.text,
-    marginBottom: isDesktop ? spacing.xs : spacing.m,
-    textTransform: 'uppercase',
-  },
-
-  // Progress
-  progressContainer: {
-    alignItems: 'center',
-    marginBottom: spacing.m,
-  },
-  progressText: {
-    fontSize: isDesktop ? fonts.medium : fonts.xlarge,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.text,
-  },
-  progressBar: {
-    width: '100%',
-    height: isDesktop ? moderateScale(8) : moderateScale(12),
-    backgroundColor: theme.colors.background,
-    borderRadius: borderRadius.medium,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: theme.colors.teamGood,
-    borderRadius: borderRadius.medium,
-  },
-
-  // Players/Voters List
-  playersGrid: {
-    flexDirection: isDesktop ? 'row' : 'column',
-    flexWrap: isDesktop ? 'wrap' : 'nowrap',
-    gap: isDesktop ? moderateScale(4) : 0,
-    width: '100%',
-  },
-  playerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: isDesktop ? moderateScale(1.5) : spacing.m,
-    backgroundColor: theme.colors.background,
-    borderRadius: borderRadius.small,
-    marginBottom: isDesktop ? 0 : spacing.s,
-    width: isDesktop ? '24%' : '100%',
-  },
-  playerNumber: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.stamp,
-    width: moderateScale(25),
-  },
-  playerName: {
+  centerContent: {
     flex: 1,
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-  },
-  statusBadge: {
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.small,
-  },
-  statusText: {
-    fontSize: isDesktop ? moderateScale(7) : fonts.small,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.paper,
-    fontWeight: '700',
-  },
-
-  // Vote Items
-  voteItem: {
-    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: isDesktop ? spacing.s : spacing.m,
-    width: isDesktop ? '48%' : '100%',
+    justifyContent: 'center',
+    width: '100%',
+    gap: spacing.l,
   },
-  voteLabel: {
-    fontSize: isDesktop ? moderateScale(7) : fonts.small,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-    width: moderateScale(100),
-  },
-  voteBar: {
-    flex: 1,
-    height: isDesktop ? moderateScale(16) : moderateScale(24),
-    backgroundColor: theme.colors.background,
-    borderRadius: borderRadius.small,
-    overflow: 'hidden',
-    marginHorizontal: spacing.s,
-  },
-  voteBarFill: {
-    height: '100%',
-    backgroundColor: theme.colors.stamp,
-  },
-  voteCount: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.text,
-    width: moderateScale(30),
-    textAlign: 'right',
-  },
-
-  // Voters List
-  votersList: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.s,
-    justifyContent: isDesktop ? 'center' : 'flex-start',
-  },
-  voterItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  
+  // Intro Screen
+  badgeContainer: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
     paddingHorizontal: spacing.m,
     paddingVertical: spacing.s,
-    backgroundColor: theme.colors.background,
-    borderRadius: borderRadius.small,
+    borderRadius: borderRadius.large,
   },
-  voterIcon: {
-    fontSize: moderateScale(16),
-    marginRight: spacing.xs,
+  badgeText: {
+    color: '#EBE1D2',
+    fontFamily: theme.fonts.bold,
   },
-  voterName: {
-    fontSize: isDesktop ? moderateScale(7) : fonts.small,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
+  emojiDisplay: {
+    fontSize: 80,
   },
-  voterNameVoted: {
-    color: theme.colors.text,
-    fontWeight: '700',
-  },
-
-  // Results
-  winnerBox: {
-    alignItems: 'center',
-    padding: isDesktop ? spacing.s : spacing.l,
-    backgroundColor: theme.colors.stickyNote + '20',
-    borderRadius: borderRadius.medium,
-    borderWidth: 1,
-    borderColor: theme.colors.stickyNote,
-    flexDirection: isDesktop ? 'row' : 'column',
-    justifyContent: 'space-between',
-  },
-  winnerName: {
-    fontSize: isDesktop ? fonts.small : fonts.xxlarge,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.text,
-    marginBottom: isDesktop ? 0 : spacing.s,
-  },
-  winnerScore: {
-    fontSize: isDesktop ? fonts.small : fonts.xlarge,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.stickyNote,
-    fontWeight: '700',
-  },
-  culpritBox: {
-    padding: isDesktop ? spacing.s : spacing.l,
-    backgroundColor: theme.colors.background,
-    borderRadius: borderRadius.medium,
-    flexDirection: isDesktop ? 'row' : 'column',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  culpritText: {
-    fontSize: isDesktop ? fonts.small : fonts.large,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-    textAlign: isDesktop ? 'left' : 'center',
-    marginBottom: isDesktop ? 0 : spacing.s,
-  },
-  culpritSubtext: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
-    textAlign: isDesktop ? 'right' : 'center',
-  },
-  standingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: isDesktop ? moderateScale(1.5) : spacing.m,
-    backgroundColor: theme.colors.background,
-    borderRadius: borderRadius.small,
-    marginBottom: isDesktop ? 0 : spacing.s,
-    width: isDesktop ? '24%' : '100%',
-  },
-  standingRank: {
-    width: isDesktop ? moderateScale(30) : moderateScale(40),
-    height: isDesktop ? moderateScale(30) : moderateScale(40),
-    borderRadius: moderateScale(20),
-    backgroundColor: theme.colors.stamp,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: spacing.m,
-  },
-  standingRankText: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.paper,
-  },
-  standingName: {
-    flex: 1,
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-  },
-  standingScore: {
-    fontSize: isDesktop ? fonts.small : fonts.large,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.stickyNote,
-  },
-
-  // Buttons
-  continueButton: {
-    maxWidth: isDesktop ? 400 : 400,
+  introCard: {
     width: '100%',
-    alignSelf: 'center',
-  },
-
-  // Info Box
-  infoBox: {
-    flexDirection: 'row',
+    maxWidth: 400,
     alignItems: 'center',
-    backgroundColor: theme.colors.stickyNote + '20',
-    padding: isDesktop ? moderateScale(3) : spacing.l,
-    borderRadius: borderRadius.medium,
-    borderWidth: 1,
-    borderColor: theme.colors.stickyNote,
-    maxWidth: isDesktop ? 700 : 600,
-    width: '100%',
+    padding: spacing.xl,
   },
-  successBox: {
-    backgroundColor: theme.colors.teamGood + '20',
-    borderColor: theme.colors.teamGood,
-  },
-  infoIcon: {
-    fontSize: moderateScale(24),
-    marginLeft: spacing.s,
-  },
-  infoText: {
-    flex: 1,
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-  },
-
-  // Centered Container (for intro/waiting screens)
-  centeredContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: getContainerPadding(),
-    maxWidth: isDesktop ? 1000 : 800,
-    alignSelf: 'center',
-    width: '100%',
-  },
-  largeEmoji: {
-    fontSize: isDesktop ? moderateScale(48) : moderateScale(96),
-    marginBottom: isDesktop ? moderateScale(2) : spacing.xl,
-  },
-  roundBadge: {
-    backgroundColor: theme.colors.stamp,
-    paddingHorizontal: spacing.l,
-    paddingVertical: spacing.m,
-    borderRadius: borderRadius.medium,
-    marginBottom: isDesktop ? moderateScale(2) : spacing.xl,
-  },
-  roundText: {
-    fontSize: isDesktop ? fonts.small : fonts.large,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.paper,
-    textTransform: 'uppercase',
-  },
-  scenarioCard: {
-    width: '100%',
-    maxWidth: isDesktop ? 700 : 600,
-    padding: isDesktop ? moderateScale(6) : spacing.xl,
-    marginBottom: isDesktop ? moderateScale(2) : spacing.xl,
-    alignItems: 'center',
-  },
-  scenarioLabel: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
-    marginBottom: spacing.m,
-  },
-  scenarioTitle: {
-    fontSize: isDesktop ? fonts.medium : fonts.xxlarge,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.text,
-    textAlign: 'center',
-    lineHeight: isDesktop ? fonts.medium * 1.4 : fonts.xxlarge * 1.4,
-  },
-  statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: isDesktop ? moderateScale(2) : spacing.xxl,
-  },
-  statusEmoji: {
-    fontSize: moderateScale(32),
-    marginLeft: spacing.m,
-  },
-  statusText: {
-    fontSize: isDesktop ? fonts.small : fonts.large,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
-  },
-  waitingText: {
-    fontSize: isDesktop ? fonts.small : fonts.large,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
-    textAlign: 'center',
-  },
-
-  // Timer Card
-  timerCard: {
-    width: '100%',
-    maxWidth: isDesktop ? '100%' : 400,
-    padding: isDesktop ? moderateScale(2) : spacing.m,
-    alignItems: 'center',
-    borderWidth: 2,
-    marginBottom: isDesktop ? moderateScale(1) : spacing.m,
-    // Horizontal on web?
-    flexDirection: isDesktop ? 'row' : 'column',
-    justifyContent: isDesktop ? 'space-between' : 'center',
-  },
-  timerLabel: {
-    fontSize: isDesktop ? fonts.tiny : fonts.regular,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
-    marginBottom: isDesktop ? 0 : spacing.xs,
-    marginRight: isDesktop ? spacing.m : 0,
-  },
-  timerText: {
-    fontSize: isDesktop ? moderateScale(20) : moderateScale(36),
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    marginBottom: isDesktop ? 0 : spacing.s,
-  },
-  timerBar: {
-    width: isDesktop ? '40%' : '100%',
-    height: moderateScale(8),
-    backgroundColor: theme.colors.background,
-    borderRadius: borderRadius.medium,
-    overflow: 'hidden',
-    marginLeft: isDesktop ? spacing.m : 0,
-  },
-  timerBarFill: {
-    height: '100%',
-    borderRadius: borderRadius.medium,
-  },
-
-  // Player Item (Drafting)
-  playerItemSubmitted: {
-    backgroundColor: theme.colors.teamGood + '20',
-    borderWidth: 1,
-    borderColor: theme.colors.teamGood,
-  },
-  playerStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  statusIcon: {
-    fontSize: moderateScale(20),
-    marginLeft: spacing.s,
-  },
-  statusTextSubmitted: {
-    color: theme.colors.teamGood,
-    fontWeight: '700',
-  },
-
-  // Dramatic Reveal
-  currentRevealCard: {
-    width: '100%',
-    maxWidth: isDesktop ? 700 : 700,
-    padding: isDesktop ? spacing.m : spacing.xxl,
-    marginBottom: isDesktop ? spacing.m : spacing.xl,
-    borderWidth: 2,
-    borderColor: theme.colors.stamp,
-  },
-  currentRevealText: {
-    fontSize: isDesktop ? fonts.medium : fonts.xlarge,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-    lineHeight: isDesktop ? fonts.medium * 1.3 : fonts.xlarge * 1.5,
-    marginBottom: isDesktop ? spacing.m : spacing.l,
-    textAlign: 'center',
-  },
-  votesContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: spacing.m,
-    gap: spacing.m,
-  },
-  votesLabel: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
-  },
-  authorContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.m,
-    
-  },
-  authorLabel: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.textSecondary,
-  },
-  authorName: {
-    fontSize: isDesktop ? fonts.small : fonts.large,
-    fontFamily: theme.fonts.heading,
-    fontWeight: '700',
-    color: theme.colors.stamp,
-  },
-  revealedScenario: {
-    padding: isDesktop ? spacing.s : spacing.l,
-    backgroundColor: theme.colors.background,
-    borderRadius: borderRadius.medium,
-    marginBottom: isDesktop ? spacing.s : spacing.m,
-    borderLeftWidth: 3,
-    borderLeftColor: theme.colors.stamp,
-    width: isDesktop ? '48%' : '100%',
-  },
-  revealedHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: isDesktop ? spacing.xs : spacing.m,
-  },
-  revealedText: {
-    fontSize: isDesktop ? fonts.tiny : fonts.medium,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.text,
-    lineHeight: isDesktop ? fonts.tiny * 1.5 : fonts.medium * 1.5,
-    marginBottom: spacing.s,
-  },
-  revealedAuthor: {
-    fontSize: isDesktop ? moderateScale(7) : fonts.small,
-    fontFamily: theme.fonts.main,
-    color: theme.colors.stamp,
-    fontWeight: '700',
-  },
-  // Grids
-  cardsGrid: {
-    flexDirection: isDesktop ? 'row' : 'column',
-    flexWrap: isDesktop ? 'wrap' : 'nowrap',
-    justifyContent: 'space-between',
-    width: '100%',
-    gap: moderateScale(16),
-  },
-  gridCard: {
-    width: isDesktop ? '48%' : '100%',
-    marginBottom: 0,
-  },
-  fullWidthCard: {
-    width: '100%',
-    maxWidth: '100%',
-    marginTop: isDesktop ? moderateScale(8) : 0,
-  },
-  // Compact Header for Grid Cards
-  compactHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  introLabel: {
+    fontSize: fonts.small,
+    color: '#8B4513',
     marginBottom: spacing.xs,
+  },
+  introTitle: {
+    fontSize: fonts.large,
+    fontFamily: theme.fonts.bold,
+    textAlign: 'center',
+    color: '#333',
+  },
+  statusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s,
+  },
+  statusIcon: { fontSize: 24 },
+  statusText: { color: '#EBE1D2', fontSize: fonts.medium },
+
+  // Drafting Screen
+  gridContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.m,
+  },
+  dashboardCard: {
+    flex: 1,
+    minWidth: 300,
   },
   timerRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: spacing.s,
+  },
+  timerLabel: { fontFamily: theme.fonts.main, color: '#555' },
+  timerValue: { fontFamily: theme.fonts.bold, fontSize: fonts.large, color: theme.colors.primary },
+  progressBarBg: {
+    height: 8,
+    backgroundColor: '#E0E0E0',
+    borderRadius: 4,
+    overflow: 'hidden',
+  },
+  progressBarFill: {
+    height: '100%',
+    backgroundColor: '#FFA500',
+  },
+  divider: { height: 1, backgroundColor: '#EEE', marginVertical: spacing.m },
+  statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.s },
+  statsLabel: { fontFamily: theme.fonts.main, color: '#555' },
+  statsValue: { fontFamily: theme.fonts.bold, color: '#333' },
+  
+  playersListContainer: {
+    flex: 1,
+    minWidth: 300,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: borderRadius.medium,
+    padding: spacing.m,
+  },
+  sectionHeader: {
+    color: '#EBE1D2',
+    fontFamily: theme.fonts.bold,
+    marginBottom: spacing.m,
+  },
+  scrollList: { flex: 1 },
+  playerRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-  }
+    paddingVertical: spacing.s,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  playerIndex: { color: '#AAA', width: 30 },
+  playerName: { color: '#FFF', flex: 1, fontFamily: theme.fonts.main },
+  statusDone: { color: '#4CAF50', fontWeight: 'bold' },
+  statusWait: { color: '#AAA' },
+
+  // Voting Screen
+  leftColumn: { flex: 1, minWidth: 300 },
+  rightColumn: { flex: 1, minWidth: 300 },
+  voteStatsCard: { padding: spacing.m },
+  cardTitle: { fontFamily: theme.fonts.bold, marginBottom: spacing.s },
+  votersList: { flexDirection: 'row', flexWrap: 'wrap', marginTop: spacing.m, gap: 8 },
+  miniVoter: { fontSize: fonts.tiny, color: '#999', backgroundColor: '#EEE', padding: 4, borderRadius: 4 },
+  miniVoterDone: { color: '#FFF', backgroundColor: theme.colors.primary },
+  resultsScroll: { flex: 1 },
+  resultBarContainer: { marginBottom: spacing.m },
+  resultBarLabelRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 4 },
+  resultLabel: { color: '#EBE1D2', fontSize: fonts.small },
+  resultCount: { color: '#FFF', fontWeight: 'bold' },
+  resultBarBg: { height: 12, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 6 },
+  resultBarFill: { height: '100%', backgroundColor: theme.colors.secondary, borderRadius: 6 },
+
+  // Results Screen
+  resultsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.m, marginBottom: spacing.l },
+  resultCard: { flex: 1, minWidth: 250, alignItems: 'center' },
+  resultCardTitle: { fontSize: fonts.medium, color: '#888', marginBottom: spacing.s },
+  winnerName: { fontSize: fonts.large, fontFamily: theme.fonts.bold, color: '#333', textAlign: 'center' },
+  points: { color: '#4CAF50', fontWeight: 'bold', marginTop: 4 },
+  verdict: { fontSize: fonts.medium, fontFamily: theme.fonts.bold, marginTop: 4 },
+  verdictCorrect: { color: '#4CAF50' },
+  verdictWrong: { color: '#F44336' },
+  standingsContainer: { backgroundColor: 'rgba(0,0,0,0.2)', padding: spacing.m, borderRadius: borderRadius.medium },
+  standingRow: { flexDirection: 'row', paddingVertical: spacing.s, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  rank: { width: 40, color: theme.colors.primary, fontWeight: 'bold' },
+  standingName: { flex: 1, color: '#FFF' },
+  standingScore: { color: '#EBE1D2', fontWeight: 'bold' },
+  footer: { paddingTop: spacing.m },
+
+  // Reveal Screen
+  revealCard: { width: '100%', maxWidth: 500, padding: spacing.l, alignItems: 'center' },
+  revealText: { fontSize: fonts.medium, fontFamily: theme.fonts.main, textAlign: 'center', lineHeight: 28 },
+  revealMeta: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: spacing.l },
+  revealAuthor: { color: '#666', fontWeight: 'bold' },
+  revealVotes: { backgroundColor: theme.colors.primary, color: '#FFF', paddingHorizontal: 8, borderRadius: 10, fontSize: 12 },
+  revealHistory: { maxHeight: 100, marginTop: spacing.l, width: '100%' },
+  miniRevealCard: { width: 150, height: 80, backgroundColor: 'rgba(255,255,255,0.1)', marginHorizontal: spacing.s, padding: spacing.s, borderRadius: 8 },
+  miniRevealText: { color: '#CCC', fontSize: 10 },
+  miniRevealAuthor: { color: '#AAA', fontSize: 9, marginTop: 4 },
+  waitingText: { color: '#AAA', fontSize: fonts.medium },
+  
+  // Results V4 Styles
+  resultBanner: {
+    padding: spacing.l,
+    borderRadius: borderRadius.medium,
+    alignItems: 'center',
+    marginBottom: spacing.l,
+  },
+  resultBannerTitle: {
+    fontSize: 32,
+    fontFamily: theme.fonts.bold,
+    color: '#FFF',
+    marginBottom: 8,
+  },
+  resultBannerReason: {
+    fontSize: 18,
+    fontFamily: theme.fonts.main,
+    color: '#EEE',
+    textAlign: 'center',
+  },
+  eliminatedText: {
+    marginTop: 10,
+    fontSize: 20,
+    color: '#FFD700', // Gold
+    fontWeight: 'bold',
+  },
+  eliminatedBox: {
+      backgroundColor: 'rgba(0,0,0,0.2)',
+      padding: spacing.m,
+      borderRadius: borderRadius.medium,
+      alignItems: 'center',
+      marginVertical: spacing.m,
+      width: '80%',
+  },
+  eliminatedLabel: {
+      color: '#DDD',
+      fontSize: 14,
+  },
+  eliminatedName: {
+      color: '#FFF',
+      fontSize: 24,
+      fontFamily: theme.fonts.bold,
+      marginVertical: 4,
+  },
+  eliminatedRevealRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+  },
+  eliminatedTeam: {
+      color: '#FFD700',
+      fontSize: 18,
+      fontWeight: 'bold',
+  },
+  eliminatedRole: {
+      color: '#FF6347', // Tomato red for Culprit
+      fontSize: 18,
+      fontWeight: 'bold',
+  },
+  teamsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing.m,
+    marginBottom: spacing.l,
+  },
+  teamCard: {
+    flex: 1,
+    minWidth: 250,
+  },
+  teamHeader: {
+    fontSize: fonts.medium,
+    fontFamily: theme.fonts.bold,
+    marginBottom: spacing.m,
+    textAlign: 'center',
+  },
+  noPlayersText: {
+      textAlign: 'center',
+      color: '#999',
+      fontStyle: 'italic',
+      padding: 10
+  },
+  playerResultRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+  },
+  playerResultName: {
+    fontFamily: theme.fonts.main,
+    color: '#333',
+  },
+  playerResultRole: {
+    fontFamily: theme.fonts.bold,
+    color: '#666',
+  },
+  scoreRowDetailed: {
+    marginBottom: spacing.m,
+    paddingBottom: spacing.s,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  scoreRowHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  breakdownRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    paddingLeft: 40,
+  },
+  scoreBadge: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 4,
+  },
+  scoreBadgeText: {
+    color: '#DDD',
+    fontSize: 10,
+  },
+  
+  // Reveal Screen New Styles
+  revealCard: { width: '100%', maxWidth: 500, padding: spacing.l, alignItems: 'center' },
+  revealText: { fontSize: fonts.medium, fontFamily: theme.fonts.main, textAlign: 'center', lineHeight: 28 },
+  revealCardComplete: {
+      backgroundColor: '#FFF8DC', // Gold tint when complete
+      transform: [{ scale: 1.05 }],
+      borderColor: theme.colors.primary,
+      borderWidth: 2,
+  },
+  votersSection: {
+      marginTop: spacing.l,
+      alignItems: 'center',
+      width: '100%',
+      backgroundColor: 'rgba(0,0,0,0.03)',
+      padding: spacing.m,
+      borderRadius: borderRadius.medium,
+  },
+  votersLabel: {
+      fontSize: 12,
+      color: '#888',
+      marginBottom: 4,
+  },
+  votersListHorizontal: {
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      justifyContent: 'center',
+      gap: 8,
+      marginBottom: 8,
+  },
+  voterTag: {
+      backgroundColor: '#DDD',
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+      borderRadius: 12,
+      fontSize: 12,
+      color: '#333',
+  },
+  noVotesText: {
+      color: '#CCC',
+      fontStyle: 'italic',
+  },
+  voteCountBig: {
+      fontSize: 18,
+      fontWeight: 'bold',
+      color: theme.colors.primary,
+  },
+  authorSection: {
+      marginTop: spacing.l,
+      alignItems: 'center',
+  },
+  authorLabel: {
+      fontSize: 14,
+      color: '#555',
+  },
+  authorNameBig: {
+      fontSize: 32,
+      fontFamily: theme.fonts.bold,
+      color: '#8B4513',
+      marginTop: 4,
+  },
+  revealHistory: { maxHeight: 100, marginTop: spacing.l, width: '100%' },
+  miniRevealCard: { width: 150, height: 80, backgroundColor: 'rgba(255,255,255,0.1)', marginHorizontal: spacing.s, padding: spacing.s, borderRadius: 8 },
+  miniRevealText: { color: '#CCC', fontSize: 10 },
+  miniRevealAuthor: { color: '#AAA', fontSize: 9, marginTop: 4 },
+  waitingText: { color: '#AAA', fontSize: fonts.medium },
 });
