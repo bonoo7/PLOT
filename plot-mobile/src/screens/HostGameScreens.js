@@ -129,6 +129,10 @@ export const HostVotingScreen = ({
   const totalPlayers = players.length;
 
   const getVotesForScenario = (index) => {
+    if (votingType === 'culprit') {
+        const targetId = scenarios[index]?.playerId;
+        return liveVotes.filter(vote => vote.choice === targetId).length;
+    }
     return liveVotes.filter(vote => vote.choice === index).length;
   };
 
@@ -302,14 +306,17 @@ export const HostResultsScreen = ({
                            <View key={index} style={styles.scoreRowDetailed}>
                               <View style={styles.scoreRowHeader}>
                                   <Text style={styles.rank}>#{index + 1}</Text>
-                                  <Text style={styles.standingName}>{player.playerName}</Text>
+                                  <View style={{flex: 1}}>
+                                      <Text style={styles.standingName}>{player.name}</Text>
+                                      <Text style={styles.standingRole}>{player.role}</Text>
+                                  </View>
                                   <Text style={styles.standingScore}>{player.totalScore}</Text>
                               </View>
                               {/* Breakdown badges */}
                               <View style={styles.breakdownRow}>
                                   {player.breakdown?.map((item, i) => (
                                       <View key={i} style={styles.scoreBadge}>
-                                          <Text style={styles.scoreBadgeText}>{item.reason}: {item.points > 0 ? '+' : ''}{item.points}</Text>
+                                          <Text style={styles.scoreBadgeText}>{item}</Text>
                                       </View>
                                   ))}
                               </View>
@@ -542,8 +549,9 @@ const styles = StyleSheet.create({
   standingsContainer: { backgroundColor: 'rgba(0,0,0,0.2)', padding: spacing.m, borderRadius: borderRadius.medium },
   standingRow: { flexDirection: 'row', paddingVertical: spacing.s, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
   rank: { width: 40, color: theme.colors.primary, fontWeight: 'bold' },
-  standingName: { flex: 1, color: '#FFF' },
-  standingScore: { color: '#EBE1D2', fontWeight: 'bold' },
+  standingName: { fontSize: 16, fontFamily: theme.fonts.bold, color: '#FFF' },
+  standingRole: { fontSize: 12, color: '#AAA', marginTop: 2 },
+  standingScore: { color: '#FFD700', fontWeight: 'bold', fontSize: 18 },
   footer: { paddingTop: spacing.m },
 
   // Reveal Screen

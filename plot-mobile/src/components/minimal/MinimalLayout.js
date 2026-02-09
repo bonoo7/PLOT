@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, ImageBackground, StyleSheet, SafeAreaView, StatusBar, Platform, TouchableOpacity, Text, Modal, ScrollView } from 'react-native';
+import { View, ImageBackground, StyleSheet, SafeAreaView, StatusBar, Platform, TouchableOpacity, Text, Modal, ScrollView, Image } from 'react-native';
 import * as NavigationBar from 'expo-navigation-bar';
 import { getContainerPadding, borderRadius, spacing, fonts } from '../../styles/responsive';
 import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
@@ -105,8 +105,14 @@ const MinimalLayout = ({ children, style, roleData }) => {
                     onPress={() => setShowRole(true)}
                     activeOpacity={0.8}
                 >
-                    <Text style={styles.roleButtonIcon}>🆔</Text>
-                    <Text style={styles.roleButtonText}>دوري</Text>
+                    {theme.roleImages && theme.roleImages[roleData.role] ? (
+                        <Image 
+                            source={theme.roleImages[roleData.role]} 
+                            style={styles.roleButtonImage}
+                        />
+                    ) : (
+                        <Text style={styles.roleButtonIcon}>🆔</Text>
+                    )}
                 </TouchableOpacity>
 
                 <Modal
@@ -125,6 +131,15 @@ const MinimalLayout = ({ children, style, roleData }) => {
                             </View>
                             
                             <ScrollView style={styles.modalBody}>
+                                {theme.roleImages && theme.roleImages[roleData.role] && (
+                                    <View style={{ alignItems: 'center', marginBottom: spacing.m }}>
+                                        <Image 
+                                            source={theme.roleImages[roleData.role]} 
+                                            style={styles.modalRoleImage}
+                                            resizeMode="contain"
+                                        />
+                                    </View>
+                                )}
                                 <Text style={styles.modalLabel}>مهمتك:</Text>
                                 <Text style={styles.modalText}>{roleData.description}</Text>
                                 
@@ -169,24 +184,26 @@ const styles = StyleSheet.create({
   roleButton: {
       position: 'absolute',
       top: 40, // Below status bar
-      left: 20, // English LTR / Arabic RTL safe
-      backgroundColor: 'rgba(255, 215, 0, 0.2)',
-      paddingVertical: 8,
-      paddingHorizontal: 12,
-      borderRadius: 20,
-      borderWidth: 1,
-      borderColor: '#FFD700',
-      flexDirection: 'row',
+      right: 20, // RTL: positions on visual LEFT, LTR: positions on visual RIGHT
+      width: 60,
+      height: 60,
+      borderRadius: 30,
+      justifyContent: 'center',
       alignItems: 'center',
-      gap: 5,
       zIndex: 100,
   },
   roleButtonIcon: { fontSize: 16 },
-  roleButtonText: { 
-      color: '#FFD700', 
-      fontFamily: theme.fonts.bold, 
-      fontSize: 12 
+  roleButtonImage: {
+    width: 50,
+    height: 50,
+    resizeMode: 'contain',
+    borderRadius: 25,
   },
+  modalRoleImage: {
+    width: 120,
+    height: 120,
+  },
+
   
   modalOverlay: {
       flex: 1,

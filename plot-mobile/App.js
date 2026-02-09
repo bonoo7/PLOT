@@ -20,6 +20,7 @@ import { GameScreen, DraftingScreen } from './src/screens/GameScreens';
 import { QualityVotingScreen, CulpritVotingScreen, WaitingRevealScreen, EndScreen, PlayerDramaticRevealScreen, PlayerResultsScreen } from './src/screens/VotingScreens';
 import { HostGameScreen, HostVotingScreen, HostResultsScreen, HostGameIntroScreen, HostDraftingScreen, HostDramaticRevealScreen } from './src/screens/HostGameScreens';
 import { DiscussionScreen } from './src/screens/DiscussionScreen';
+import { HowToPlayScreen } from './src/screens/HowToPlayScreen';
 import GlobalLayout from './src/components/GlobalLayout';
 
 // Force RTL
@@ -46,6 +47,7 @@ console.log('🌐 Socket URL:', SOCKET_URL);
 // الشاشات الممكنة
 const SCREENS = {
   ROLE_SELECT: 'ROLE_SELECT',
+  HOW_TO_PLAY: 'HOW_TO_PLAY', // NEW
   
   // شاشات التدريب
   TRAINING_ROLE_SELECT: 'TRAINING_ROLE_SELECT',
@@ -213,7 +215,7 @@ function App() {
     
     socket.on('startDrafting', (data) => {
       console.log('📝 Drafting started');
-      setScenario(data.scenario || scenario);
+      if (data.caseTitle) setScenario(data.caseTitle);
       setTimeLeft(data.duration || 300);
       setIsSubmitted(false);
       setAnswer('');
@@ -555,8 +557,12 @@ function App() {
             onSelectHost={handleSelectHost}
             onSelectPlayer={handleSelectPlayer}
             onSelectTraining={handleSelectTraining}
+            onHowToPlay={() => setScreen(SCREENS.HOW_TO_PLAY)}
           />
         );
+
+      case SCREENS.HOW_TO_PLAY:
+        return <HowToPlayScreen onBack={() => setScreen(SCREENS.ROLE_SELECT)} />;
       
       // شاشات التدريب
       case SCREENS.TRAINING_ROLE_SELECT:
@@ -722,6 +728,7 @@ function App() {
             hasVoted={hasVoted}
             selectedScenario={selectedScenario}
             roleData={roleData}
+            myAnswer={answer}
           />
         );
       
@@ -747,6 +754,7 @@ function App() {
             hasVoted={hasVoted}
             selectedCulprit={selectedCulprit}
             roleData={roleData}
+            myPlayerId={socket?.id}
           />
         );
       
@@ -770,6 +778,26 @@ function App() {
           <HostGameScreen
             players={players}
             waitingFor={waitingFor}
+          />
+        );
+
+      case SCREENS.HOST_DRAMATIC_REVEAL:
+        return (
+          <HostDramaticRevealScreen
+            revealedScenarios={revealedScenarios}
+            currentReveal={currentReveal}
+          />
+        );
+
+      case SCREENS.HOST_DISCUSSION:
+        return (
+          <DiscussionScreen
+            isHost={true}
+            players={players}
+            speakingPlayerId={speakingPlayerId}
+            onSelectSpeaker={handleSelectSpeaker}
+            onEndDiscussion={handleEndDiscussion}
+            scenarios={revealedScenarios}
           />
         );
       

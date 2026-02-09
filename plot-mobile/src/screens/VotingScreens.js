@@ -16,7 +16,8 @@ export const QualityVotingScreen = ({
   onVote, 
   hasVoted = false,
   selectedScenario = null,
-  roleData
+  roleData,
+  myAnswer
 }) => {
   const { isDesktop } = useResponsiveLayout();
   const [selected, setSelected] = useState(selectedScenario);
@@ -37,28 +38,33 @@ export const QualityVotingScreen = ({
              showsVerticalScrollIndicator={true}
              contentContainerStyle={styles.gridContent}
            >
-             {scenarios.map((scenario, index) => (
-               <TouchableOpacity
-                 key={index}
-                 style={[
-                   styles.voteCard,
-                   selected === index && styles.voteCardSelected,
-                   hasVoted && styles.voteCardDisabled,
-                   isDesktop && styles.voteCardDesktop
-                 ]}
-                 onPress={() => !hasVoted && setSelected(index)}
-                 activeOpacity={0.8}
-                 disabled={hasVoted}
-               >
-                 <View style={styles.cardHeader}>
-                   <Text style={styles.cardIndex}>#{index + 1}</Text>
-                   {selected === index && !hasVoted && <Text style={styles.checkMark}>✓</Text>}
-                 </View>
-                 <Text style={styles.scenarioText}>
-                   {scenario.answer || scenario.text || '...'}
-                 </Text>
-               </TouchableOpacity>
-             ))}
+             {scenarios.map((scenario, index) => {
+               const isSelf = scenario.answer === myAnswer;
+               return (
+                 <TouchableOpacity
+                   key={index}
+                   style={[
+                     styles.voteCard,
+                     selected === index && styles.voteCardSelected,
+                     hasVoted && styles.voteCardDisabled,
+                     isSelf && styles.voteCardSelf,
+                     isDesktop && styles.voteCardDesktop
+                   ]}
+                   onPress={() => !hasVoted && !isSelf && setSelected(index)}
+                   activeOpacity={0.8}
+                   disabled={hasVoted || isSelf}
+                 >
+                   <View style={styles.cardHeader}>
+                     <Text style={styles.cardIndex}>#{index + 1}</Text>
+                     {selected === index && !hasVoted && <Text style={styles.checkMark}>✓</Text>}
+                   </View>
+                   <Text style={styles.scenarioText}>
+                     {scenario.answer || scenario.text || '...'}
+                   </Text>
+                   {isSelf && <Text style={styles.selfVoteLabel}>تصويتك</Text>}
+                 </TouchableOpacity>
+               );
+             })}
            </ScrollView>
         </View>
 
@@ -90,7 +96,8 @@ export const CulpritVotingScreen = ({
   onVote, 
   hasVoted = false, 
   selectedCulprit = null,
-  roleData
+  roleData,
+  myPlayerId
 }) => {
   const { isDesktop } = useResponsiveLayout();
   const [selected, setSelected] = useState(selectedCulprit);
@@ -111,31 +118,36 @@ export const CulpritVotingScreen = ({
              showsVerticalScrollIndicator={true}
              contentContainerStyle={styles.gridContent}
            >
-             {scenarios.map((scenario, index) => (
-               <TouchableOpacity
-                 key={index}
-                 style={[
-                   styles.voteCard,
-                   selected === index && styles.voteCardSelectedDanger,
-                   hasVoted && styles.voteCardDisabled,
-                   isDesktop && styles.voteCardDesktop
-                 ]}
-                 onPress={() => !hasVoted && setSelected(index)}
-                 activeOpacity={0.8}
-                 disabled={hasVoted}
-               >
-                 <View style={styles.cardHeader}>
-                   <View style={styles.authorBadge}>
-                      <Text style={styles.authorIcon}>👤</Text>
-                      <Text style={styles.authorName}>{scenario.playerName || scenario.author || 'مجهول'}</Text>
+             {scenarios.map((scenario, index) => {
+               const isSelf = scenario.playerId === myPlayerId;
+               return (
+                 <TouchableOpacity
+                   key={index}
+                   style={[
+                     styles.voteCard,
+                     selected === index && styles.voteCardSelectedDanger,
+                     hasVoted && styles.voteCardDisabled,
+                     isSelf && styles.voteCardSelf,
+                     isDesktop && styles.voteCardDesktop
+                   ]}
+                   onPress={() => !hasVoted && !isSelf && setSelected(index)}
+                   activeOpacity={0.8}
+                   disabled={hasVoted || isSelf}
+                 >
+                   <View style={styles.cardHeader}>
+                     <View style={styles.authorBadge}>
+                        <Text style={styles.authorIcon}>👤</Text>
+                        <Text style={styles.authorName}>{scenario.playerName || scenario.author || 'مجهول'}</Text>
+                     </View>
+                     {selected === index && !hasVoted && <Text style={styles.checkMarkDanger}>🎯</Text>}
                    </View>
-                   {selected === index && !hasVoted && <Text style={styles.checkMarkDanger}>🎯</Text>}
-                 </View>
-                 <Text style={styles.scenarioText}>
-                   {scenario.answer || scenario.text || '...'}
-                 </Text>
-               </TouchableOpacity>
-             ))}
+                   <Text style={styles.scenarioText}>
+                     {scenario.answer || scenario.text || '...'}
+                   </Text>
+                   {isSelf && <Text style={styles.selfVoteLabel}>تصويتك</Text>}
+                 </TouchableOpacity>
+               );
+             })}
            </ScrollView>
         </View>
 
@@ -208,6 +220,11 @@ const styles = StyleSheet.create({
   voteCardDisabled: {
     opacity: 0.6,
   },
+  voteCardSelf: {
+    opacity: 0.5,
+    backgroundColor: '#E8E8E8',
+    borderColor: '#999',
+  },
   
   cardHeader: {
     flexDirection: 'row',
@@ -230,6 +247,13 @@ const styles = StyleSheet.create({
     fontSize: fonts.small,
     color: '#333',
     lineHeight: 20,
+  },
+  selfVoteLabel: {
+    marginTop: spacing.s,
+    fontSize: fonts.tiny,
+    color: '#999',
+    fontStyle: 'italic',
+    fontFamily: theme.fonts.main,
   },
   
   // Author Badge

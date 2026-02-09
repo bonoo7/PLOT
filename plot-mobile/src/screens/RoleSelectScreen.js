@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import MinimalLayout from '../components/minimal/MinimalLayout';
 import MinimalHeader from '../components/minimal/MinimalHeader';
 import MinimalCard from '../components/minimal/MinimalCard';
@@ -11,7 +11,7 @@ import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
  * RoleSelectScreen_v3 - Minimalist design.
  * Full screen layout with centered cards.
  */
-export const RoleSelectScreen = ({ onSelectHost, onSelectPlayer, onSelectTraining }) => {
+export const RoleSelectScreen = ({ onSelectHost, onSelectPlayer, onSelectTraining, onHowToPlay }) => {
   const { isDesktop, isLandscape } = useResponsiveLayout();
 
   // Determine layout direction based on screen size/orientation
@@ -24,10 +24,13 @@ export const RoleSelectScreen = ({ onSelectHost, onSelectPlayer, onSelectTrainin
         subtitle="لعبة التحقيقات السرية" 
       />
 
-      <View style={[
-        styles.contentContainer,
-        isHorizontalLayout && styles.contentContainerHorizontal
-      ]}>
+      <ScrollView 
+        style={{ width: '100%' }}
+        contentContainerStyle={[
+          styles.contentContainer,
+          isHorizontalLayout && styles.contentContainerHorizontal
+        ]}
+      >
         
         {/* Role Cards Container */}
         <View style={[
@@ -59,13 +62,22 @@ export const RoleSelectScreen = ({ onSelectHost, onSelectPlayer, onSelectTrainin
             color="#FFF0C8"
             borderColor={theme.colors.accentYellow}
           />
+          
+          {/* How To Play Card */}
+          <RoleCard 
+            title="دليل اللعبة"
+            description="شرح الأدوار والقوانين"
+            onPress={onHowToPlay}
+            color="#E0F7FA"
+            borderColor="#006064"
+          />
         </View>
 
         {/* Footer Info */}
         <View style={styles.footer}>
           <Text style={styles.footerText}>عدد اللاعبين: 4 - 8</Text>
         </View>
-      </View>
+      </ScrollView>
     </MinimalLayout>
   );
 };
@@ -86,11 +98,12 @@ const RoleCard = ({ title, description, onPress, color, borderColor }) => (
 
 const styles = StyleSheet.create({
   contentContainer: {
-    flex: 1,
+    flexGrow: 1,
     width: '100%',
     alignItems: 'center',
     justifyContent: 'center',
     gap: spacing.l,
+    paddingVertical: spacing.l,
   },
   contentContainerHorizontal: {
     justifyContent: 'center',

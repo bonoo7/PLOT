@@ -4,6 +4,8 @@ const { Server } = require('socket.io');
 const path = require('path');
 const cors = require('cors');
 const db = require('./database');
+const { handleSendOffer, handleMastermindForward, handleOfferResponse } = require('./logic/offers');
+const { calculateScores } = require('./logic/scoring');
 require('dotenv').config();  // تحميل متغيرات البيئة
 
 const app = express();
@@ -112,7 +114,8 @@ function startDraftingPhase(roomCode) {
     
     io.to(roomCode).emit('startDrafting', { 
         duration,
-        waitingFor 
+        waitingFor,
+        caseTitle: room.currentScenario.title // Add case title for UI
     });
 
     // Start Timer
@@ -147,31 +150,39 @@ function startDraftingPhase(roomCode) {
 }
 
 async function simulateBotDrafting(room, bot) {
-    // استخدام محرك الذكاء الجديد (DeepSeek AI) لتوليد إجابة ذكية
-    const targetText = await generateBotAnswer(bot.role, room.currentScenario, []);
-    
-    // Simulate typing
-    let charIndex = 0;
-    const typingSpeed = 50 + Math.random() * 100; // Random speed
+    try {
+        // استخدام محرك الذكاء الجديد (DeepSeek AI) لتوليد إجابة ذكية
+        const targetText = await generateBotAnswer(bot.role, room.currentScenario, []);
+        
+        // Simulate typing
+        let charIndex = 0;
+        const typingSpeed = 50 + Math.random() * 100; // Random speed
 
-    const typingInterval = setInterval(() => {
-        if (charIndex < targetText.length) {
-            if (!room.drafts[bot.id]) room.drafts[bot.id] = "";
-            room.drafts[bot.id] += targetText[charIndex];
-            charIndex++;
-        } else {
-            clearInterval(typingInterval);
-        }
-    }, typingSpeed);
+        const typingInterval = setInterval(() => {
+            if (charIndex < targetText.length) {
+                if (!room.drafts[bot.id]) room.drafts[bot.id] = "";
+                room.drafts[bot.id] += targetText[charIndex];
+                charIndex++;
+            } else {
+                clearInterval(typingInterval);
+            }
+        }, typingSpeed);
 
-    // Submit after delay (10-30 seconds)
-    const submitDelay = 10000 + Math.random() * 20000;
-    setTimeout(() => {
-        room.answers[bot.id] = targetText;
-        // Notify host
+        // Submit after delay (10-30 seconds)
+        const submitDelay = 10000 + Math.random() * 20000;
+        setTimeout(() => {
+            room.answers[bot.id] = targetText;
+            // Notify host
+            io.to(room.hostId).emit('playerSubmitted', { playerId: bot.id, playerName: bot.name });
+            checkDraftingComplete(room.id || Object.keys(rooms).find(key => rooms[key] === room));
+        }, submitDelay);
+    } catch (error) {
+        console.error(`❌ Bot ${bot.name} failed to draft:`, error);
+        // Fallback: Submit a simple answer
+        room.answers[bot.id] = "لم أستطع كتابة سيناريو...";
         io.to(room.hostId).emit('playerSubmitted', { playerId: bot.id, playerName: bot.name });
         checkDraftingComplete(room.id || Object.keys(rooms).find(key => rooms[key] === room));
-    }, submitDelay);
+    }
 }
 
 function startPresentationPhase(roomCode) {
@@ -219,15 +230,20 @@ function startQualityVoting(roomCode) {
     room.players.forEach(p => {
         if (p.isBot) {
             setTimeout(() => {
+                // ✅ GUARD: Check if bot already voted
+                if (room.qualityVotes[p.id] !== undefined) return;
+
                 const qualityVote = generateQualityVote(
                     room.players.map(player => room.answers[player.id] || '')
                 );
                 room.qualityVotes[p.id] = qualityVote;
                 
                 // 🆕 إرسال للهوست أن البوت صوّت
-                io.to(room.host).emit('voteReceived', {
+                io.to(room.hostId).emit('voteReceived', {
                     phase: 'QUALITY',
+                    playerId: p.id,
                     playerName: p.name,
+                    choice: qualityVote,
                     totalVotes: Object.keys(room.qualityVotes).length,
                     totalPlayers: room.players.length
                 });
@@ -355,46 +371,25 @@ function startDramaticReveal(roomCode) {
         currentDelay += 3000;
     }
 
-    // بعد انتهاء العرض: بدء مرحلة النقاش (بدلاً من التصويت على الجاني مباشرة)
+    // بعد انتهاء العرض: الانتقال مباشرة إلى التصويت على الجاني
     setTimeout(() => {
+        console.log(`⏰ Dramatic reveal finished. Starting discussion for room ${roomCode}`);
         startDiscussion(roomCode);
     }, currentDelay + 1000);
 }
 
 // ============================================
-// 🗣️ DISCUSSION PHASE
+// 🗣️ DISCUSSION PHASE (Skipped in main loop)
 // ============================================
 function startDiscussion(roomCode) {
     const room = rooms[roomCode];
     if (!room) return;
 
+    console.log(`🗣️ Starting Discussion Phase for room ${roomCode}`);
     room.state = 'DISCUSSION';
-
-    // 🕵️‍♂️ RESOLVE DETECTIVE & SABOTEUR ABILITIES
-    const detective = room.players.find(p => p.role === ROLE_TYPES.DETECTIVE);
-    if (detective && detective.investigatedTarget) {
-        const target = room.players.find(p => p.id === detective.investigatedTarget);
-        if (target) {
-            let roleInfo = getRoleInfo(target.role);
-            let resultTeam = roleInfo ? roleInfo.team : TEAMS.JUSTICE;
-            
-            // Check Sabotage (Misdirection)
-            // If target was sabotaged, flip the result
-            if (target.sabotagedBy) {
-                // If Crime -> Justice, If Justice -> Crime
-                resultTeam = (resultTeam === TEAMS.CRIME) ? TEAMS.JUSTICE : TEAMS.CRIME;
-                console.log(`Sabotage Effect: ${target.name} team flipped to ${resultTeam}`);
-            }
-
-            io.to(detective.id).emit('detectiveResult', {
-                targetName: target.name,
-                resultTeam: resultTeam,
-                teamName: (resultTeam === TEAMS.CRIME) ? 'فريق الجريمة' : 'فريق العدالة'
-            });
-        }
-    }
-
-    io.to(roomCode).emit('discussionStarted');
+    io.to(roomCode).emit('discussionStarted', {
+        timer: 120
+    });
 }
 
 // ============================================
@@ -405,6 +400,43 @@ function startCulpritVoting(roomCode) {
     if (!room) return;
 
     room.state = 'CULPRIT_VOTING';
+    room.culpritVotes = {}; // ✅ Reset votes to prevent carry-over/double counting
+
+    // 🕵️‍♂️ RESOLVE DETECTIVE & SABOTEUR ABILITIES (Moved from Discussion)
+    const detective = room.players.find(p => p.role === ROLE_TYPES.DETECTIVE);
+    if (detective && detective.investigatedTarget) {
+        const target = room.players.find(p => p.id === detective.investigatedTarget);
+        if (target) {
+            let roleInfo = getRoleInfo(target.role);
+            let resultTeam = roleInfo ? roleInfo.team : TEAMS.JUSTICE;
+            
+            // Check Offer Bribe (Disable Ability)
+            if (detective.acceptedOffer) {
+                io.to(detective.id).emit('detectiveResult', {
+                    targetName: target.name,
+                    resultTeam: 'UNKNOWN',
+                    teamName: 'غير معروف (تم تعطيل القدرة)'
+                });
+            }
+            // Check Sabotage (Misdirection)
+            else if (target.sabotagedBy) {
+                resultTeam = (resultTeam === TEAMS.CRIME) ? TEAMS.JUSTICE : TEAMS.CRIME;
+                console.log(`Sabotage Effect: ${target.name} team flipped to ${resultTeam}`);
+                
+                io.to(detective.id).emit('detectiveResult', {
+                    targetName: target.name,
+                    resultTeam: resultTeam,
+                    teamName: (resultTeam === TEAMS.CRIME) ? 'فريق الجريمة' : 'فريق العدالة'
+                });
+            } else {
+                io.to(detective.id).emit('detectiveResult', {
+                    targetName: target.name,
+                    resultTeam: resultTeam,
+                    teamName: (resultTeam === TEAMS.CRIME) ? 'فريق الجريمة' : 'فريق العدالة'
+                });
+            }
+        }
+    }
 
     // إرسال السيناريوهات مع الأسماء
     const scenariosWithAuthors = room.players.map((p, index) => ({
@@ -422,6 +454,9 @@ function startCulpritVoting(roomCode) {
     room.players.forEach(p => {
         if (p.isBot) {
             setTimeout(() => {
+                // ✅ GUARD: Check if bot already voted
+                if (room.culpritVotes[p.id] !== undefined) return;
+
                 const answersData = room.players.map(player => ({
                     id: player.id,
                     name: player.name,
@@ -442,9 +477,11 @@ function startCulpritVoting(roomCode) {
                 room.culpritVotes[p.id] = culpritVote.identity;
                 
                 // 🆕 إرسال للهوست أن البوت صوّت
-                io.to(room.host).emit('voteReceived', {
+                io.to(room.hostId).emit('voteReceived', {
                     phase: 'CULPRIT',
+                    playerId: p.id,
                     playerName: p.name,
+                    choice: culpritVote.identity,
                     totalVotes: Object.keys(room.culpritVotes).length,
                     totalPlayers: room.players.length
                 });
@@ -547,87 +584,18 @@ function handleVotingResult(roomCode) {
     }
 }
 
+/*
 function calculateScores(room, result) {
-    const scores = {};
-    const breakdown = {};
-    const teamScores = {
-        [TEAMS.CRIME]: 0,
-        [TEAMS.JUSTICE]: 0
-    };
-
-    // Initialize for all players
-    room.players.forEach(p => {
-        scores[p.id] = 0;
-        breakdown[p.id] = [];
-    });
-
-    // 1. Quality Votes (نقاط جودة السيناريو)
-    const qualityVoteCounts = {}; 
-    room.players.forEach((player, index) => {
-        qualityVoteCounts[index] = 0;
-    });
-
-    if (room.qualityVotes) {
-        Object.values(room.qualityVotes).forEach(scenarioIndex => {
-            qualityVoteCounts[scenarioIndex]++;
-        });
-
-        room.players.forEach((player, index) => {
-            const count = qualityVoteCounts[index] || 0;
-            if (count > 0) {
-                const points = count * 200;
-                scores[player.id] += points;
-                breakdown[player.id].push(`✨ جودة السيناريو: +${points} (${count} × 200)`);
-            }
-        });
-    }
-
-    // 2. Win/Loss Logic (Result based)
-    if (result) {
-        const winnerTeam = result.winner;
-        
-        // Team Win Bonus
-        room.players.forEach(p => {
-            const roleInfo = getRoleInfo(p.role);
-            if (roleInfo && roleInfo.team === winnerTeam) {
-                const bonus = 2000;
-                scores[p.id] += bonus;
-                breakdown[p.id].push(`🏆 فوز الفريق: +${bonus}`);
-                teamScores[winnerTeam] += bonus;
-            }
-        });
-
-        // Culprit Bonus
-        if (winnerTeam === TEAMS.CRIME) {
-            const culprit = room.players.find(p => p.role === ROLE_TYPES.CULPRIT);
-            if (culprit) {
-                scores[culprit.id] += 2500;
-                breakdown[culprit.id].push(`🎭 نجاة الجاني: +2500`);
-            }
-        } else if (winnerTeam === TEAMS.JUSTICE) {
-             const culprit = room.players.find(p => p.role === ROLE_TYPES.CULPRIT);
-             if (culprit) {
-                 scores[culprit.id] -= 1000; // Penalty?
-                 breakdown[culprit.id].push(`👮 تم القبض عليك: -1000`);
-             }
-        }
-    }
-
-    return { 
-        scores, 
-        breakdown, 
-        teamScores, 
-        crimeTeamWon: result ? result.winner === TEAMS.CRIME : false, 
-        investigationTeamWon: result ? result.winner === TEAMS.JUSTICE : false,
-        culpritCaught: result ? result.winner === TEAMS.JUSTICE : false
-    };
+    // ... Legacy function replaced by server/logic/scoring.js ...
+    return {};
 }
+*/
 
 function endRound(roomCode, result) {
     const room = rooms[roomCode];
     if (!room) return;
 
-    room.roundOutcome = result.winner; // Save outcome for Next Round Logic
+    room.roundOutcome = result ? result.winner : null; // Save outcome for Next Round Logic
 
     const { scores: roundScores, breakdown, teamScores, crimeTeamWon, investigationTeamWon, culpritCaught } = calculateScores(room, result);
 
@@ -673,13 +641,13 @@ function endRound(roomCode, result) {
     // Send Results
     io.to(roomCode).emit('roundResults', { 
         winner: result ? result.winner : null,
-        results,
+        scores: results, // Renamed from results to scores to match Client
         teamScores,
         crimeTeamWon,
         investigationTeamWon,
         culpritCaught,
-        crimeMembers: crimeMembers.map(p => ({ id: p.id, name: p.name, score: p.score, roleName: getRoleName(p.role) })),
-        investigationMembers: investigationMembers.map(p => ({ id: p.id, name: p.name, score: p.score, roleName: getRoleName(p.role) })),
+        crimeTeam: crimeMembers.map(p => ({ id: p.id, name: p.name, score: p.score, roleName: getRoleName(p.role) })), // Renamed to crimeTeam
+        justiceTeam: investigationMembers.map(p => ({ id: p.id, name: p.name, score: p.score, roleName: getRoleName(p.role) })), // Renamed to justiceTeam
         reason: result ? result.reason : null,
         victim: result ? result.victim : null,
         eliminatedPlayer: result ? result.eliminatedPlayer : null
@@ -708,13 +676,7 @@ io.on('connection', (socket) => {
         io.to(roomCode).emit('speakerUpdated', { playerId });
     });
 
-    socket.on('endDiscussion', ({ roomCode }) => {
-        const room = rooms[roomCode];
-        if (!room) return;
-
-        // Transition to Culprit Voting
-        startCulpritVoting(roomCode);
-    });
+    // Remove Duplicate endDiscussion here (handled around line 1455)
 
     // Host creates a room
     socket.on('createRoom', () => {
@@ -756,7 +718,7 @@ io.on('connection', (socket) => {
                 console.log(`${playerName} reconnected to room ${roomCode}`);
 
                 // If game is running, send current state
-                if (room.state === 'PLAYING' || room.state === 'DRAFTING' || room.state === 'PRESENTATION' || room.state === 'VOTING') {
+                if (room.state === 'PLAYING' || room.state === 'DRAFTING' || room.state === 'PRESENTATION' || room.state === 'VOTING' || room.state === 'QUALITY_VOTING' || room.state === 'CULPRIT_VOTING' || room.state === 'DISCUSSION' || room.state === 'DRAMATIC_REVEAL') {
                     // Send game started info
                     socket.emit('gameStarted', {
                         title: room.currentScenario.title,
@@ -794,9 +756,41 @@ io.on('connection', (socket) => {
                     // Send phase specific data
                     if (room.state === 'DRAFTING') {
                         // We don't have exact time left stored, but client will sync on next tick
-                        socket.emit('startDrafting', { duration: 90 }); // Approximate
+                        socket.emit('startDrafting', { 
+                            duration: 90,
+                            caseTitle: room.currentScenario.title // Ensure title is sent on reconnect
+                        }); // Approximate
                     } else if (room.state === 'PRESENTATION') {
                         socket.emit('startPresentation');
+                    } else if (room.state === 'DISCUSSION') {
+                        socket.emit('discussionStarted', {
+                            timer: 120
+                        });
+                    } else if (room.state === 'QUALITY_VOTING') {
+                        // Resend voting data
+                        const anonymousAnswers = room.players.map(p => ({
+                            index: room.players.indexOf(p),
+                            answer: room.answers[p.id] || "...",
+                            // Don't send names in Quality Voting
+                        }));
+                        socket.emit('qualityVotingStarted', {
+                            scenarios: anonymousAnswers
+                        });
+                    } else if (room.state === 'CULPRIT_VOTING') {
+                        // Resend voting data
+                        const scenariosWithAuthors = room.players.map((p, index) => ({
+                            index: index,
+                            playerId: p.id,
+                            playerName: p.name,
+                            answer: room.answers[p.id] || "لم يكتب شيئاً..."
+                        }));
+                        socket.emit('culpritVotingStarted', {
+                            scenarios: scenariosWithAuthors
+                        });
+                    } else if (room.state === 'DRAMATIC_REVEAL') {
+                         socket.emit('dramaticRevealStarted', {
+                            totalScenarios: room.players.length
+                        });
                     } else if (room.state === 'VOTING') {
                         // Resend voting data
                         const anonymousAnswers = room.players.map(p => ({
@@ -1190,6 +1184,7 @@ io.on('connection', (socket) => {
                 ability: roleInfo.ability,
                 info: null,
                 specialInfo: specialInfo,
+                score: player.score, // ✨ Send starting score (e.g. 1000 for Minister)
                 round: room.currentRound,
                 totalRounds: room.totalRounds,
                 isTutorial: room.isTutorial
@@ -1281,6 +1276,7 @@ io.on('connection', (socket) => {
         if (player && player.role === ROLE_TYPES.SABOTEUR) {
             const target = room.players.find(p => p.id === targetId);
             if (target) {
+                player.sabotageTarget = targetId; // Track who Saboteur targeted for Scoring
                 target.sabotagedBy = player.id;
                 player.abilityUsed = true;
                 console.log(`Saboteur ${player.name} sabotaged ${target.name}`);
@@ -1316,6 +1312,42 @@ io.on('connection', (socket) => {
             io.to(room.hostId).emit('playerSubmitted', { playerId: player.id, playerName: player.name });
             checkDraftingComplete(roomCode);
             console.log(`Seer ${player.name} used Revelation`);
+        }
+    });
+
+    // ============================================
+    // 💰 V4 OFFERS MECHANISM
+    // ============================================
+    socket.on('sendOffer', ({ roomCode, targetId, amount, isViaMastermind }) => {
+        const room = rooms[roomCode];
+        if (!room) return;
+        const player = room.players.find(p => p.id === socket.id);
+        if (!player) return;
+
+        const result = handleSendOffer(io, room, player, { targetId, amount, isViaMastermind });
+        if (result.success) {
+            socket.emit('offerResult', { success: true, message: result.message });
+        } else {
+            socket.emit('offerResult', { success: false, message: result.message });
+        }
+    });
+
+    socket.on('respondToOffer', ({ roomCode, offerId, accepted }) => {
+        const room = rooms[roomCode];
+        if (!room) return;
+        const player = room.players.find(p => p.id === socket.id);
+        if (!player) return;
+
+        handleOfferResponse(io, room, player, { offerId, accepted });
+    });
+
+    socket.on('mastermindSelectTarget', ({ roomCode, targetId, amount }) => {
+        const room = rooms[roomCode];
+        if (!room) return;
+        const player = room.players.find(p => p.id === socket.id);
+        if (player && player.role === ROLE_TYPES.MASTERMIND) {
+             handleMastermindForward(io, room, player, { targetId, amount });
+             socket.emit('offerResult', { success: true, message: 'تم تحويل العرض بنجاح.' });
         }
     });
 
@@ -1488,9 +1520,11 @@ io.on('connection', (socket) => {
             room.qualityVotes[socket.id] = scenarioIndex;
             
             // 🆕 إرسال للهوست أن اللاعب صوّت
-            io.to(room.host).emit('voteReceived', {
+            io.to(room.hostId).emit('voteReceived', {
                 phase: 'QUALITY',
+                playerId: player.id,
                 playerName: player.name,
+                choice: scenarioIndex,
                 totalVotes: Object.keys(room.qualityVotes).length,
                 totalPlayers: room.players.length
             });
@@ -1508,12 +1542,17 @@ io.on('connection', (socket) => {
             const player = room.players.find(p => p.id === socket.id);
             if (!player) return;
             
+            // Prevent self-voting
+            if (playerId === socket.id) return;
+            
             room.culpritVotes[socket.id] = playerId;
             
             // 🆕 إرسال للهوست أن اللاعب صوّت
-            io.to(room.host).emit('voteReceived', {
+            io.to(room.hostId).emit('voteReceived', {
                 phase: 'CULPRIT',
+                playerId: player.id,
                 playerName: player.name,
+                choice: playerId,
                 totalVotes: Object.keys(room.culpritVotes).length,
                 totalPlayers: room.players.length
             });

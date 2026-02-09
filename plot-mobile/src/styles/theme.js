@@ -43,6 +43,18 @@ export const theme = {
     teamNeutral: '#555555',
   },
   
+  // صور الأدوار
+  roleImages: {
+    MASTERMIND: require('../../assets/Mastermind.png'),
+    MINISTER: require('../../assets/Minister.png'),
+    SABOTEUR: require('../../assets/Saboteur.png'),
+    SEER: require('../../assets/Seer.png'),
+    WITNESS: require('../../assets/Witness.png'),
+    BENEFICIARY: require('../../assets/Beneficiary.png'),
+    CULPRIT: require('../../assets/Culprit.png'),
+    DETECTIVE: require('../../assets/Detective.png'),
+  },
+  
   fonts: {
     // Courier New للمحاكاة الآلة الكاتبة (من الهوية البصرية)
     main: Platform.OS === 'ios' ? 'Courier New' : 'monospace',

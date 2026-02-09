@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity } from 'react-native';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Image } from 'react-native';
 import MinimalLayout from '../components/minimal/MinimalLayout';
 import MinimalHeader from '../components/minimal/MinimalHeader';
 import MinimalCard from '../components/minimal/MinimalCard';
@@ -63,7 +63,15 @@ export const GameScreen = ({ roleData, onReady }) => {
         
         {/* Top Section: Role Identity */}
         <View style={styles.identitySection}>
-          <Text style={styles.roleEmoji}>{emoji}</Text>
+          {theme.roleImages && theme.roleImages[role] ? (
+             <Image 
+               source={theme.roleImages[role]} 
+               style={styles.roleImageLarge} 
+               resizeMode="contain"
+             />
+          ) : (
+             <Text style={styles.roleEmoji}>{emoji}</Text>
+          )}
           <MinimalHeader title={roleName} subtitle="هويتك السرية" />
         </View>
 
@@ -121,6 +129,16 @@ export const DraftingScreen = ({
   const [showWitnessModal, setShowWitnessModal] = useState(false);
   const [targetId, setTargetId] = useState(null);
   const [abilityUsed, setAbilityUsed] = useState(false);
+  
+  // V4 Offers State
+  const [showOfferModal, setShowOfferModal] = useState(false);
+  const [offerAmount, setOfferAmount] = useState('');
+  const [offerTargetId, setOfferTargetId] = useState(null);
+  const [viaMastermind, setViaMastermind] = useState(false);
+  
+  const [incomingOffer, setIncomingOffer] = useState(null); // { id, amount }
+  const [proxyRequest, setProxyRequest] = useState(null); // { amount, feeEarned }
+  const [proxyTargetId, setProxyTargetId] = useState(null);
 
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
@@ -136,7 +154,51 @@ export const DraftingScreen = ({
         setTimeout(() => setShowWitnessModal(false), 2000);
     };
     socket.on('witnessFlash', handleFlash);
-    return () => socket.off('witnessFlash', handleFlash);
+    
+    // Offers Listeners
+    socket.on('receiveOffer', ({ offerId, amount }) => {
+        setIncomingOffer({ id: offerId, amount });
+    });
+
+    socket.on('mastermindProxyRequest', (data) => {
+        setProxyRequest(data);
+    });
+
+    socket.on('offerResult', ({ success, message }) => {
+        alert(message); // Simple alert for now
+        if (success) {
+            setShowOfferModal(false);
+            setOfferAmount('');
+            setOfferTargetId(null);
+            setProxyRequest(null);
+        }
+    });
+    
+    socket.on('offerStatus', ({ status, targetName, amountRefunded }) => {
+        if (status === 'ACCEPTED') {
+            alert(`✅ العرض تم قبوله من قبل ${targetName || 'اللاعب'}!`);
+        } else {
+            alert(`❌ العرض تم رفضه.${amountRefunded ? ` تمت إعادة ${amountRefunded} نقطة.` : ''}`);
+        }
+    });
+
+    socket.on('offerRefunded', ({ amount }) => {
+        alert(`ℹ️ تم استرجاع عرض سابق بقيمة ${amount} نقطة.`);
+    });
+
+    socket.on('abilityDisabled', ({ message }) => {
+        alert(`⚠️ ${message}`);
+    });
+
+    return () => {
+        socket.off('witnessFlash', handleFlash);
+        socket.off('receiveOffer');
+        socket.off('mastermindProxyRequest');
+        socket.off('offerResult');
+        socket.off('offerStatus');
+        socket.off('offerRefunded');
+        socket.off('abilityDisabled');
+    };
   }, [socket]);
 
   const handleUseAbility = () => {
@@ -152,8 +214,43 @@ export const DraftingScreen = ({
     setAbilityUsed(true);
   };
 
+  const handleSendOffer = () => {
+      if (!offerAmount || isNaN(offerAmount)) return;
+      if (!offerTargetId && !viaMastermind) return;
+
+      socket.emit('sendOffer', {
+          roomCode,
+          targetId: offerTargetId,
+          amount: parseInt(offerAmount),
+          isViaMastermind: viaMastermind
+      });
+  };
+
+  const handleRespondToOffer = (accepted) => {
+      if (!incomingOffer) return;
+      socket.emit('respondToOffer', {
+          roomCode,
+          offerId: incomingOffer.id,
+          accepted
+      });
+      setIncomingOffer(null);
+  };
+
+  const handleProxyForward = () => {
+      if (!proxyTargetId || !proxyRequest) return;
+      socket.emit('mastermindSelectTarget', {
+          roomCode,
+          targetId: proxyTargetId,
+          amount: proxyRequest.amount
+      });
+      setProxyRequest(null);
+  };
+
   const showAbilityControls = !isSubmitted && roleData && !abilityUsed && 
     ['DETECTIVE', 'SABOTEUR', 'SEER'].includes(roleData.role);
+
+  const canSendOffers = !isSubmitted && roleData && 
+    ['BENEFICIARY', 'MINISTER'].includes(roleData.role);
 
   return (
     <MinimalLayout roleData={roleData}>
@@ -165,11 +262,106 @@ export const DraftingScreen = ({
             </View>
         </Modal>
 
+        {/* Incoming Offer Modal */}
+        <Modal visible={!!incomingOffer} transparent animationType="slide">
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>💰 عرض سري!</Text>
+                    <Text style={styles.modalText}>لقد وصلك عرض بقيمة:</Text>
+                    <Text style={styles.amountText}>{incomingOffer?.amount} نقطة</Text>
+                    <View style={styles.modalButtons}>
+                        <MinimalButton title="قبول" onPress={() => handleRespondToOffer(true)} style={{backgroundColor: '#4CAF50'}} />
+                        <MinimalButton title="رفض" onPress={() => handleRespondToOffer(false)} style={{backgroundColor: '#F44336'}} />
+                    </View>
+                </View>
+            </View>
+        </Modal>
+
+        {/* Mastermind Proxy Modal */}
+        <Modal visible={!!proxyRequest} transparent animationType="slide">
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>🧠 طلب وساطة</Text>
+                    <Text style={styles.modalText}>المستفيد يريد إرسال {proxyRequest?.amount} نقطة.</Text>
+                    <Text style={styles.modalText}>لقد حصلت على حصتك: {proxyRequest?.feeEarned} نقطة.</Text>
+                    <Text style={styles.label}>اختر المستلم:</Text>
+                    <View style={styles.targetList}>
+                        {players?.filter(p => p.id !== socket?.id).map(p => (
+                            <TouchableOpacity 
+                                key={p.id} 
+                                style={[styles.targetChip, proxyTargetId === p.id && styles.targetChipSelected]}
+                                onPress={() => setProxyTargetId(p.id)}
+                            >
+                                <Text style={[styles.targetText, proxyTargetId === p.id && styles.targetTextSelected]}>{p.name}</Text>
+                            </TouchableOpacity>
+                        ))}
+                    </View>
+                    <MinimalButton title="إرسال العرض" onPress={handleProxyForward} disabled={!proxyTargetId} />
+                </View>
+            </View>
+        </Modal>
+
+        {/* Offer Composer Modal */}
+        <Modal visible={showOfferModal} transparent animationType="slide">
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalContent}>
+                    <Text style={styles.modalTitle}>💸 تقديم عرض</Text>
+                    
+                    <Text style={styles.label}>المبلغ:</Text>
+                    <TextInput 
+                        style={styles.input} 
+                        keyboardType="numeric"
+                        value={offerAmount}
+                        onChangeText={setOfferAmount}
+                        placeholder="أدخل المبلغ"
+                    />
+
+                    {roleData?.role === 'BENEFICIARY' && (
+                        <TouchableOpacity 
+                            style={[styles.checkbox, viaMastermind && styles.checkboxSelected]}
+                            onPress={() => setViaMastermind(!viaMastermind)}
+                        >
+                            <Text style={styles.checkboxText}>{viaMastermind ? '✅ عبر الوسيط (العقل المدبر)' : '⬜ عبر الوسيط (العقل المدبر)'}</Text>
+                        </TouchableOpacity>
+                    )}
+
+                    {!viaMastermind && (
+                        <>
+                            <Text style={styles.label}>المستلم:</Text>
+                            <View style={styles.targetList}>
+                                {players?.filter(p => p.id !== socket?.id).map(p => (
+                                    <TouchableOpacity 
+                                        key={p.id} 
+                                        style={[styles.targetChip, offerTargetId === p.id && styles.targetChipSelected]}
+                                        onPress={() => setOfferTargetId(p.id)}
+                                    >
+                                        <Text style={[styles.targetText, offerTargetId === p.id && styles.targetTextSelected]}>{p.name}</Text>
+                                    </TouchableOpacity>
+                                ))}
+                            </View>
+                        </>
+                    )}
+
+                    <View style={styles.modalButtons}>
+                        <MinimalButton title="إرسال" onPress={handleSendOffer} disabled={!offerAmount || (!offerTargetId && !viaMastermind)} />
+                        <MinimalButton title="إلغاء" onPress={() => setShowOfferModal(false)} style={{backgroundColor: '#999'}} />
+                    </View>
+                </View>
+            </View>
+        </Modal>
+
         <View style={styles.draftHeader}>
           <View style={styles.timerBadge}>
              <Text style={[styles.timerText, { color: timerColor }]}>{timeString}</Text>
           </View>
+          
           <MinimalHeader title="كتابة التقرير" />
+
+          {roleData?.score > 0 && (
+             <View style={styles.balanceBadge}>
+                 <Text style={styles.balanceText}>💰 {roleData.score}</Text>
+             </View>
+          )}
         </View>
 
         <View style={styles.splitLayout}>
@@ -223,6 +415,18 @@ export const DraftingScreen = ({
             </View>
         )}
 
+        {canSendOffers && (
+            <View style={styles.abilityBox}>
+                <Text style={styles.abilityTitle}>💰 المفاوضات</Text>
+                <MinimalButton 
+                    title="تقديم عرض مالي" 
+                    onPress={() => setShowOfferModal(true)} 
+                    size="small" 
+                    style={{backgroundColor: '#DAA520'}} // Golden
+                />
+            </View>
+        )}
+
         <View style={styles.footer}>
            {isSubmitted ? (
              <View style={styles.submittedBadge}>
@@ -270,6 +474,11 @@ const styles = StyleSheet.create({
   // Identity Section
   identitySection: {
     alignItems: 'center',
+  },
+  roleImageLarge: {
+    width: 120,
+    height: 120,
+    marginBottom: spacing.s,
   },
   roleEmoji: {
     fontSize: 60,
@@ -361,6 +570,21 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize: fonts.large,
     fontVariant: ['tabular-nums'],
+  },
+  balanceBadge: {
+    position: 'absolute',
+    right: 0,
+    backgroundColor: '#DAA520', // Gold
+    paddingHorizontal: spacing.m,
+    paddingVertical: spacing.xs,
+    borderRadius: borderRadius.large,
+    borderWidth: 1,
+    borderColor: '#B8860B',
+  },
+  balanceText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: fonts.medium,
+    color: '#FFF',
   },
   
   splitLayout: {
@@ -458,5 +682,64 @@ const styles = StyleSheet.create({
   },
   targetTextSelected: {
     color: '#FFF',
+  },
+  // Offers Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    padding: 20,
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    padding: 20,
+    borderRadius: 10,
+    gap: 15,
+  },
+  modalTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 20,
+    textAlign: 'center',
+    marginBottom: 10,
+  },
+  modalText: {
+    fontFamily: theme.fonts.main,
+    fontSize: 16,
+    textAlign: 'center',
+  },
+  amountText: {
+    fontFamily: theme.fonts.bold,
+    fontSize: 24,
+    textAlign: 'center',
+    color: '#DAA520',
+    marginVertical: 10,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginTop: 10,
+    gap: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#CCC',
+    padding: 10,
+    borderRadius: 5,
+    fontFamily: theme.fonts.main,
+    textAlign: 'right',
+  },
+  checkbox: {
+    padding: 10,
+    backgroundColor: '#F9F9F9',
+    borderRadius: 5,
+    borderWidth: 1,
+    borderColor: '#EEE',
+  },
+  checkboxSelected: {
+    backgroundColor: '#E8F5E9',
+    borderColor: '#4CAF50',
+  },
+  checkboxText: {
+    fontFamily: theme.fonts.main,
   }
 });

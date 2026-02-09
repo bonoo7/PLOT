@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image } from 'react-native';
 import MinimalLayout from '../components/minimal/MinimalLayout';
 import MinimalHeader from '../components/minimal/MinimalHeader';
 import MinimalCard from '../components/minimal/MinimalCard';
@@ -41,7 +41,15 @@ export const TrainingRoleSelectScreen = ({ onSelectRole, onBack }) => {
                 onPress={() => onSelectRole(role.id)}
                 activeOpacity={0.8}
               >
-                <Text style={styles.roleIcon}>{role.icon}</Text>
+                {theme.roleImages && theme.roleImages[role.id] ? (
+                    <Image 
+                        source={theme.roleImages[role.id]} 
+                        style={styles.roleCardImage} 
+                        resizeMode="contain"
+                    />
+                ) : (
+                    <Text style={styles.roleIcon}>{role.icon}</Text>
+                )}
                 <Text style={styles.roleName}>{role.nameAr}</Text>
                 <Text style={styles.roleDesc}>{role.description}</Text>
               </TouchableOpacity>
@@ -203,6 +211,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFF8DC',
     borderColor: '#DAA520',
   },
+  roleCardImage: { width: 100, height: 100, marginBottom: spacing.s },
   roleIcon: { fontSize: 32, marginBottom: spacing.s },
   roleName: { fontFamily: theme.fonts.bold, fontSize: fonts.medium, color: '#333', marginBottom: 4 },
   roleDesc: { fontFamily: theme.fonts.main, fontSize: fonts.tiny, color: '#666', textAlign: 'center' },
