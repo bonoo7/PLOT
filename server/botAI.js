@@ -40,11 +40,11 @@ const ANSWER_TEMPLATES = {
   ],
   
   [ROLE_TYPES.SABOTEUR]: [
-    "بصراحة، رأيت {trickster} يطير في السماء! 😄",
-    "الموقف مضحك جداً... {trickster} كان رائعاً!",
-    "دعوني أخبركم عن {trickster} الذي ظهر فجأة!",
-    "أنا متأكد أن {trickster} هو السبب في كل شيء!",
-    "لا أحد يصدق لكن {trickster} كان هناك حقاً!"
+    "بصراحة، رأيت {trickster} يطير في السماء!",
+    "الموقف مضحك جداً... {trickster} كان رائعاً",
+    "دعوني أخبركم عن {trickster} الذي ظهر فجأة",
+    "أنا متأكد أن {trickster} هو السبب في كل شيء",
+    "لا أحد يصدق لكن {trickster} كان هناك حقاً"
   ],
   
   // فريق العدالة
@@ -157,14 +157,14 @@ function generateFallbackAnswer(role, scenario) {
     answer = answer.replace('{trickster}', scenario.tricksterWord || 'شيء غريب');
   }
   
-  // إضافة كلمات حشو أحياناً (30% احتمال)
-  if (Math.random() < 0.3) {
+  // إضافة كلمات حشو أحياناً (10% احتمال فقط للتركيز)
+  if (Math.random() < 0.1) {
     const filler = FILLER_WORDS[Math.floor(Math.random() * FILLER_WORDS.length)];
     answer = filler + "، " + answer;
   }
   
-  // إضافة نهاية عشوائية (40% احتمال)
-  if (Math.random() < 0.4) {
+  // إضافة نهاية عشوائية (10% احتمال)
+  if (Math.random() < 0.1) {
     const ending = ENDINGS[Math.floor(Math.random() * ENDINGS.length)];
     answer = answer + " " + ending;
   }
