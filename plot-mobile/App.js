@@ -396,6 +396,11 @@ function App() {
           title = '🔮 رؤية العراف';
           message = `القصة الحقيقية:\n${data.content}`;
           break;
+        case 'REVELATION_SUCCESS':
+          title = '🔮 تم الوحي';
+          message = data.message;
+          setIsSubmitted(true);
+          break;
         case 'SABOTAGE':
           title = '🧨 نتيجة التخريب';
           message = data.message;

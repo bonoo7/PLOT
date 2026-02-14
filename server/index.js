@@ -1475,13 +1475,33 @@ io.on('connection', (socket) => {
         // Let's allow it in Round 1 too, to make it more interactive from start.
         
         if (player.role === ROLE_TYPES.SEER && abilityType === 'REVELATION') {
-             // 🔮 Seer Ability: Fill input with Real Story
-             socket.emit('abilityResult', {
-                 type: 'REVELATION',
-                 content: room.currentScenario.story
-             });
-             // Mark as used
+             // 🔮 Seer Ability: Auto-submit Real Story (Silent)
+             // Check if already submitted? Maybe allow overwrite if using ability.
+             
+             const realStory = room.currentScenario.fullStory || room.currentScenario.story;
+             const answerText = Array.isArray(realStory) ? realStory.join('\n') : realStory;
+             
+             // 1. Submit as Answer
+             room.answers[socket.id] = answerText;
+             
+             // 2. Track submission time
+             if (!room.submissionTimes) room.submissionTimes = {};
+             room.submissionTimes[socket.id] = Date.now();
+             
+             // 3. Mark ability used
              player.abilityUsed = true;
+             
+             // 4. Notify Host
+             io.to(room.hostId).emit('playerSubmitted', { playerId: player.id, playerName: player.name });
+             
+             // 5. Notify Seer (Success without content)
+             socket.emit('abilityResult', {
+                 type: 'REVELATION_SUCCESS',
+                 message: 'تم نسخ القصة الحقيقية وإرسالها بنجاح! (لم تظهر لك لضمان السرية)'
+             });
+             
+             // 6. Check if phase complete
+             checkDraftingComplete(roomCode);
              
         } else if (player.role === ROLE_TYPES.DETECTIVE && abilityType === 'INVESTIGATE') {
             // 🕵️ Detective Ability

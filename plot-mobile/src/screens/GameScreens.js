@@ -385,10 +385,10 @@ export const DraftingScreen = ({
              <TextInput
                value={answer}
                onChangeText={setAnswer}
-               placeholder={roleData?.role === 'SEER' ? "اضغط زر الوحي لنسخ السيناريو..." : "اكتب تبريرك هنا..."}
+               placeholder={roleData?.role === 'SEER' ? "اكتب تقريرك بنفسك أو استخدم زر الوحي..." : "اكتب تبريرك هنا..."}
                multiline
                maxLength={500}
-               editable={!isSubmitted && roleData?.role !== 'SEER'}
+               editable={!isSubmitted}
                style={styles.textArea}
                inputStyle={{ minHeight: 150, textAlignVertical: 'top' }}
              />
@@ -403,7 +403,7 @@ export const DraftingScreen = ({
                 </Text>
                 
                 {roleData.role === 'SEER' ? (
-                    <MinimalButton title="استخدام الوحي (نسخ الحقيقة)" onPress={handleUseAbility} size="small" />
+                    <MinimalButton title="استخدام الوحي (إرسال القصة الحقيقية)" onPress={handleUseAbility} size="small" />
                 ) : (
                     <View style={styles.targetList}>
                         {players?.filter(p => p.id !== socket?.id).map(p => (
