@@ -45,33 +45,71 @@ const MinimalLayout = ({ children, style, roleData }) => {
 
   // Helper to render special info in modal
   const renderSpecialInfo = () => {
-      if (!roleData?.specialInfo && !roleData?.info) return null;
-      
-      const info = roleData.specialInfo || roleData.info;
-      
-      if (typeof info === 'string') return <Text style={styles.modalText}>{info}</Text>;
-      if (Array.isArray(info)) return <Text style={styles.modalText}>{info.join('\n')}</Text>;
+      let content = [];
 
-      if (info?.type === 'MASTERMIND_INTEL') {
-          return (
-              <View>
-                  <Text style={styles.modalSubtitle}>أعضاء فريق الجريمة:</Text>
-                  {info.crimeTeam.map(p => (
-                      <Text key={p.id} style={styles.modalText}>• {p.name} ({p.role})</Text>
-                  ))}
+      // 1. Ability Result (New Priority)
+      if (roleData?.abilityResult) {
+          const res = roleData.abilityResult;
+          content.push(
+              <View key="ability" style={styles.intelBox}>
+                  <Text style={styles.modalSubtitle}>🔍 نتيجة القدرة:</Text>
+                  {res.type === 'INVESTIGATE' && (
+                      <Text style={styles.modalText}>
+                          الهدف: {res.targetName}{'\n'}
+                          النتيجة: {res.result}
+                          {res.isSabotaged && '\n⚠️ (تم التلاعب بالنتيجة!)'}
+                      </Text>
+                  )}
+                  {res.type === 'FLASH_MEMORY' && (
+                      <Text style={styles.modalText}>
+                          الكلمات: {res.keywords.join(' - ')}
+                      </Text>
+                  )}
+                  {res.type === 'REVELATION' && (
+                      <Text style={styles.modalText}>
+                          القصة: {res.content}
+                      </Text>
+                  )}
+                  {res.type === 'SABOTAGE' && (
+                      <Text style={styles.modalText}>
+                          {res.message}
+                      </Text>
+                  )}
               </View>
           );
       }
-      if (info?.type === 'MINISTER_INTEL') {
-          return (
-              <View>
-                  <Text style={styles.modalSubtitle}>معلومات سرية:</Text>
-                  <Text style={styles.modalText}>• المستفيد: {info.beneficiary?.name || 'غير معروف'}</Text>
-                  <Text style={styles.modalText}>• المحقق: {info.detective?.name || 'غير معروف'}</Text>
-              </View>
-          );
+
+      // 2. Static Info
+      if (roleData?.specialInfo || roleData?.info) {
+          const info = roleData.specialInfo || roleData.info;
+          
+          if (typeof info === 'string') content.push(<Text key="static" style={styles.modalText}>{info}</Text>);
+          else if (Array.isArray(info)) content.push(<Text key="static" style={styles.modalText}>{info.join('\n')}</Text>);
+          else if (info?.type === 'MASTERMIND_INTEL') {
+              content.push(
+                  <View key="static">
+                      <Text style={styles.modalSubtitle}>أعضاء فريق الجريمة:</Text>
+                      {info.crimeTeam.map(p => (
+                          <Text key={p.id} style={styles.modalText}>• {p.name} ({p.role})</Text>
+                      ))}
+                  </View>
+              );
+          }
+          else if (info?.type === 'MINISTER_INTEL') {
+              content.push(
+                  <View key="static">
+                      <Text style={styles.modalSubtitle}>معلومات سرية:</Text>
+                      <Text style={styles.modalText}>• المستفيد: {info.beneficiary?.name || 'غير معروف'}</Text>
+                      <Text style={styles.modalText}>• المحقق: {info.detective?.name || 'غير معروف'}</Text>
+                  </View>
+              );
+          }
+          else if (typeof info === 'object') {
+             content.push(<Text key="static" style={styles.modalText}>{JSON.stringify(info)}</Text>);
+          }
       }
-      return <Text style={styles.modalText}>{JSON.stringify(info)}</Text>;
+
+      return content;
   };
 
   return (

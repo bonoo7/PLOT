@@ -379,7 +379,7 @@ function startDramaticReveal(roomCode) {
 }
 
 // ============================================
-// 🗣️ DISCUSSION PHASE (Skipped in main loop)
+// 🗣️ DISCUSSION PHASE
 // ============================================
 function startDiscussion(roomCode) {
     const room = rooms[roomCode];
@@ -387,6 +387,45 @@ function startDiscussion(roomCode) {
 
     console.log(`🗣️ Starting Discussion Phase for room ${roomCode}`);
     room.state = 'DISCUSSION';
+
+    // 🕵️‍♂️ RESOLVE DETECTIVE ABILITY (Discussion Start)
+    const detective = room.players.find(p => p.role === ROLE_TYPES.DETECTIVE);
+    if (detective && detective.investigationTarget) {
+        const target = room.players.find(p => p.id === detective.investigationTarget);
+        if (target) {
+            let roleInfo = getRoleInfo(target.role);
+            let resultTeam = roleInfo ? roleInfo.team : TEAMS.JUSTICE;
+            let resultTeamName = (resultTeam === TEAMS.CRIME) ? 'فريق الجريمة' : 'فريق العدالة';
+            let isSabotaged = false;
+            
+            // Check Sabotage (Misdirection)
+            if (target.sabotagedBy) {
+                isSabotaged = true; // Internal flag, maybe useful for debugging but shouldn't spoil it
+                
+                // Flip the result
+                if (resultTeam === TEAMS.CRIME) {
+                    resultTeam = TEAMS.JUSTICE;
+                    resultTeamName = 'فريق العدالة';
+                } else {
+                    resultTeam = TEAMS.CRIME;
+                    resultTeamName = 'فريق الجريمة';
+                }
+                
+                console.log(`Sabotage Effect: ${target.name} team flipped to ${resultTeamName}`);
+            }
+
+            // Emit result to Detective ONLY
+            io.to(detective.id).emit('abilityResult', {
+                type: 'INVESTIGATE',
+                targetName: target.name,
+                result: resultTeamName,
+                isSabotaged: isSabotaged
+            });
+        }
+        // Clear target so it doesn't trigger again
+        detective.investigationTarget = null;
+    }
+
     io.to(roomCode).emit('discussionStarted', {
         timer: 120
     });
@@ -401,42 +440,6 @@ function startCulpritVoting(roomCode) {
 
     room.state = 'CULPRIT_VOTING';
     room.culpritVotes = {}; // ✅ Reset votes to prevent carry-over/double counting
-
-    // 🕵️‍♂️ RESOLVE DETECTIVE & SABOTEUR ABILITIES (Moved from Discussion)
-    const detective = room.players.find(p => p.role === ROLE_TYPES.DETECTIVE);
-    if (detective && detective.investigatedTarget) {
-        const target = room.players.find(p => p.id === detective.investigatedTarget);
-        if (target) {
-            let roleInfo = getRoleInfo(target.role);
-            let resultTeam = roleInfo ? roleInfo.team : TEAMS.JUSTICE;
-            
-            // Check Offer Bribe (Disable Ability)
-            if (detective.acceptedOffer) {
-                io.to(detective.id).emit('detectiveResult', {
-                    targetName: target.name,
-                    resultTeam: 'UNKNOWN',
-                    teamName: 'غير معروف (تم تعطيل القدرة)'
-                });
-            }
-            // Check Sabotage (Misdirection)
-            else if (target.sabotagedBy) {
-                resultTeam = (resultTeam === TEAMS.CRIME) ? TEAMS.JUSTICE : TEAMS.CRIME;
-                console.log(`Sabotage Effect: ${target.name} team flipped to ${resultTeam}`);
-                
-                io.to(detective.id).emit('detectiveResult', {
-                    targetName: target.name,
-                    resultTeam: resultTeam,
-                    teamName: (resultTeam === TEAMS.CRIME) ? 'فريق الجريمة' : 'فريق العدالة'
-                });
-            } else {
-                io.to(detective.id).emit('detectiveResult', {
-                    targetName: target.name,
-                    resultTeam: resultTeam,
-                    teamName: (resultTeam === TEAMS.CRIME) ? 'فريق الجريمة' : 'فريق العدالة'
-                });
-            }
-        }
-    }
 
     // إرسال السيناريوهات مع الأسماء
     const scenariosWithAuthors = room.players.map((p, index) => ({
@@ -495,13 +498,14 @@ function startCulpritVoting(roomCode) {
 function checkCulpritVotingComplete(roomCode) {
     const room = rooms[roomCode];
     if (!room) return;
+    
+    // Better logic: Check if all NON-ELIMINATED players have voted
+    const activePlayers = room.players.filter(p => !p.eliminated);
+    const voteCount = Object.keys(room.culpritVotes).length;
 
-    const votesReceived = Object.keys(room.culpritVotes).length;
-    const totalPlayers = room.players.length;
+    console.log(`🔍 Culprit Voting: ${voteCount}/${activePlayers.length} votes received`);
     
-    console.log(`🔍 Culprit Voting: ${votesReceived}/${totalPlayers} votes received`);
-    
-    if (votesReceived === totalPlayers) {
+    if (voteCount >= activePlayers.length) {
         console.log(`✅ All votes received, processing result...`);
         handleVotingResult(roomCode);
     }
@@ -529,23 +533,32 @@ function handleVotingResult(roomCode) {
 
     // Handle Tie
     if (candidates.length > 1) {
-        if (!room.isReVote) {
-             room.isReVote = true;
-             // Reset votes
-             room.culpritVotes = {};
-             io.to(roomCode).emit('votingTie', { candidates });
-             startDiscussion(roomCode);
-             return;
-        } else {
-             // Tie again -> Crime Wins
-             endRound(roomCode, { winner: TEAMS.CRIME, reason: 'TIE_BREAK' }); 
-             return;
-        }
+        // Random pick for now to avoid stuck game loop
+        const randomIdx = Math.floor(Math.random() * candidates.length);
+        const selectedId = candidates[randomIdx];
+        resolveElimination(roomCode, selectedId);
+        return;
+    }
+    
+    if (candidates.length === 0) {
+        // Should not happen, but safe fallback
+         endRound(roomCode, { winner: 'DRAW', reason: 'لم يصوت أحد!' });
+         return;
     }
 
-    const eliminatedId = candidates[0];
+    resolveElimination(roomCode, candidates[0]);
+}
+
+function resolveElimination(roomCode, eliminatedId) {
+    const room = rooms[roomCode];
     const eliminatedPlayer = room.players.find(p => p.id === eliminatedId);
+    
+    if (!eliminatedPlayer) return;
+    
     const roleInfo = getRoleInfo(eliminatedPlayer.role);
+    
+    // Mark as Eliminated
+    eliminatedPlayer.eliminated = true;
     
     if (eliminatedPlayer.role === ROLE_TYPES.CULPRIT) {
         // Justice Wins
@@ -570,8 +583,6 @@ function handleVotingResult(roomCode) {
         });
     } else if (roleInfo.team === TEAMS.CRIME) {
         // Crime Member (not Culprit) -> Continue
-        eliminatedPlayer.isEliminated = true;
-        
         // End round with CONTINUE status so players see who was eliminated
         endRound(roomCode, { 
             winner: 'CONTINUE', 
@@ -807,6 +818,21 @@ io.on('connection', (socket) => {
                         });
                     }
                 }
+                
+                // If Eliminated, ensure they get spectator role info
+                if (existingPlayer.eliminated) {
+                    socket.emit('roleAssigned', {
+                        role: 'SPECTATOR',
+                        roleName: 'مستبعد',
+                        description: 'لقد تم إقصاؤك من اللعبة. يمكنك المشاهدة فقط.',
+                        info: 'انتظر حتى نهاية الجولة.',
+                        round: room.currentRound,
+                        totalRounds: room.totalRounds,
+                        isTutorial: room.isTutorial,
+                        isSpectator: true
+                    });
+                }
+                
                 return;
             }
 
@@ -1067,6 +1093,19 @@ io.on('connection', (socket) => {
         }
 
         room.state = 'PLAYING';
+        room.answers = {};
+        room.votes = {};
+        room.drafts = {};
+        room.qualityVotes = {};
+        room.culpritVotes = {};
+        room.submissionTimes = {};
+        room.roundOutcome = null;
+        
+        // 🔄 Notify Players about New Round
+        io.to(roomCode).emit('newRoundStarted', {
+            round: room.currentRound,
+            totalRounds: room.totalRounds
+        });
 
         // Select random scenario that hasn't been used
         let availableScenarios = scenarios.filter(s => !room.usedScenarios.includes(s.id));
@@ -1084,37 +1123,58 @@ io.on('connection', (socket) => {
             }
             room.currentScenario = availableScenarios[Math.floor(Math.random() * availableScenarios.length)];
         }
-
+        
         room.usedScenarios.push(room.currentScenario.id);
 
-        // Assign Roles (V4 - Team System)
-        let shuffledPlayers = [...room.players].sort(() => 0.5 - Math.random());
-        let rolesForCount = [...getRolesForPlayerCount(shuffledPlayers.length)];
-        
-        // 1️⃣ Assign Preferred Roles first
-        shuffledPlayers.forEach(p => {
-            if (p.preferredRole) {
-                p.role = p.preferredRole;
-                
-                // Remove from pool if exists, otherwise remove least important role
-                const index = rolesForCount.indexOf(p.preferredRole);
-                if (index !== -1) {
-                    rolesForCount.splice(index, 1);
-                } else {
-                    rolesForCount.pop(); // Remove last added role (least important)
-                }
-            }
+        // Reset elimination status for all players for the new round
+        room.players.forEach(p => {
+            p.eliminated = false;
         });
 
-        // 2️⃣ Shuffle remaining roles
-        rolesForCount.sort(() => 0.5 - Math.random());
+        // Assign Roles to ALL players
+        assignRoles(room, room.players, roomCode);
+    }
 
-        // 3️⃣ Assign remaining roles to players without role
+
+        
+
+            
+
+
+
+
+        
+
+
+
+
+
+
+
+
+
+
+    // Assign Roles Logic
+    function assignRoles(room, players, passedRoomCode) {
+        // 1️⃣ Shuffle players
+        const shuffledPlayers = [...players].sort(() => Math.random() - 0.5);
+
+        // 2️⃣ Get roles for count
+        const rolesForCount = getRolesForPlayerCount(players.length);
+
+        // 3️⃣ Assign roles
         let roleIndex = 0;
         shuffledPlayers.forEach((player) => {
+            // Keep preferred role if set (for debugging/tutorial)
             if (!player.preferredRole) {
                 player.role = rolesForCount[roleIndex];
                 roleIndex++;
+            } else {
+                // If preferred role used, remove it from available roles if possible
+                const prefIndex = rolesForCount.indexOf(player.preferredRole);
+                if (prefIndex > -1) {
+                    rolesForCount.splice(prefIndex, 1);
+                }
             }
             
             player.score = 0; 
@@ -1129,6 +1189,9 @@ io.on('connection', (socket) => {
             player.abilityUsed = false;
             player.sabotagedBy = null;
             player.investigatedBy = null;
+            
+            // Log for debugging
+            console.log(`Assigned ${player.role} to ${player.name}`);
         });
 
         // Special Role Intel Logic
@@ -1141,6 +1204,8 @@ io.on('connection', (socket) => {
         const detective = shuffledPlayers.find(p => p.role === ROLE_TYPES.DETECTIVE);
 
         // Assign and send role data
+        const roomCode = passedRoomCode || room.id || Object.keys(rooms).find(key => rooms[key] === room); // Try to find ID
+
         shuffledPlayers.forEach((player) => {
             const role = player.role;
             const roleInfo = getRoleInfo(role);
@@ -1171,6 +1236,13 @@ io.on('connection', (socket) => {
                     detective: detective ? { id: detective.id, name: detective.name } : null
                 };
             }
+            // Witness gets Keywords
+            else if (role === ROLE_TYPES.WITNESS) {
+                specialInfo = {
+                    type: 'WITNESS_INTEL',
+                    keywords: room.currentScenario.keywords
+                };
+            }
 
             let roleData = {
                 role: role,
@@ -1184,7 +1256,7 @@ io.on('connection', (socket) => {
                 ability: roleInfo.ability,
                 info: null,
                 specialInfo: specialInfo,
-                score: player.score, // ✨ Send starting score (e.g. 1000 for Minister)
+                score: player.score,
                 round: room.currentRound,
                 totalRounds: room.totalRounds,
                 isTutorial: room.isTutorial
@@ -1192,24 +1264,23 @@ io.on('connection', (socket) => {
 
             io.to(player.id).emit('roleAssigned', roleData);
         });
-
-
-
+        
         // Notify Host
-        io.to(roomCode).emit('gameStarted', {
-            title: room.isTutorial ? `(تدريب) ${room.currentScenario.title}` : room.currentScenario.title,
-            round: room.currentRound,
-            totalRounds: room.totalRounds,
-            isTutorial: room.isTutorial,
-            roomCode: roomCode
-        });
-
-        console.log(`Round ${room.currentRound} started in room ${roomCode}`);
-
-        // Start Drafting Phase after 5 seconds (to let players read roles)
-        setTimeout(() => {
-            startDraftingPhase(roomCode);
-        }, 5000);
+        if (roomCode) {
+            io.to(roomCode).emit('gameStarted', {
+                title: room.isTutorial ? `(تدريب) ${room.currentScenario.title}` : room.currentScenario.title,
+                round: room.currentRound,
+                totalRounds: room.totalRounds,
+                isTutorial: room.isTutorial,
+                roomCode: roomCode
+            });
+            console.log(`Round ${room.currentRound} started in room ${roomCode}`);
+            
+            // Start Drafting Phase after 5 seconds
+            setTimeout(() => {
+                startDraftingPhase(roomCode);
+            }, 5000);
+        }
     }
 
     // Helper function to end game
@@ -1390,101 +1461,70 @@ io.on('connection', (socket) => {
         const player = room.players.find(p => p.id === socket.id);
         if (!player) return;
 
-        // Check Round Restriction (Abilities start from Round 2)
-        // Allow if Tutorial OR Round >= 2
-        if (!room.isTutorial && room.currentRound < 2) {
-            socket.emit('error', 'القدرات الخاصة تفتح في الجولة الثانية!');
-            return;
-        }
-
-        if (player.role === 'SPY' && abilityType === 'EAGLE_EYE') {
-            // ... (Spy logic)
-            // Find Witness
-            const witness = room.players.find(p => p.role === 'WITNESS');
-            if (!witness) return;
-
-            const witnessDraft = (room.drafts && room.drafts[witness.id]) || "";
-
-            // Obfuscate text (replace 30% of characters with *)
-            let obfuscated = witnessDraft.split('').map(char => {
-                return Math.random() > 0.7 ? '*' : char;
-            }).join('');
-
-            socket.emit('abilityResult', {
-                type: 'EAGLE_EYE',
-                content: obfuscated || "الشاهد لم يكتب شيئاً بعد..."
-            });
-        } else if (player.role === 'DETECTIVE' && abilityType === 'INTERROGATION') {
+        // Check Round Restriction (Abilities start from Round 2, except Seer and Witness)
+        // Seer and Witness use abilities implicitly or explicitly at different times.
+        // Detective/Saboteur usually R2+.
+        // Let's stick to simple rules: Abilities available always or per role logic.
+        
+        // But wait, user said "adjust roles and abilities so they can be used effectively".
+        // Let's remove the restriction "Round < 2" if it blocks fun, or keep it if game balance requires.
+        // Usually investigation starts after some evidence. Round 1 has evidence (Drafts).
+        // So Round 1 Drafting phase -> Use ability?
+        // Detective checks AFTER drafting? Or during?
+        // In UI, it is used during Drafting phase.
+        // Let's allow it in Round 1 too, to make it more interactive from start.
+        
+        if (player.role === ROLE_TYPES.SEER && abilityType === 'REVELATION') {
+             // 🔮 Seer Ability: Fill input with Real Story
+             socket.emit('abilityResult', {
+                 type: 'REVELATION',
+                 content: room.currentScenario.story
+             });
+             // Mark as used
+             player.abilityUsed = true;
+             
+        } else if (player.role === ROLE_TYPES.DETECTIVE && abilityType === 'INVESTIGATE') {
+            // 🕵️ Detective Ability
             const targetPlayer = room.players.find(p => p.id === targetId);
             if (!targetPlayer) return;
 
-            // Calculate "Accuracy"
-            // Logic: Compare target's answer with Scenario keywords
-            const targetAnswer = room.answers[targetId] || "";
-            const keywords = room.currentScenario.keywords;
-
-            let matchCount = 0;
-            keywords.forEach(kw => {
-                if (targetAnswer.includes(kw)) matchCount++;
-            });
-
-            // Witness should have high match, Architect medium, others low
-            // But let's make it a percentage based on role for simplicity/fun
-            let accuracy = 0;
-            if (targetPlayer.role === 'WITNESS') {
-                accuracy = Math.floor(Math.random() * 20) + 80; // 80-100%
-            } else if (targetPlayer.role === 'ARCHITECT') {
-                accuracy = Math.floor(Math.random() * 30) + 40; // 40-70%
-            } else {
-                accuracy = Math.floor(Math.random() * 30); // 0-30%
-            }
-
-            socket.emit('abilityResult', {
-                type: 'INTERROGATION',
-                content: `تحليل الإجابة:\nنسبة الدقة: ${accuracy}%\nالمصداقية: ${accuracy > 50 ? 'عالية' : 'منخفضة'}`
-            });
-        } else if ((player.role === ROLE_TYPES.OFFICER || player.role === 'OFFICER') && abilityType === 'OBSERVATION') {
-            // 👮 قدرة الضابط - الملاحظة الدقيقة
-            if (!room.submissionTimes) {
-                socket.emit('abilityResult', {
-                    type: 'OBSERVATION',
-                    content: 'لا توجد بيانات عن أوقات الإرسال بعد.'
-                });
-                return;
-            }
-
-            // حساب الأوقات النسبية
-            const times = Object.entries(room.submissionTimes);
-            if (times.length === 0) {
-                socket.emit('abilityResult', {
-                    type: 'OBSERVATION',
-                    content: 'لم يرسل أحد إجابته بعد.'
-                });
-                return;
-            }
-
-            const earliestTime = Math.min(...times.map(([_, time]) => time));
+            // Store request instead of executing immediately
+            player.investigationTarget = targetId;
+            player.abilityUsed = true;
             
-            const timingData = times.map(([playerId, timestamp]) => {
-                const playerObj = room.players.find(p => p.id === playerId);
-                const relativeTime = Math.floor((timestamp - earliestTime) / 1000);
-                return {
-                    name: playerObj ? playerObj.name : 'غير معروف',
-                    time: relativeTime
-                };
-            }).sort((a, b) => a.time - b.time);
-
-            const timingText = timingData.map((data, idx) => {
-                const emoji = idx === 0 ? '⚡' : idx === 1 ? '🏃' : idx === 2 ? '🚶' : '🐌';
-                return `${emoji} ${data.name}: ${data.time === 0 ? 'فوراً' : `+${data.time}ث`}`;
-            }).join('\n');
-
             socket.emit('abilityResult', {
-                type: 'OBSERVATION',
-                content: `⏱️ أوقات الإرسال:\n\n${timingText}\n\n💡 ملاحظة: الجاني عادةً يرسل سريعاً لأنه يعرف القصة!`
+                type: 'INVESTIGATE',
+                targetName: targetPlayer.name,
+                result: 'قيد المعالجة... ستظهر النتيجة بعد انتهاء التصويت على السيناريوهات.',
+                isPending: true
             });
+            
+        } else if (player.role === ROLE_TYPES.WITNESS && abilityType === 'FLASH_MEMORY') {
+             // 👁️ Witness Ability: Show keywords again
+             socket.emit('abilityResult', {
+                 type: 'FLASH_MEMORY',
+                 keywords: room.currentScenario.keywords
+             });
+             player.abilityUsed = true;
+
+        } else if (player.role === ROLE_TYPES.SABOTEUR && abilityType === 'SABOTAGE') {
+             // 🧨 Saboteur Ability
+             const targetPlayer = room.players.find(p => p.id === targetId);
+             if (!targetPlayer) return;
+             
+             targetPlayer.sabotagedBy = player.id;
+             
+             socket.emit('abilityResult', {
+                 type: 'SABOTAGE',
+                 message: `تم تخريب سجل ${targetPlayer.name}. سيظهر عكس حقيقته للمحقق.`
+             });
+             
+             player.abilityUsed = true;
         }
     });
+
+    // Legacy Handlers Removed (detectiveCheck, saboteurSabotage, seerReveal)
+    // All abilities should use 'useAbility' event now.
 
     // Discussion Phase Controls
     socket.on('setSpeaker', ({ roomCode, playerId }) => {
@@ -1541,9 +1581,22 @@ io.on('connection', (socket) => {
         if (room && room.state === 'CULPRIT_VOTING') {
             const player = room.players.find(p => p.id === socket.id);
             if (!player) return;
+
+            // ⛔ Prevent eliminated players from voting
+            if (player.eliminated) {
+                socket.emit('error', 'أنت مستبعد من التصويت!');
+                return;
+            }
             
             // Prevent self-voting
             if (playerId === socket.id) return;
+            
+            // ⛔ Prevent voting for eliminated players
+            const targetPlayer = room.players.find(p => p.id === playerId);
+            if (targetPlayer && targetPlayer.eliminated) {
+                socket.emit('error', 'هذا اللاعب مستبعد بالفعل!');
+                return;
+            }
             
             room.culpritVotes[socket.id] = playerId;
             
@@ -1568,10 +1621,21 @@ io.on('connection', (socket) => {
         // هذا للتوافقية مع الكود القديم - سيتم إزالته بعد تحديث Client
         const room = rooms[roomCode];
         if (room) {
+            const voter = room.players.find(p => p.id === socket.id);
+            if (!voter || voter.isExcluded) return; // Prevent excluded players from voting
+
             if (room.state === 'QUALITY_VOTING') {
                 room.qualityVotes[socket.id] = qualityVote;
                 checkQualityVotingComplete(roomCode);
             } else if (room.state === 'CULPRIT_VOTING') {
+                const target = room.players.find(p => p.id === identityVote);
+                
+                // Prevent voting for excluded players
+                if (target && target.isExcluded) {
+                    socket.emit('error', 'لا يمكنك التصويت للاعب مستبعد!');
+                    return;
+                }
+
                 room.culpritVotes[socket.id] = identityVote;
                 checkCulpritVotingComplete(roomCode);
             }
@@ -1593,7 +1657,9 @@ io.on('connection', (socket) => {
             const room = rooms[roomCode];
             // Check if game should continue (e.g. Crime member eliminated but not Culprit)
             if (room.roundOutcome === 'CONTINUE') {
-                room.roundOutcome = null; // Reset so we don't loop forever if next vote is also continue (actually we want to loop if continues again)
+                room.roundOutcome = null; 
+                // Notify players we are returning to Discussion/Game (Round continues)
+                io.to(roomCode).emit('roundContinued', { round: room.currentRound });
                 // Return to Discussion
                 startDiscussion(roomCode);
             } else {

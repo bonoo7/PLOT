@@ -22,289 +22,138 @@
 
 sequenceDiagram
 
-&nbsp;   participant P as Player (Mobile)
+   participant P as Player (Mobile)
 
-&nbsp;   participant S as Server (Backend)
+   participant S as Server (Backend)
 
-&nbsp;   participant H as Host (TV Screen)
+   participant H as Host (TV Screen)
 
+   Note over P,H: المرحلة 1: الاتصال والردهة (Lobby)
 
+   H->>S: Create Room
 
-&nbsp;   Note over P,H: المرحلة 1: الاتصال والردهة (Lobby)
+   S-->>H: Display Room Code (e.g. ABCD)
 
-&nbsp;   H->>S: Create Room
+   P->>S: Join Room (Code + Name)
 
-&nbsp;   S-->>H: Display Room Code (e.g. ABCD)
+   S-->>H: Update Player List
 
-&nbsp;   P->>S: Join Room (Code + Name)
+   H->>S: Start Game Trigger
 
-&nbsp;   S-->>H: Update Player List
+   Note over P,H: المرحلة 2: إعداد الجولة (Round Setup)
 
-&nbsp;   H->>S: Start Game Trigger
+   loop Round Loop (3 Rounds)
 
+       S->>S: Select Scenario & Assign Roles (Justice/Crime)
 
+       S-->>H: Show Round Intro & Title
 
-&nbsp;   Note over P,H: المرحلة 2: إعداد الجولة (Round Setup)
+       S-->>P: Send Role Data & Secret Info
 
-&nbsp;   loop Round Loop (3 Rounds)
+       Note over P,H: المرحلة 3: الصياغة (Drafting)
 
-&nbsp;       S->>S: Select Scenario \& Assign Roles
+       H->>H: Start Timer (90s)
 
-&nbsp;       S-->>H: Show Round Intro \& Title
+       P->>P: Player types Scenario
 
-&nbsp;       S-->>P: Send Role Data (Story/Keywords/Nothing)
+       opt Ability Usage (Saboteur/Detective)
+           P->>S: Select Target (Queued)
+           S-->>P: Acknowledge (Result Pending)
+       end
 
-&nbsp;       
+       opt Ability Usage (Witness/Seer)
+           P->>S: Use Instant Ability
+           S-->>P: Show Result (Keywords/Story)
+       end
 
-&nbsp;       Note over P,H: المرحلة 3: الصياغة (Drafting)
+       P->>S: Submit Answer
 
-&nbsp;       H->>H: Start Timer (90s)
+       S-->>H: Show "Answer Submitted" Icon
 
-&nbsp;       P->>P: Player types Answer
+       Note over P,H: المرحلة 4: التصويت على الجودة (Quality Voting)
 
-&nbsp;       opt If Player is SPY
+       S->>H: Display Answers (Anonymous)
 
-&nbsp;           P->>S: Request "Peek" (Ability)
+       P->>S: Vote for Best Scenario
 
-&nbsp;           S-->>P: Send Witness Answer Snippet
+       Note over P,H: المرحلة 5: العرض التشويقي (Dramatic Reveal)
 
-&nbsp;       end
+       S->>H: Auto-Reveal Scenarios + Voters + Authors
 
-&nbsp;       P->>S: Submit Answer
+       Note over P,H: المرحلة 6: النقاش (Discussion)
 
-&nbsp;       S-->>H: Show "Answer Submitted" Icon
+       S->>P: Emit Detective Results (Start of Discussion)
 
+       H->>H: Start Timer (120s)
 
+       P->>P: Discuss & Accuse
 
-&nbsp;       Note over P,H: المرحلة 4: العرض والمواجهة (Presentation)
+       Note over P,H: المرحلة 7: التصويت على الجاني (Culprit Voting)
 
-&nbsp;       S->>H: Display Answers (One by one or Pairs)
+       H->>H: Show "Who is the Culprit?"
 
-&nbsp;       opt If Player is DETECTIVE
+       P->>S: Submit Vote (Named Scenarios)
 
-&nbsp;           P->>S: Request "Scan" on specific Answer
+       Note over P,H: المرحلة 8: النتائج (Results)
 
-&nbsp;           S-->>P: Return "Accuracy %"
+       S->>S: Calculate Elimination & Scores
 
-&nbsp;       end
+       S-->>H: Show Outcome (Justice Wins/Crime Wins/Continue)
 
-&nbsp;       
+       S-->>H: Update Leaderboard
 
-&nbsp;       Note over P,H: المرحلة 5: التصويت (Voting)
+   end
 
-&nbsp;       H->>H: Show "Vote for Best Logic"
+   Note over P,H: المرحلة 9: نهاية اللعبة (End Game)
 
-&nbsp;       P->>S: Submit Vote (Best Answer)
+   S-->>H: Show Final Winner & Titles
 
-&nbsp;       H->>H: Show "Vote for Witness Identity"
-
-&nbsp;       P->>S: Submit Vote (Who is the Witness?)
-
-&nbsp;       
-
-&nbsp;       Note over P,H: المرحلة 6: النتائج (Results)
-
-&nbsp;       S->>S: Calculate Scores (Algorithm)
-
-&nbsp;       S-->>H: Reveal Real Story \& Identities
-
-&nbsp;       S-->>H: Update Leaderboard
-
-&nbsp;   end
-
-
-
-&nbsp;   Note over P,H: المرحلة 7: نهاية اللعبة (End Game)
-
-&nbsp;   S-->>H: Show Final Winner \& Titles
-
-&nbsp;   H->>S: Play Again / New Game
+   H->>S: Play Again / New Game
 
 ثانياً: الشرح التفصيلي للتدفق (Step-by-Step Description)
 
-هذا الجزء يشرح ما يحدث في كل "حارة" (Lane) خطوة بخطوة.
-
-
-
-1\. مرحلة الدخول (Onboarding \& Lobby)
-
+1. مرحلة الدخول (Onboarding & Lobby)
 الشاشة الرئيسية (TV): تعرض زر "لعبة جديدة". عند الضغط، تتصل بالخادم وتطلب "رمز غرفة" (Room Code). تظهر شاشة الانتظار مع الرمز والأسماء المنضمة.
-
-
-
 الهاتف (Mobile): يفتح اللاعب المتصفح، يدخل الرمز واسمه.
+النظام (Server): يربط الهاتف بالغرفة ويرسل إشارة للشاشة الرئيسية لإظهار اسم اللاعب الجديد.
 
-
-
-النظام (Server): يربط الهاتف بالغرفة ويرسل إشارة للشاشة الرئيسية لإظهار اسم اللاعب الجديد وأفاتار عشوائي.
-
-
-
-2\. بداية الجولة (Round Initialization)
-
+2. بداية الجولة (Round Initialization)
 النظام:
-
-
-
 يختار سيناريو من قاعدة البيانات.
+يخلط الأدوار عشوائياً بين اللاعبين المتصلين (فريق العدالة ضد فريق الجريمة).
+يرسل "حزمة بيانات" (Data Packet) لكل هاتف حسب دوره.
+الشاشة الرئيسية: تعرض "عنوان القضية".
+الهاتف: يعرض بطاقة الدور ("أنت المحقق"، "أنت الجاني"... إلخ) مع المعلومات السرية.
 
-
-
-يخلط الأدوار عشوائياً بين اللاعبين المتصلين.
-
-
-
-يرسل "حزمة بيانات" (Data Packet) لكل هاتف حسب دوره (الشاهد يحصل على النص، المهندس يحصل على الكلمات، البقية يحصلون على العنوان).
-
-
-
-الشاشة الرئيسية: تعرض "عنوان القضية" ومؤثرات صوتية تشويقية.
-
-
-
-الهاتف: يهتز ويعرض للاعب دوره بوضوح ("أنت الشاهد"، "أنت جاسوس"... إلخ) مع التعليمات.
-
-
-
-3\. مرحلة الكتابة (Input Phase)
-
-الشاشة الرئيسية: تعرض عداداً تنازلياً (مثلاً 90 ثانية) وموسيقى توتر. تظهر أيقونات اللاعبين، وتتحول أيقونة اللاعب إلى "لون أخضر" عند إرساله الإجابة.
-
-
-
+3. مرحلة الكتابة (Drafting Phase)
+الشاشة الرئيسية: تعرض عداداً تنازلياً (90 ثانية) وحالة اللاعبين (Waiting/Submitted).
 الهاتف:
-
-
-
 يظهر مربع نص للكتابة.
+تظهر أزرار القدرات الخاصة (للمحقق، المخرب، الشاهد، إلخ).
+يمكن للاعبين استخدام القدرات هنا، لكن بعض النتائج (مثل المحقق) تتأجل.
 
+4. مرحلة التصويت على الجودة (Quality Voting)
+الشاشة الرئيسية: تعرض السيناريوهات بدون أسماء.
+الهاتف: يصوت اللاعب لأفضل سيناريو.
 
+5. العرض التشويقي (Dramatic Reveal)
+الشاشة الرئيسية: تقوم تلقائياً بعرض النتائج بشكل متتابع ومثير (السيناريو -> المصوتين -> الكاتب).
 
-زر القدرة (Action Button): يظهر فقط للجاسوس ("اختلاس النظر").
+6. مرحلة النقاش (Discussion Phase)
+النظام: يرسل نتيجة الفحص للمحقق (فقط في هذه اللحظة).
+اللاعبون: يتناقشون بناءً على المعلومات المكتشفة والسيناريوهات.
 
+7. التصويت على الجاني (Culprit Voting)
+الشاشة الرئيسية: تطلب تحديد الجاني.
+الهاتف: تظهر قائمة بجميع اللاعبين وسيناريوهاتهم.
+الإقصاء: اللاعب الذي يحصل على أعلى الأصوات يتم إقصاؤه (تحسب النتيجة لفريقه أو ضده).
 
+8. المعالجة والنتائج (Processing & Reveal)
+النظام (Backend): يقوم بحساب النقاط وتحديد الفائز بالجولة (أو استمرارها).
+الشاشة الرئيسية: تعرض النتيجة النهائية للجولة وتوزيع النقاط.
 
-تدفق الجاسوس: عند ضغط الزر -> يرسل طلب للخادم -> الخادم يتحقق -> يرسل نص الشاهد للهاتف -> يظهر النص لمدة 3 ثوان ثم يختفي.
-
-
-
-4\. مرحلة العرض والتحليل (Presentation Phase)
-
-الشاشة الرئيسية: تعرض الإجابات. (يمكن عرضها بشكل ثنائي للمنافسة: إجابة A ضد إجابة B).
-
-
-
-الهاتف (المحقق فقط):
-
-
-
-تظهر له قائمة الإجابات المعروضة حالياً.
-
-
-
-يختار إجابة واحدة ويضغط "تحليل".
-
-
-
-يرسل الخادم النتيجة له فقط ("نسبة التطابق مع القصة: 80%").
-
-
-
-5\. مرحلة التصويت (Voting Phase)
-
-هذه المرحلة مقسمة لجزأين متتاليين:
-
-
-
-أ. تصويت الجودة (Quality Vote):
-
-
-
-الشاشة: "من صاحب التبرير الأقوى؟"
-
-
-
-الهاتف: تظهر الإجابات (بدون أسماء أصحابها). يختار اللاعب إجابة.
-
-
-
-قاعدة: لا يمكن للاعب التصويت لنفسه.
-
-
-
-ب. تصويت الهوية (Identity Vote):
-
-
-
-الشاشة: "من هو الشاهد الحقيقي؟"
-
-
-
-الهاتف: تظهر قائمة أسماء اللاعبين.
-
-
-
-يختار اللاعبون الشخص الذي يشكون فيه.
-
-
-
-6\. المعالجة والنتائج (Processing \& Reveal)
-
-النظام (Backend): يقوم بحساب النقاط بناءً على المعادلات (التي حددناها في الوثيقة السابقة).
-
-
-
-الشاشة الرئيسية:
-
-
-
-تعرض القصة الحقيقية.
-
-
-
-تكشف من هو الشاهد (وهل نجح في خداعهم أم لا).
-
-
-
-توزع النقاط بتأثيرات بصرية (Animations).
-
-
-
-تعرض الترتيب الحالي (Leaderboard).
-
-
-
-7\. الانتقال أو النهاية
-
+9. الانتقال أو النهاية
 النظام: يتحقق: هل وصلنا للجولة 3؟
-
-
-
-نعم: الانتقال لشاشة "نهاية اللعبة" وتوزيع الألقاب.
-
-
-
+نعم: الانتقال لشاشة "نهاية اللعبة".
 لا: العودة للمرحلة رقم 2 (بداية جولة جديدة).
-
-
-
-ملاحظات تقنية للفريق (Technical Notes for Flowchart):
-
-حالة انقطاع الاتصال (Disconnect Handling):
-
-
-
-أضف ملاحظة في المخطط: إذا انفصل لاعب أثناء "مرحلة الكتابة"، النظام يقوم تلقائياً بوضع إجابة افتراضية (مثال: "لقد صمت هذا اللاعب بشكل مريب...") لكي لا تتوقف اللعبة.
-
-
-
-المؤقت (Timer Sync):
-
-
-
-المؤقت الرسمي يكون في الخادم (Server-side Timer)، والهواتف والشاشة مجرد "عارضين" للوقت، لضمان أن الجميع ينتهي في نفس اللحظة.
-
-
-
-هذا المخطط مع الكود المرفق سيوفر على المبرمجين ساعات من الأسئلة وسيجعلهم يفهمون البنية التحتية المطلوبة (Client-Server Architecture) فوراً.
 

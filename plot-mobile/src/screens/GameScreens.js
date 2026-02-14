@@ -146,6 +146,12 @@ export const DraftingScreen = ({
   
   const timerColor = timeLeft < 30 ? '#FF4444' : '#FFD700';
 
+  // Reset ability state when round changes
+  useEffect(() => {
+    setAbilityUsed(false);
+    setTargetId(null);
+  }, [roleData?.round]);
+
   useEffect(() => {
     if (!socket) return;
     const handleFlash = ({ keywords }) => {
@@ -204,14 +210,19 @@ export const DraftingScreen = ({
   const handleUseAbility = () => {
     if ((!targetId && roleData?.role !== 'SEER') || abilityUsed) return;
     
-    if (roleData?.role === 'DETECTIVE') {
-        socket.emit('detectiveCheck', { roomCode, targetId });
-    } else if (roleData?.role === 'SABOTEUR') {
-        socket.emit('saboteurSabotage', { roomCode, targetId });
-    } else if (roleData?.role === 'SEER') {
-        socket.emit('seerReveal', { roomCode });
+    let abilityType = '';
+    if (roleData?.role === 'DETECTIVE') abilityType = 'INVESTIGATE';
+    else if (roleData?.role === 'SABOTEUR') abilityType = 'SABOTAGE';
+    else if (roleData?.role === 'SEER') abilityType = 'REVELATION';
+    
+    if (abilityType) {
+        socket.emit('useAbility', { 
+            roomCode, 
+            abilityType,
+            targetId 
+        });
+        setAbilityUsed(true);
     }
-    setAbilityUsed(true);
   };
 
   const handleSendOffer = () => {

@@ -189,6 +189,28 @@ function App() {
       setConnecting(false);
       setScreen(SCREENS.LOBBY);
     });
+
+    // Handle New Round Explicitly to clear old state
+    socket.on('newRoundStarted', (data) => {
+        console.log('🔄 New Round Started:', data);
+        setRoundResults(null); // Clear previous results
+        setIsSubmitted(false);
+        setAnswer('');
+        setHasVoted(false);
+        setLiveVotes([]);
+        setRevealedScenarios([]);
+        // We wait for 'roleAssigned' or 'gameStarted' to switch screen, 
+        // but let's ensure we leave results screen if stuck
+        if (userRole !== 'HOST') {
+             // force update if needed, but gameStarted usually handles it
+        }
+    });
+
+    socket.on('roundContinued', (data) => {
+        console.log('🔄 Round Continued:', data);
+        setRoundResults(null); // Clear results to hide overlay
+        alert('الجولة مستمرة! لم يتم القبض على الجاني.');
+    });
     
     socket.on('gameStarted', (data) => {
       console.log('🎮 Game started:', data);
@@ -348,6 +370,46 @@ function App() {
         setScreen(SCREENS.WAITING);
       }
     });
+
+    // Ability Results Listener
+    socket.on('abilityResult', (data) => {
+      console.log('⚡ Ability result:', data);
+      
+      // Persist in Role Data so it appears in the Role Card
+      setRoleData(prev => {
+          if (!prev) return prev;
+          return {
+              ...prev,
+              abilityResult: data
+          };
+      });
+
+      let title = 'نتيجة القدرة';
+      let message = '';
+      
+      switch (data.type) {
+        case 'INVESTIGATE':
+          title = '🕵️ تقرير المحقق';
+          message = `الهدف: ${data.targetName}\nالنتيجة: ${data.result}`;
+          break;
+        case 'REVELATION':
+          title = '🔮 رؤية العراف';
+          message = `القصة الحقيقية:\n${data.content}`;
+          break;
+        case 'SABOTAGE':
+          title = '🧨 نتيجة التخريب';
+          message = data.message;
+          break;
+        case 'FLASH_MEMORY':
+          title = '👁️ ذاكرة الشاهد';
+          message = `الكلمات المفتاحية:\n${data.keywords.join(' - ')}`;
+          break;
+        default:
+          message = JSON.stringify(data);
+      }
+      
+      Alert.alert(title, message);
+    });
     
     socket.on('startPresentation', () => {
       console.log('🎭 Presentation started');
@@ -379,6 +441,7 @@ function App() {
       socket.off('culpritVotingStarted');
       socket.off('voteReceived');
       socket.off('roundResults');
+      socket.off('abilityResult');
       socket.off('startPresentation');
       socket.off('dramaticRevealStarted');
       socket.off('revealStep');
