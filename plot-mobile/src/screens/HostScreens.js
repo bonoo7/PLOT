@@ -66,6 +66,22 @@ export const HostLobbyScreen = ({
   const canStart = players.length >= 4 && players.length <= 8;
   const needsMore = 4 - players.length;
 
+  // Essential Roles Order (matching server/roles.js logic)
+  const ROLE_ORDER = [
+    { code: 'CULPRIT', name: 'الجاني 🎭' },
+    { code: 'DETECTIVE', name: 'المحقق 🕵️‍♂️' },
+    { code: 'WITNESS', name: 'الشاهد 👁️' },
+    { code: 'MASTERMIND', name: 'العقل المدبر 🧠' },
+    { code: 'SEER', name: 'العرّاف 🔮' },
+    { code: 'SABOTEUR', name: 'المخرب 🧨' },
+    { code: 'MINISTER', name: 'الوزير 📜' },
+    { code: 'BENEFICIARY', name: 'المستفيد 💰' }
+  ];
+
+  // Calculate next role
+  const nextRoleIndex = players.length;
+  const nextRole = nextRoleIndex < ROLE_ORDER.length ? ROLE_ORDER[nextRoleIndex] : { name: 'مواطن 👤' };
+
   const handleShare = async () => {
     try {
       await Share.share({
@@ -130,7 +146,7 @@ export const HostLobbyScreen = ({
           <View style={styles.mainActions}>
              {players.length < 8 && (
                 <MinimalButton 
-                  title="+ بوت" 
+                  title={`+ بوت (${nextRole.name})`} 
                   onPress={onFillBots} 
                   variant="secondary"
                   size="medium"

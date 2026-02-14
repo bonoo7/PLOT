@@ -922,7 +922,7 @@ io.on('connection', (socket) => {
         }
     });
 
-    // ✅ Fill Room with Bots (Host Action)
+    // ✅ Add Single Bot (Host Action)
     socket.on('fillBots', () => {
         // Find room where this socket is host
         let roomCode = null;
@@ -940,13 +940,11 @@ io.on('connection', (socket) => {
             return;
         }
 
-        // Fill up to 8 players
-        let botCount = 0;
-        let addedCount = 0;
-        while (room.players.length < 8) {
-            botCount++;
-            addedCount++;
+        // Add ONE bot if space available (Max 8)
+        if (room.players.length < 8) {
+            const botCount = room.players.filter(p => p.isBot).length + 1;
             const botId = `bot_${Date.now()}_${botCount}`;
+            
             room.players.push({
                 id: botId,
                 name: `Bot ${botCount} 🤖`,
@@ -956,10 +954,13 @@ io.on('connection', (socket) => {
                 connected: true,
                 isBot: true
             });
-        }
 
-        io.to(roomCode).emit('playerJoined', room.players);
-        console.log(`🤖 Added ${addedCount} bots to room ${roomCode} by host request`);
+            // Notify everyone
+            io.to(roomCode).emit('playerJoined', room.players);
+            console.log(`🤖 Added 1 bot to room ${roomCode} by host request`);
+        } else {
+            socket.emit('error', 'العدد مكتمل (الحد الأقصى 8)');
+        }
     });
 
     // Host starts the game
