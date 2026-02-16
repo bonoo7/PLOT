@@ -104,8 +104,10 @@ function App() {
   const [roleData, setRoleData] = useState(null);
   const [gameData, setGameData] = useState(null);
   const [scenario, setScenario] = useState('');
+  const [template, setTemplate] = useState(null); // For Blitz Mode
   const [currentRound, setCurrentRound] = useState(1);
   const [totalRounds, setTotalRounds] = useState(3);
+  const [gameMode, setGameMode] = useState('CLASSIC'); // CLASSIC or BLITZ
   const [answer, setAnswer] = useState('');
   const [timeLeft, setTimeLeft] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -188,6 +190,13 @@ function App() {
       setRoomCode(data.roomCode);
       setConnecting(false);
       setScreen(SCREENS.LOBBY);
+      if (data.gameMode) setGameMode(data.gameMode);
+    });
+
+    socket.on('gameSettingsUpdated', (data) => {
+        console.log('⚙️ Game settings updated:', data);
+        if (data.gameMode) setGameMode(data.gameMode);
+        if (data.totalRounds) setTotalRounds(data.totalRounds);
     });
 
     // Handle New Round Explicitly to clear old state
@@ -238,6 +247,7 @@ function App() {
     socket.on('startDrafting', (data) => {
       console.log('📝 Drafting started');
       if (data.caseTitle) setScenario(data.caseTitle);
+      if (data.template) setTemplate(data.template); // Blitz Mode
       setTimeLeft(data.duration || 300);
       setIsSubmitted(false);
       setAnswer('');
@@ -248,6 +258,12 @@ function App() {
       } else {
         setScreen(SCREENS.DRAFTING);
       }
+    });
+
+    socket.on('secretHint', (data) => {
+        console.log('🕵️ Secret Hint received:', data);
+        setRoleData(prev => ({ ...prev, secretHint: data.hint }));
+        Alert.alert("🕵️ تلميح سري!", `بصفتك الجاني، حصلت على تلميح:\n"${data.hint}"`);
     });
     
     socket.on('timerUpdate', (timeLeft) => {
@@ -323,6 +339,11 @@ function App() {
           voteCount: 0,
           voters: []
         }))]);
+      } else if (step === 'HINT') {
+        setCurrentReveal({
+             type: 'HINT',
+             text: data.data.hint
+        });
       }
     });
 
@@ -587,6 +608,15 @@ function App() {
     socket.emit('fillBots');
   };
   
+  const handleUpdateSettings = (settings) => {
+    if (!socket) return;
+    console.log('📤 Emitting updateGameSettings event');
+    socket.emit('updateGameSettings', {
+      roomCode: generatedRoomCode,
+      settings: settings
+    });
+  };
+
   const handleExit = () => {
     if (socket) {
       socket.disconnect();
@@ -673,6 +703,8 @@ function App() {
             onStartGame={handleStartGame}
             onFillBots={handleFillBots}
             onBack={handleBackToRoleSelect}
+            gameMode={gameMode}
+            onUpdateSettings={handleUpdateSettings}
           />
         );
       
@@ -780,11 +812,13 @@ function App() {
             onSubmit={handleSubmitAnswer}
             timeLeft={timeLeft}
             isSubmitted={isSubmitted}
-            scenario={scenario}
+            scenario={scenario} // Title
+            template={template} // For Blitz
             roleData={roleData}
             players={players}
             socket={socket}
             roomCode={roomCode}
+            gameMode={gameMode}
           />
         );
       
@@ -801,7 +835,7 @@ function App() {
         );
       
       case SCREENS.PLAYER_DRAMATIC_REVEAL:
-        return <PlayerDramaticRevealScreen roleData={roleData} />;
+        return <PlayerDramaticRevealScreen roleData={roleData} currentReveal={currentReveal} />;
         
       case SCREENS.DISCUSSION:
         return (

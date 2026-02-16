@@ -347,6 +347,23 @@ export const HostDramaticRevealScreen = ({
   revealedScenarios = [],
   currentReveal = null
 }) => {
+  // Check for HINT type first
+  if (currentReveal?.type === 'HINT') {
+      return (
+        <MinimalLayout>
+           <View style={styles.centerContent}>
+              <MinimalHeader title="تلميح درامي" />
+              <View style={[styles.revealCard, { backgroundColor: '#FFFACD', borderWidth: 2, borderColor: '#DAA520' }]}> 
+                 <Text style={{fontSize: 60}}>🔍</Text>
+                 <Text style={[styles.revealText, {fontSize: 24, marginVertical: 20, color: '#8B4513'}]}>
+                    {currentReveal.text}
+                 </Text>
+              </View>
+           </View>
+        </MinimalLayout>
+      );
+  }
+
   // currentReveal structure updates over time: { text, index, voters, voteCount, author }
   // We determine what to show based on what properties exist
 

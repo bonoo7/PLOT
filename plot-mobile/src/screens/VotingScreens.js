@@ -342,12 +342,43 @@ export const EndScreen = ({ results, onRestart }) => {
 /**
  * PlayerDramaticRevealScreen - V3
  */
-export const PlayerDramaticRevealScreen = ({ revealedRole, roleData }) => {
+export const PlayerDramaticRevealScreen = ({ roleData, currentReveal }) => {
+    if (currentReveal?.type === 'HINT') {
+        return (
+            <MinimalLayout roleData={roleData}>
+                 <View style={styles.centerContainer}>
+                     <Text style={styles.dramaTitle}>🔍</Text>
+                     <Text style={styles.dramaText}>تلميح هام!</Text>
+                     <View style={[styles.resultBox, { marginTop: 20, backgroundColor: 'rgba(218, 165, 32, 0.2)' }]}>
+                        <Text style={[styles.resultText, { textAlign: 'center', lineHeight: 30 }]}>
+                            {currentReveal.text}
+                        </Text>
+                     </View>
+                 </View>
+            </MinimalLayout>
+        );
+    }
+
     return (
         <MinimalLayout roleData={roleData}>
              <View style={styles.centerContainer}>
                  <Text style={styles.dramaTitle}>⚠️</Text>
                  <Text style={styles.dramaText}>كشف الحقائق...</Text>
+                 {currentReveal?.text && (
+                     <Text style={[styles.waitingText, { textAlign: 'center', marginTop: 10, maxWidth: '80%' }]}>
+                        "{currentReveal.text}"
+                     </Text>
+                 )}
+                 {currentReveal?.voteCount !== undefined && (
+                     <Text style={[styles.dramaText, { color: '#FFF', fontSize: 24 }]}>
+                        {currentReveal.voteCount} صوت
+                     </Text>
+                 )}
+                 {currentReveal?.author && (
+                     <Text style={[styles.dramaText, { color: '#DAA520', fontSize: 32 }]}>
+                        {currentReveal.author}
+                     </Text>
+                 )}
              </View>
         </MinimalLayout>
     );

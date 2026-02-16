@@ -119,16 +119,21 @@ export const DraftingScreen = ({
   timeLeft, 
   isSubmitted,
   scenario,
+  template,
   roleData,
   players,
   socket,
-  roomCode
+  roomCode,
+  gameMode
 }) => {
   const { isDesktop } = useResponsiveLayout();
   const [witnessKeywords, setWitnessKeywords] = useState([]);
   const [showWitnessModal, setShowWitnessModal] = useState(false);
   const [targetId, setTargetId] = useState(null);
   const [abilityUsed, setAbilityUsed] = useState(false);
+  
+  // Blitz Mode State
+  const [filledBlanks, setFilledBlanks] = useState({});
   
   // V4 Offers State
   const [showOfferModal, setShowOfferModal] = useState(false);
@@ -150,6 +155,7 @@ export const DraftingScreen = ({
   useEffect(() => {
     setAbilityUsed(false);
     setTargetId(null);
+    setFilledBlanks({});
   }, [roleData?.round]);
 
   useEffect(() => {
@@ -196,6 +202,28 @@ export const DraftingScreen = ({
         alert(`⚠️ ${message}`);
     });
 
+    socket.on('fillBlitzBlanks', ({ blanks }) => {
+        const newBlanks = {};
+        blanks.forEach((val, i) => {
+            newBlanks[i] = val;
+        });
+        setFilledBlanks(newBlanks);
+        
+        // Reconstruct full answer
+        if (template) {
+            const parts = template.split('_____');
+            let fullAnswer = "";
+            parts.forEach((p, i) => {
+              fullAnswer += p;
+              if (i < parts.length - 1) {
+                fullAnswer += (newBlanks[i] || "_____"); 
+              }
+            });
+            setAnswer(fullAnswer);
+            alert("🔮 تم كشف بعض الحقائق! أكمل الباقي بنفسك.");
+        }
+    });
+
     return () => {
         socket.off('witnessFlash', handleFlash);
         socket.off('receiveOffer');
@@ -204,8 +232,9 @@ export const DraftingScreen = ({
         socket.off('offerStatus');
         socket.off('offerRefunded');
         socket.off('abilityDisabled');
+        socket.off('fillBlitzBlanks');
     };
-  }, [socket]);
+  }, [socket, template]);
 
   const handleUseAbility = () => {
     if ((!targetId && roleData?.role !== 'SEER') || abilityUsed) return;
@@ -262,6 +291,49 @@ export const DraftingScreen = ({
 
   const canSendOffers = !isSubmitted && roleData && 
     ['BENEFICIARY', 'MINISTER'].includes(roleData.role);
+
+  // Blitz Mode UI Renderer
+  const renderBlitzInput = () => {
+    if (!template) return null;
+    
+    const parts = template.split('_____');
+    
+    return (
+      <View style={styles.blitzContainer}>
+        <Text style={styles.label}>أكمل القصة:</Text>
+        <View style={styles.blitzRow}>
+          {parts.map((part, index) => (
+            <React.Fragment key={index}>
+              <Text style={styles.blitzText}>{part}</Text>
+              {index < parts.length - 1 && (
+                <TextInput
+                  style={[styles.blitzInput, isSubmitted && styles.disabledInput]}
+                  value={filledBlanks[index] || ''}
+                  onChangeText={(text) => {
+                    const newBlanks = { ...filledBlanks, [index]: text };
+                    setFilledBlanks(newBlanks);
+                    
+                    // Reconstruct full answer
+                    let fullAnswer = "";
+                    parts.forEach((p, i) => {
+                      fullAnswer += p;
+                      if (i < parts.length - 1) {
+                        fullAnswer += (newBlanks[i] || "_____"); 
+                      }
+                    });
+                    setAnswer(fullAnswer);
+                  }}
+                  placeholder="..."
+                  placeholderTextColor="#666"
+                  editable={!isSubmitted}
+                />
+              )}
+            </React.Fragment>
+          ))}
+        </View>
+      </View>
+    );
+  };
 
   return (
     <MinimalLayout roleData={roleData}>
@@ -361,6 +433,13 @@ export const DraftingScreen = ({
             </View>
         </Modal>
 
+        {roleData?.secretHint && (
+            <MinimalCard style={styles.secretHintCard}>
+                <Text style={styles.secretHintTitle}>🕵️ تلميح سري للجاني:</Text>
+                <Text style={styles.secretHintText}>{roleData.secretHint}</Text>
+            </MinimalCard>
+        )}
+
         <View style={styles.draftHeader}>
           <View style={styles.timerBadge}>
              <Text style={[styles.timerText, { color: timerColor }]}>{timeString}</Text>
@@ -382,16 +461,18 @@ export const DraftingScreen = ({
            </MinimalCard>
 
            <MinimalCard flex style={styles.inputCard}>
-             <TextInput
-               value={answer}
-               onChangeText={setAnswer}
-               placeholder={roleData?.role === 'SEER' ? "اكتب تقريرك بنفسك أو استخدم زر الوحي..." : "اكتب تبريرك هنا..."}
-               multiline
-               maxLength={500}
-               editable={!isSubmitted}
-               style={styles.textArea}
-               inputStyle={{ minHeight: 150, textAlignVertical: 'top' }}
-             />
+             {gameMode === 'BLITZ' ? renderBlitzInput() : (
+               <TextInput
+                 value={answer}
+                 onChangeText={setAnswer}
+                 placeholder={roleData?.role === 'SEER' ? "اكتب تقريرك بنفسك أو استخدم زر الوحي..." : "اكتب تبريرك هنا..."}
+                 multiline
+                 maxLength={500}
+                 editable={!isSubmitted}
+                 style={styles.textArea}
+                 inputStyle={{ minHeight: 150, textAlignVertical: 'top' }}
+               />
+             )}
            </MinimalCard>
         </View>
 
@@ -752,5 +833,59 @@ const styles = StyleSheet.create({
   },
   checkboxText: {
     fontFamily: theme.fonts.main,
+  },
+  // Blitz Mode Styles
+  blitzContainer: {
+    padding: spacing.m,
+  },
+  blitzRow: {
+    flexDirection: 'row-reverse', // RTL
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    justifyContent: 'flex-start',
+    gap: 8,
+  },
+  blitzText: {
+    fontFamily: theme.fonts.heading,
+    fontSize: fonts.medium,
+    color: '#2F4F4F',
+    lineHeight: 40,
+  },
+  blitzInput: {
+    borderBottomWidth: 2,
+    borderBottomColor: '#8B4513',
+    minWidth: 80,
+    maxWidth: 150,
+    textAlign: 'center',
+    fontFamily: theme.fonts.bold,
+    fontSize: fonts.medium,
+    color: '#B22222', // Red for emphasis
+    paddingVertical: 4,
+    backgroundColor: 'rgba(255,255,255,0.5)',
+  },
+  disabledInput: {
+    opacity: 0.7,
+    backgroundColor: '#EEE',
+  },
+  secretHintCard: {
+    backgroundColor: '#1A1A1A',
+    borderColor: '#E74C3C',
+    borderWidth: 1,
+    padding: spacing.m,
+    marginBottom: spacing.m,
+    borderRadius: borderRadius.medium,
+  },
+  secretHintTitle: {
+    color: '#E74C3C',
+    fontFamily: theme.fonts.bold,
+    fontSize: fonts.small,
+    marginBottom: 4,
+    textTransform: 'uppercase',
+  },
+  secretHintText: {
+    color: '#FFF',
+    fontFamily: theme.fonts.heading, 
+    fontSize: fonts.medium,
+    lineHeight: 24,
   }
 });

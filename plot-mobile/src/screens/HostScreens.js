@@ -61,6 +61,8 @@ export const HostLobbyScreen = ({
   onStartGame,
   onFillBots,
   onBack,
+  gameMode = 'CLASSIC',
+  onUpdateSettings
 }) => {
   const { isDesktop } = useResponsiveLayout();
   const canStart = players.length >= 4 && players.length <= 8;
@@ -113,6 +115,32 @@ export const HostLobbyScreen = ({
              />
           </View>
         </View>
+
+        {/* Game Mode Selector */}
+        <MinimalCard style={styles.settingsCard}>
+          <View style={styles.settingsHeader}>
+            <Text style={styles.sectionTitle}>نمط اللعب:</Text>
+            <Text style={styles.modeDescription}>
+              {gameMode === 'CLASSIC' ? 'كتابة سيناريو كامل' : 'إكمال الفراغات بكلمات'}
+            </Text>
+          </View>
+          <View style={styles.togglesRow}>
+             <MinimalButton 
+               title="كتابة كاملة ✍️" 
+               onPress={() => onUpdateSettings && onUpdateSettings({ gameMode: 'CLASSIC' })}
+               variant={gameMode === 'CLASSIC' ? 'primary' : 'outline'}
+               size="small"
+               style={styles.modeBtn}
+             />
+             <MinimalButton 
+               title="إكمال الفراغ 🧩" 
+               onPress={() => onUpdateSettings && onUpdateSettings({ gameMode: 'BLITZ' })}
+               variant={gameMode === 'BLITZ' ? 'primary' : 'outline'}
+               size="small"
+               style={styles.modeBtn}
+             />
+          </View>
+        </MinimalCard>
 
         {/* Players Area */}
         <MinimalCard flex style={styles.playersCard}>
@@ -252,6 +280,29 @@ const styles = StyleSheet.create({
     height: 44,
   },
   
+  // Settings
+  settingsCard: {
+    padding: spacing.m,
+  },
+  settingsHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: spacing.s,
+  },
+  modeDescription: {
+    fontSize: fonts.small,
+    color: theme.colors.textSecondary,
+    fontFamily: theme.fonts.main,
+  },
+  togglesRow: {
+    flexDirection: 'row',
+    gap: spacing.m,
+  },
+  modeBtn: {
+    flex: 1,
+  },
+
   // Players Area
   playersCard: {
     backgroundColor: 'rgba(235, 225, 210, 0.95)',

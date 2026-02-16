@@ -115,8 +115,18 @@ function startDraftingPhase(roomCode) {
     io.to(roomCode).emit('startDrafting', { 
         duration,
         waitingFor,
-        caseTitle: room.currentScenario.title // Add case title for UI
+        caseTitle: room.currentScenario.title, // Add case title for UI
+        template: room.gameMode === 'BLITZ' ? room.currentScenario.template : null
     });
+
+    // 🕵️‍♂️ Culprit Buff: Send Dramatic Hint Secretly
+    const hint = room.currentScenario.hint;
+    if (hint) {
+        const culprits = room.players.filter(p => p.role === ROLE_TYPES.CULPRIT || p.role === ROLE_TYPES.MASTERMIND);
+        culprits.forEach(p => {
+            io.to(p.id).emit('secretHint', { hint });
+        });
+    }
 
     // Start Timer
     let timeLeft = duration;
@@ -152,7 +162,7 @@ function startDraftingPhase(roomCode) {
 async function simulateBotDrafting(room, bot) {
     try {
         // استخدام محرك الذكاء الجديد (DeepSeek AI) لتوليد إجابة ذكية
-        const targetText = await generateBotAnswer(bot.role, room.currentScenario, []);
+        const targetText = await generateBotAnswer(bot.role, room.currentScenario, [], room.gameMode);
         
         // Simulate typing
         let charIndex = 0;
@@ -369,6 +379,19 @@ function startDramaticReveal(roomCode) {
             });
         }, currentDelay);
         currentDelay += 3000;
+    }
+
+    // 🔍 عرض التلميح الدرامي (Dramatic Hint)
+    if (room.currentScenario.hint) {
+        setTimeout(() => {
+            io.to(roomCode).emit('revealStep', {
+                step: 'HINT',
+                data: {
+                    hint: room.currentScenario.hint
+                }
+            });
+        }, currentDelay);
+        currentDelay += 5000; // 5 ثواني لقراءة التلميح
     }
 
     // بعد انتهاء العرض: الانتقال مباشرة إلى التصويت على الجاني
@@ -698,11 +721,31 @@ io.on('connection', (socket) => {
             state: 'LOBBY', // LOBBY, PLAYING, END
             currentRound: 0,
             totalRounds: 3,
-            usedScenarios: []
+            usedScenarios: [],
+            gameMode: 'CLASSIC' // CLASSIC or BLITZ
         };
         socket.join(roomCode);
         socket.emit('roomCreated', roomCode);
         console.log(`Room created: ${roomCode} by ${socket.id}`);
+    });
+
+    // Update Game Settings (Host Only)
+    socket.on('updateGameSettings', ({ roomCode, settings }) => {
+        const room = rooms[roomCode];
+        if (room && room.hostId === socket.id) {
+            if (settings.gameMode) {
+                room.gameMode = settings.gameMode;
+            }
+            if (settings.totalRounds) {
+                room.totalRounds = settings.totalRounds;
+            }
+            
+            // Notify all players in lobby
+            io.to(roomCode).emit('gameSettingsUpdated', {
+                gameMode: room.gameMode,
+                totalRounds: room.totalRounds
+            });
+        }
     });
 
     // Player joins a room
@@ -723,7 +766,8 @@ io.on('connection', (socket) => {
                 socket.emit('joinedRoom', {
                     roomCode: roomCode.toUpperCase(),
                     playerId: socket.id,
-                    isLeader: existingPlayer.isLeader
+                    isLeader: existingPlayer.isLeader,
+                    gameMode: room.gameMode
                 });
 
                 console.log(`${playerName} reconnected to room ${roomCode}`);
@@ -886,7 +930,8 @@ io.on('connection', (socket) => {
             socket.emit('joinedRoom', {
                 roomCode: roomCode.toUpperCase(),
                 playerId: socket.id,
-                isLeader: isLeader
+                isLeader: isLeader,
+                gameMode: room.gameMode
             });
 
             // Notify host (and everyone in room) about new player
@@ -1190,6 +1235,8 @@ io.on('connection', (socket) => {
             player.abilityUsed = false;
             player.sabotagedBy = null;
             player.investigatedBy = null;
+            player.investigationTarget = null;
+            player.sabotageTarget = null;
             
             // Log for debugging
             console.log(`Assigned ${player.role} to ${player.name}`);
@@ -1477,32 +1524,60 @@ io.on('connection', (socket) => {
         
         if (player.role === ROLE_TYPES.SEER && abilityType === 'REVELATION') {
              // 🔮 Seer Ability: Auto-submit Real Story (Silent)
-             // Check if already submitted? Maybe allow overwrite if using ability.
              
-             const realStory = room.currentScenario.fullStory || room.currentScenario.story;
-             const answerText = Array.isArray(realStory) ? realStory.join('\n') : realStory;
-             
-             // 1. Submit as Answer
-             room.answers[socket.id] = answerText;
-             
-             // 2. Track submission time
-             if (!room.submissionTimes) room.submissionTimes = {};
-             room.submissionTimes[socket.id] = Date.now();
-             
-             // 3. Mark ability used
-             player.abilityUsed = true;
-             
-             // 4. Notify Host
-             io.to(room.hostId).emit('playerSubmitted', { playerId: player.id, playerName: player.name });
-             
-             // 5. Notify Seer (Success without content)
-             socket.emit('abilityResult', {
-                 type: 'REVELATION_SUCCESS',
-                 message: 'تم نسخ القصة الحقيقية وإرسالها بنجاح! (لم تظهر لك لضمان السرية)'
-             });
-             
-             // 6. Check if phase complete
-             checkDraftingComplete(roomCode);
+             let answerText = "";
+
+             if (room.gameMode === 'BLITZ') {
+                 // Blitz Mode: Unreliable Revelation (70% Accuracy)
+                 const template = room.currentScenario.template;
+                 const blanks = room.currentScenario.blanks || [];
+                 const parts = template.split('_____');
+                 
+                 const revealedBlanks = [];
+                 
+                 // We only need to generate the "blanks" values
+                 // The client will reconstruct the story
+                 for (let i = 0; i < parts.length - 1; i++) {
+                     if (Math.random() < 0.7) {
+                         revealedBlanks.push(blanks[i] || "_____");
+                     } else {
+                         revealedBlanks.push("???"); // 30% failure
+                     }
+                 }
+                 
+                 // Send to player to fill their inputs
+                 socket.emit('fillBlitzBlanks', { blanks: revealedBlanks });
+                 
+                 player.abilityUsed = true;
+                 return; // Don't submit, let them edit and submit
+                 
+             } else {
+                 // Classic Mode: Full Story
+                 const realStory = room.currentScenario.fullStory || room.currentScenario.story;
+                 answerText = Array.isArray(realStory) ? realStory.join('\n') : realStory;
+                 
+                 // 1. Submit as Answer
+                 room.answers[socket.id] = answerText;
+                 
+                 // 2. Track submission time
+                 if (!room.submissionTimes) room.submissionTimes = {};
+                 room.submissionTimes[socket.id] = Date.now();
+                 
+                 // 3. Mark ability used
+                 player.abilityUsed = true;
+                 
+                 // 4. Notify Host
+                 io.to(room.hostId).emit('playerSubmitted', { playerId: player.id, playerName: player.name });
+                 
+                 // 5. Notify Seer (Success without content)
+                 socket.emit('abilityResult', {
+                     type: 'REVELATION_SUCCESS',
+                     message: 'تم نسخ القصة الحقيقية وإرسالها بنجاح! (لم تظهر لك لضمان السرية)'
+                 });
+                 
+                 // 6. Check if phase complete
+                 checkDraftingComplete(roomCode);
+             }
              
         } else if (player.role === ROLE_TYPES.DETECTIVE && abilityType === 'INVESTIGATE') {
             // 🕵️ Detective Ability

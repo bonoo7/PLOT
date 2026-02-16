@@ -107,7 +107,12 @@ const ENDINGS = [
  * توليد إجابة ذكية للبوت بناءً على دوره والسيناريو
  * يستخدم DeepSeek AI أولاً، ثم يعود للقوالب في حالة الفشل
  */
-async function generateBotAnswer(role, scenario, otherAnswers = []) {
+async function generateBotAnswer(role, scenario, otherAnswers = [], gameMode = 'CLASSIC') {
+  // ⚡ Blitz Mode: Fill in the blank
+  if (gameMode === 'BLITZ') {
+      return generateBotBlankFill(role, scenario);
+  }
+
   const roleInfo = getRoleInfo(role);
   
   if (!roleInfo) {
@@ -129,6 +134,33 @@ async function generateBotAnswer(role, scenario, otherAnswers = []) {
   
   // Fallback: استخدام القوالب القديمة
   return generateFallbackAnswer(role, scenario);
+}
+
+/**
+ * ⚡ Blitz Mode: توليد ملء فراغ للبوت
+ */
+function generateBotBlankFill(role, scenario) {
+    // 1. Justice Team: Use Truth Keywords
+    if (role === ROLE_TYPES.SEER || role === ROLE_TYPES.DETECTIVE || role === ROLE_TYPES.WITNESS || role === ROLE_TYPES.MINISTER) {
+        const word = scenario.keywords[Math.floor(Math.random() * scenario.keywords.length)];
+        return word;
+    } 
+    
+    // 2. Crime Team: Mix of Truth and Lies
+    else if (role === ROLE_TYPES.CULPRIT || role === ROLE_TYPES.MASTERMIND || role === ROLE_TYPES.BENEFICIARY) {
+        // 50% Truth (to blend in), 50% Trickster (to mislead or if forced)
+        return Math.random() > 0.5 ? scenario.keywords[0] : (scenario.tricksterWord || "شيء مريب");
+    } 
+    
+    // 3. Saboteur: Always Trickster Word
+    else if (role === ROLE_TYPES.SABOTEUR) {
+        return scenario.tricksterWord || "فيل";
+    }
+    
+    // 4. Citizen: Confused
+    else {
+        return "لا أعلم";
+    }
 }
 
 /**
