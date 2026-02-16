@@ -129,6 +129,7 @@ function App() {
   // Dramatic Reveal state
   const [revealedScenarios, setRevealedScenarios] = useState([]);
   const [currentReveal, setCurrentReveal] = useState(null);
+  const [hostHint, setHostHint] = useState(null);
   
   // Socket connection
   useEffect(() => {
@@ -223,6 +224,7 @@ function App() {
     
     socket.on('gameStarted', (data) => {
       console.log('🎮 Game started:', data);
+      setHostHint(null);
       
       // Store scenario and round info
       if (data.title) setScenario(data.title);
@@ -251,6 +253,7 @@ function App() {
       setTimeLeft(data.duration || 300);
       setIsSubmitted(false);
       setAnswer('');
+      setHostHint(null);
       
       if (userRole === 'HOST') {
         setScreen(SCREENS.HOST_DRAFTING);
@@ -258,6 +261,11 @@ function App() {
       } else {
         setScreen(SCREENS.DRAFTING);
       }
+    });
+
+    socket.on('hostHint', (data) => {
+        console.log('📺 Host Hint received:', data);
+        setHostHint(data.hint);
     });
 
     socket.on('secretHint', (data) => {
@@ -723,6 +731,7 @@ function App() {
             players={players}
             waitingFor={waitingFor}
             timeLeft={timeLeft}
+            hint={hostHint}
           />
         );
       

@@ -45,7 +45,8 @@ export const HostGameIntroScreen = ({
 export const HostDraftingScreen = ({ 
   players = [],
   waitingFor = [],
-  timeLeft = 90
+  timeLeft = 90,
+  hint = null
 }) => {
   const { isDesktop } = useResponsiveLayout();
   const submittedCount = players.length - waitingFor.length;
@@ -61,6 +62,13 @@ export const HostDraftingScreen = ({
     <MinimalLayout>
       <View style={[styles.container, isDesktop && styles.containerDesktop]}>
         <MinimalHeader title="مرحلة الكتابة" subtitle="يراقب المضيف" />
+
+        {hint && (
+            <MinimalCard style={styles.hostHintCard}>
+                <Text style={styles.hostHintLabel}>تلميح القضية</Text>
+                <Text style={styles.hostHintText}>{hint}</Text>
+            </MinimalCard>
+        )}
 
         <View style={styles.gridContainer}>
           {/* Timer & Progress */}
@@ -770,4 +778,27 @@ const styles = StyleSheet.create({
   miniRevealText: { color: '#CCC', fontSize: 10 },
   miniRevealAuthor: { color: '#AAA', fontSize: 9, marginTop: 4 },
   waitingText: { color: '#AAA', fontSize: fonts.medium },
+  
+  // Host Hint Styles
+  hostHintCard: {
+      width: '100%',
+      backgroundColor: '#FFFACD',
+      borderWidth: 2,
+      borderColor: '#DAA520',
+      marginBottom: spacing.m,
+      alignItems: 'center',
+      padding: spacing.l,
+  },
+  hostHintLabel: {
+      color: '#8B4513',
+      fontSize: fonts.small,
+      marginBottom: 4,
+      fontFamily: theme.fonts.bold,
+  },
+  hostHintText: {
+      color: '#333',
+      fontSize: 28,
+      fontFamily: theme.fonts.bold,
+      textAlign: 'center',
+  }
 });

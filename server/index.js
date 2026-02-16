@@ -119,13 +119,9 @@ function startDraftingPhase(roomCode) {
         template: room.gameMode === 'BLITZ' ? room.currentScenario.template : null
     });
 
-    // 🕵️‍♂️ Culprit Buff: Send Dramatic Hint Secretly
-    const hint = room.currentScenario.hint;
-    if (hint) {
-        const culprits = room.players.filter(p => p.role === ROLE_TYPES.CULPRIT || p.role === ROLE_TYPES.MASTERMIND);
-        culprits.forEach(p => {
-            io.to(p.id).emit('secretHint', { hint });
-        });
+    // 📺 Host Hint: Show simple hint on Host Screen
+    if (room.hostId && room.currentScenario.simpleHint) {
+        io.to(room.hostId).emit('hostHint', { hint: room.currentScenario.simpleHint });
     }
 
     // Start Timer
