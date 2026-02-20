@@ -1,10 +1,12 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import MinimalLayout from '../components/minimal/MinimalLayout';
-import MinimalHeader from '../components/minimal/MinimalHeader';
-import MinimalCard from '../components/minimal/MinimalCard';
-import MinimalButton from '../components/minimal/MinimalButton';
-import { TextInput } from '../ui'; // Reusing existing TextInput for now, fits well enough
+import { 
+  MinimalLayout, 
+  MinimalHeader, 
+  MinimalCard, 
+  MinimalButton, 
+  MinimalInput 
+} from '../components/minimal';
 import { theme } from '../styles/theme';
 import { spacing, fonts, borderRadius } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
@@ -32,7 +34,7 @@ export const LoginScreen = ({
         />
 
         <MinimalCard style={styles.formCard}>
-          <TextInput
+          <MinimalInput
             label="الاسم الحركي"
             value={playerName}
             onChangeText={setPlayerName}
@@ -42,7 +44,7 @@ export const LoginScreen = ({
             style={styles.input}
           />
 
-          <TextInput
+          <MinimalInput
             label="رمز الغرفة"
             value={roomCode}
             onChangeText={(text) => setRoomCode(text.toUpperCase())}
@@ -159,12 +161,12 @@ const styles = StyleSheet.create({
   roomBadge: {
     alignSelf: 'center',
     alignItems: 'center',
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.text,
     paddingVertical: spacing.s,
     paddingHorizontal: spacing.l,
     borderRadius: borderRadius.medium,
     borderWidth: 1,
-    borderColor: theme.colors.primaryDark,
+    borderColor: '#000',
     minWidth: 150,
   },
   roomBadgeLabel: {
@@ -206,7 +208,7 @@ const styles = StyleSheet.create({
   },
   playerNumber: {
     fontWeight: 'bold',
-    color: theme.colors.primary,
+    color: theme.colors.text,
     marginRight: spacing.s,
     width: 24,
   },

@@ -149,6 +149,7 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginTop: spacing.xs,
         justifyContent: 'center',
+        direction: 'rtl', // Explicit RTL
     },
     headerLine: {
         height: 2,

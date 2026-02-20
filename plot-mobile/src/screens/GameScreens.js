@@ -1,10 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Image } from 'react-native';
-import MinimalLayout from '../components/minimal/MinimalLayout';
-import MinimalHeader from '../components/minimal/MinimalHeader';
-import MinimalCard from '../components/minimal/MinimalCard';
-import MinimalButton from '../components/minimal/MinimalButton';
-import { TextInput, Badge } from '../ui';
+import { View, Text, StyleSheet, Modal, TouchableOpacity, Image, TextInput as RNTextInput } from 'react-native';
+import { 
+  MinimalLayout, 
+  MinimalHeader, 
+  MinimalCard, 
+  MinimalButton, 
+  MinimalInput, 
+  MinimalBadge,
+  MinimalSpinner,
+  MinimalTimer,
+  MinimalTypewriter,
+  MinimalNotification,
+  MinimalStamp,
+  MinimalDossier
+} from '../components/minimal';
 import { theme } from '../styles/theme';
 import { spacing, fonts, borderRadius } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
@@ -54,6 +63,14 @@ export const GameScreen = ({ roleData, onReady }) => {
               </View>
           );
       }
+      if (specialInfo?.type === 'WITNESS_INTEL') {
+          return (
+              <View>
+                  <Text style={styles.intelTitle}>كلمات مفتاحية:</Text>
+                  <Text style={styles.intelText}>{specialInfo.keywords.join(' - ')}</Text>
+              </View>
+          );
+      }
       return <Text style={styles.intelText}>{JSON.stringify(specialInfo)}</Text>;
   };
 
@@ -78,7 +95,7 @@ export const GameScreen = ({ roleData, onReady }) => {
         {/* Content Card */}
         <MinimalCard flex style={styles.dossierCard}>
            <View style={styles.stampWrapper}>
-             <Badge text="TOP SECRET" variant="primary" />
+             <MinimalBadge text="TOP SECRET" variant="primary" />
            </View>
 
            <View style={styles.missionSection}>
@@ -145,6 +162,13 @@ export const DraftingScreen = ({
   const [proxyRequest, setProxyRequest] = useState(null); // { amount, feeEarned }
   const [proxyTargetId, setProxyTargetId] = useState(null);
 
+  const [notification, setNotification] = useState({ visible: false, message: '', type: 'info' });
+  const [selectedPlayerDossier, setSelectedPlayerDossier] = useState(null);
+
+  const showNotification = (message, type = 'info') => {
+      setNotification({ visible: true, message, type });
+  };
+
   const minutes = Math.floor(timeLeft / 60);
   const seconds = timeLeft % 60;
   const timeString = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
@@ -177,7 +201,7 @@ export const DraftingScreen = ({
     });
 
     socket.on('offerResult', ({ success, message }) => {
-        alert(message); // Simple alert for now
+        showNotification(message, success ? 'success' : 'error');
         if (success) {
             setShowOfferModal(false);
             setOfferAmount('');
@@ -188,18 +212,18 @@ export const DraftingScreen = ({
     
     socket.on('offerStatus', ({ status, targetName, amountRefunded }) => {
         if (status === 'ACCEPTED') {
-            alert(`✅ العرض تم قبوله من قبل ${targetName || 'اللاعب'}!`);
+            showNotification(`✅ العرض تم قبوله من قبل ${targetName || 'اللاعب'}!`, 'success');
         } else {
-            alert(`❌ العرض تم رفضه.${amountRefunded ? ` تمت إعادة ${amountRefunded} نقطة.` : ''}`);
+            showNotification(`❌ العرض تم رفضه.${amountRefunded ? ` تمت إعادة ${amountRefunded} نقطة.` : ''}`, 'error');
         }
     });
 
     socket.on('offerRefunded', ({ amount }) => {
-        alert(`ℹ️ تم استرجاع عرض سابق بقيمة ${amount} نقطة.`);
+        showNotification(`ℹ️ تم استرجاع عرض سابق بقيمة ${amount} نقطة.`, 'info');
     });
 
     socket.on('abilityDisabled', ({ message }) => {
-        alert(`⚠️ ${message}`);
+        showNotification(`⚠️ ${message}`, 'warning');
     });
 
     socket.on('fillBlitzBlanks', ({ blanks }) => {
@@ -220,7 +244,7 @@ export const DraftingScreen = ({
               }
             });
             setAnswer(fullAnswer);
-            alert("🔮 تم كشف بعض الحقائق! أكمل الباقي بنفسك.");
+            showNotification("🔮 تم كشف بعض الحقائق! أكمل الباقي بنفسك.", 'info');
         }
     });
 
@@ -304,9 +328,10 @@ export const DraftingScreen = ({
         <View style={styles.blitzRow}>
           {parts.map((part, index) => (
             <React.Fragment key={index}>
+              {/* Ensure text parts render RTL correctly */}
               <Text style={styles.blitzText}>{part}</Text>
               {index < parts.length - 1 && (
-                <TextInput
+                <RNTextInput
                   style={[styles.blitzInput, isSubmitted && styles.disabledInput]}
                   value={filledBlanks[index] || ''}
                   onChangeText={(text) => {
@@ -326,6 +351,8 @@ export const DraftingScreen = ({
                   placeholder="..."
                   placeholderTextColor="#666"
                   editable={!isSubmitted}
+                  // Force RTL text input direction for Arabic
+                  textAlign="center" 
                 />
               )}
             </React.Fragment>
@@ -339,6 +366,19 @@ export const DraftingScreen = ({
     <MinimalLayout roleData={roleData}>
       <View style={[styles.container, { maxWidth: isDesktop ? 1000 : 700 }]}>
         
+        <MinimalNotification 
+            visible={notification.visible}
+            message={notification.message}
+            type={notification.type}
+            onDismiss={() => setNotification(prev => ({ ...prev, visible: false }))}
+        />
+
+        <MinimalDossier 
+            player={selectedPlayerDossier}
+            visible={!!selectedPlayerDossier}
+            onClose={() => setSelectedPlayerDossier(null)}
+        />
+
         <Modal visible={showWitnessModal} transparent animationType="fade">
             <View style={styles.flashModal}>
                 <Text style={styles.flashText}>{witnessKeywords.join(' - ')}</Text>
@@ -391,8 +431,9 @@ export const DraftingScreen = ({
                     <Text style={styles.modalTitle}>💸 تقديم عرض</Text>
                     
                     <Text style={styles.label}>المبلغ:</Text>
-                    <TextInput 
-                        style={styles.input} 
+                    <MinimalInput 
+                        style={styles.offerInputContainer}
+                        inputStyle={styles.input} 
                         keyboardType="numeric"
                         value={offerAmount}
                         onChangeText={setOfferAmount}
@@ -417,6 +458,7 @@ export const DraftingScreen = ({
                                         key={p.id} 
                                         style={[styles.targetChip, offerTargetId === p.id && styles.targetChipSelected]}
                                         onPress={() => setOfferTargetId(p.id)}
+                                        onLongPress={() => setSelectedPlayerDossier(p)}
                                     >
                                         <Text style={[styles.targetText, offerTargetId === p.id && styles.targetTextSelected]}>{p.name}</Text>
                                     </TouchableOpacity>
@@ -441,8 +483,8 @@ export const DraftingScreen = ({
         )}
 
         <View style={styles.draftHeader}>
-          <View style={styles.timerBadge}>
-             <Text style={[styles.timerText, { color: timerColor }]}>{timeString}</Text>
+          <View style={styles.timerWrapper}>
+             <MinimalTimer timeLeft={timeLeft} size={60} />
           </View>
           
           <MinimalHeader title="كتابة التقرير" />
@@ -457,20 +499,24 @@ export const DraftingScreen = ({
         <View style={styles.splitLayout}>
            <MinimalCard style={[styles.scenarioCard, isDesktop && styles.scenarioCardDesktop]}>
              <Text style={styles.label}>ملف القضية:</Text>
-             <Text style={styles.scenarioText}>{scenario || "جاري تحميل البيانات..."}</Text>
+             <MinimalTypewriter 
+               text={scenario || "جاري تحميل البيانات..."} 
+               style={styles.scenarioText}
+               speed={20}
+             />
            </MinimalCard>
 
            <MinimalCard flex style={styles.inputCard}>
              {gameMode === 'BLITZ' ? renderBlitzInput() : (
-               <TextInput
+               <MinimalInput
                  value={answer}
                  onChangeText={setAnswer}
                  placeholder={roleData?.role === 'SEER' ? "اكتب تقريرك بنفسك أو استخدم زر الوحي..." : "اكتب تبريرك هنا..."}
                  multiline
                  maxLength={500}
                  editable={!isSubmitted}
-                 style={styles.textArea}
-                 inputStyle={{ minHeight: 150, textAlignVertical: 'top' }}
+                 style={{ flex: 1, marginVertical: 0 }} // Override container margin
+                 inputStyle={styles.textArea}
                />
              )}
            </MinimalCard>
@@ -492,6 +538,7 @@ export const DraftingScreen = ({
                                 key={p.id} 
                                 style={[styles.targetChip, targetId === p.id && styles.targetChipSelected]}
                                 onPress={() => setTargetId(p.id)}
+                                onLongPress={() => setSelectedPlayerDossier(p)} // Long press to see dossier
                             >
                                 <Text style={[styles.targetText, targetId === p.id && styles.targetTextSelected]}>{p.name}</Text>
                             </TouchableOpacity>
@@ -525,13 +572,15 @@ export const DraftingScreen = ({
                <Text style={styles.submittedText}>✅ تم إرسال التقرير</Text>
              </View>
            ) : (
-             <MinimalButton
-               title="إرسال التقرير"
-               onPress={onSubmit}
-               disabled={(answer.trim().length < 5 && roleData?.role !== 'SEER')}
-               size="large"
-               style={styles.submitBtn}
-             />
+             <View style={{ alignItems: 'center' }}>
+               <MinimalStamp
+                 label="إرسال"
+                 onPress={onSubmit}
+                 disabled={(answer.trim().length < 5 && roleData?.role !== 'SEER')}
+                 color="#B22222"
+               />
+               <Text style={styles.stampHint}>اضغط للختم والإرسال</Text>
+             </View>
            )}
         </View>
 
@@ -566,6 +615,7 @@ const styles = StyleSheet.create({
   // Identity Section
   identitySection: {
     alignItems: 'center',
+    direction: 'rtl',
   },
   roleImageLarge: {
     width: 120,
@@ -603,12 +653,14 @@ const styles = StyleSheet.create({
     marginBottom: spacing.xs,
     textTransform: 'uppercase',
     fontSize: fonts.small,
+    textAlign: 'right', 
   },
   missionText: {
     fontFamily: theme.fonts.heading,
     fontSize: fonts.medium,
     color: '#2F4F4F',
     lineHeight: 28,
+    textAlign: 'right', 
   },
   intelSection: {
     flex: 1,
@@ -616,8 +668,9 @@ const styles = StyleSheet.create({
   intelBox: {
     backgroundColor: 'rgba(0,0,0,0.05)',
     padding: spacing.m,
-    borderLeftWidth: 3,
-    borderLeftColor: '#8B4513',
+    borderRightWidth: 3, 
+    borderLeftWidth: 0,
+    borderRightColor: '#8B4513',
     borderRadius: borderRadius.small,
   },
   intelTitle: {
@@ -625,12 +678,14 @@ const styles = StyleSheet.create({
     fontSize: fonts.small,
     color: '#8B4513',
     marginBottom: 4,
+    textAlign: 'right',
   },
   intelText: {
     fontFamily: theme.fonts.main,
     fontSize: fonts.small,
     color: '#333',
     lineHeight: 24,
+    textAlign: 'right',
   },
   
   // Footer
@@ -648,15 +703,10 @@ const styles = StyleSheet.create({
     position: 'relative',
     justifyContent: 'center',
   },
-  timerBadge: {
+  timerWrapper: {
     position: 'absolute',
     left: 0,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.xs,
-    borderRadius: borderRadius.large,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    zIndex: 10,
   },
   timerText: {
     fontFamily: theme.fonts.bold,
@@ -719,8 +769,12 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.bold,
     fontSize: fonts.medium,
   },
-  submitBtn: {
-    backgroundColor: '#8B4513', // Leather brown
+  stampHint: {
+    fontFamily: theme.fonts.main,
+    fontSize: 10,
+    color: '#8B4513',
+    opacity: 0.7,
+    marginTop: -10,
   },
   // New Styles
   flashModal: {
@@ -839,17 +893,19 @@ const styles = StyleSheet.create({
     padding: spacing.m,
   },
   blitzRow: {
-    flexDirection: 'row-reverse', // RTL
+    flexDirection: 'row', 
     flexWrap: 'wrap',
     alignItems: 'center',
     justifyContent: 'flex-start',
     gap: 8,
+    direction: 'rtl', // Ensure content inside flows RTL
   },
   blitzText: {
     fontFamily: theme.fonts.heading,
     fontSize: fonts.medium,
     color: '#2F4F4F',
     lineHeight: 40,
+    textAlign: 'right',
   },
   blitzInput: {
     borderBottomWidth: 2,
@@ -861,7 +917,9 @@ const styles = StyleSheet.create({
     fontSize: fonts.medium,
     color: '#B22222', // Red for emphasis
     paddingVertical: 4,
-    backgroundColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: 'rgba(255, 254, 247, 0.6)', // Paper-like translucent
+    // In React Native Web, inputs might need direction explicitly if they don't inherit
+    direction: 'rtl',
   },
   disabledInput: {
     opacity: 0.7,
@@ -887,5 +945,13 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.heading, 
     fontSize: fonts.medium,
     lineHeight: 24,
+  },
+  stampHint: {
+    fontFamily: theme.fonts.main,
+    fontSize: 10,
+    color: '#8B4513',
+    opacity: 0.7,
+    textAlign: 'center',
+    marginTop: -5,
   }
 });

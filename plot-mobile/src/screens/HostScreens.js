@@ -1,9 +1,11 @@
 import React from 'react';
 import { View, Text, StyleSheet, Share } from 'react-native';
-import MinimalLayout from '../components/minimal/MinimalLayout';
-import MinimalHeader from '../components/minimal/MinimalHeader';
-import MinimalCard from '../components/minimal/MinimalCard';
-import MinimalButton from '../components/minimal/MinimalButton';
+import { 
+  MinimalLayout, 
+  MinimalHeader, 
+  MinimalCard, 
+  MinimalButton 
+} from '../components/minimal';
 import { theme } from '../styles/theme';
 import { spacing, fonts, borderRadius } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
@@ -219,14 +221,17 @@ const styles = StyleSheet.create({
     fontSize: fonts.medium,
     color: theme.colors.text,
     marginBottom: spacing.m,
+    textAlign: 'right', // RTL
   },
   infoRow: {
     marginBottom: spacing.s,
+    direction: 'rtl',
   },
   infoText: {
     fontFamily: theme.fonts.main,
     fontSize: fonts.small,
     color: theme.colors.text,
+    textAlign: 'right', // RTL
   },
   spacer: {
     height: spacing.l,
@@ -256,12 +261,12 @@ const styles = StyleSheet.create({
     marginTop: -spacing.s, // Pull up closer to header
   },
   codeBadge: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.text, // Dark Charcoal
     borderRadius: borderRadius.medium,
     paddingVertical: spacing.xs,
     paddingHorizontal: spacing.l,
     borderWidth: 2,
-    borderColor: theme.colors.primaryDark,
+    borderColor: '#000',
     alignItems: 'center',
     minWidth: 140,
   },
@@ -289,6 +294,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.s,
+    direction: 'rtl',
   },
   modeDescription: {
     fontSize: fonts.small,
@@ -315,11 +321,13 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.1)',
     paddingBottom: spacing.s,
+    direction: 'rtl',
   },
   sectionTitle: {
     fontFamily: theme.fonts.bold,
     fontSize: fonts.medium,
     color: theme.colors.text,
+    textAlign: 'right',
   },
   warningBadge: {
     backgroundColor: '#FFE5B4',
@@ -351,7 +359,7 @@ const styles = StyleSheet.create({
   },
   playerNumber: {
     fontWeight: 'bold',
-    color: theme.colors.primary,
+    color: theme.colors.text,
     marginRight: spacing.s,
     width: 24,
   },

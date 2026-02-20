@@ -33,7 +33,7 @@ const MinimalButton = ({
       activeOpacity={0.8}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'outline' ? theme.colors.primary : '#FFF'} />
+        <ActivityIndicator color={variant === 'outline' ? theme.colors.text : '#FFF'} />
       ) : (
         <Text style={[
           styles.text,
@@ -59,19 +59,24 @@ const styles = StyleSheet.create({
   
   // Variants
   button_primary: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.text, // Charcoal
     borderWidth: 1,
-    borderColor: theme.colors.primaryDark,
+    borderColor: '#000',
   },
   button_secondary: {
-    backgroundColor: theme.colors.secondary,
+    backgroundColor: theme.colors.coffee, // Brown
     borderWidth: 1,
-    borderColor: '#8B7355',
+    borderColor: '#5D4037',
+  },
+  button_danger: {
+    backgroundColor: theme.colors.stamp, // Red
+    borderWidth: 1,
+    borderColor: '#8B0000',
   },
   button_outline: {
     backgroundColor: 'transparent',
     borderWidth: 1,
-    borderColor: theme.colors.primary,
+    borderColor: theme.colors.text,
   },
   button_ghost: {
     backgroundColor: 'transparent',
@@ -106,13 +111,16 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   text_primary: {
-    color: '#FFFFFF',
+    color: '#E8DCC8', // Off-white text on charcoal
   },
   text_secondary: {
-    color: theme.colors.text,
+    color: '#FFF',
+  },
+  text_danger: {
+    color: '#FFF',
   },
   text_outline: {
-    color: theme.colors.primary,
+    color: theme.colors.text,
   },
   text_ghost: {
     color: theme.colors.textSecondary,

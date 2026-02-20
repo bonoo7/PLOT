@@ -22,14 +22,24 @@ import { HostGameScreen, HostVotingScreen, HostResultsScreen, HostGameIntroScree
 import { DiscussionScreen } from './src/screens/DiscussionScreen';
 import { HowToPlayScreen } from './src/screens/HowToPlayScreen';
 import GlobalLayout from './src/components/GlobalLayout';
+import GlobalRTLWrapper from './src/components/GlobalRTLWrapper'; // Import RTL Wrapper
 
-// Force RTL
+// Force RTL (Native early enforcement)
 if (Platform.OS !== 'web') {
   try {
     I18nManager.forceRTL(true);
     I18nManager.allowRTL(true);
   } catch (e) {
     console.error('RTL Error:', e);
+  }
+} else {
+  // Web specific RTL enforcement
+  try {
+    document.dir = 'rtl';
+    document.documentElement.setAttribute('dir', 'rtl');
+    document.body.style.direction = 'rtl';
+  } catch (e) {
+    // Ignore on native
   }
 }
 
@@ -960,13 +970,15 @@ function App() {
   };
   
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar 
-        barStyle="dark-content" 
-        backgroundColor={theme.colors.background}
-      />
-      {renderScreen()}
-    </SafeAreaView>
+    <GlobalRTLWrapper>
+      <SafeAreaView style={styles.container}>
+        <StatusBar 
+          barStyle="dark-content" 
+          backgroundColor={theme.colors.background}
+        />
+        {renderScreen()}
+      </SafeAreaView>
+    </GlobalRTLWrapper>
   );
 }
 

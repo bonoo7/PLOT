@@ -94,7 +94,13 @@ function checkDraftingComplete(roomCode) {
     const room = rooms[roomCode];
     if (!room) return;
 
-    if (Object.keys(room.answers).length === room.players.length) {
+    const activePlayers = room.players.filter(p => !p.eliminated);
+    const submittedCount = Object.keys(room.answers).filter(id => {
+        const p = room.players.find(pl => pl.id === id);
+        return p && !p.eliminated;
+    }).length;
+
+    if (submittedCount >= activePlayers.length) {
         clearInterval(room.timer);
         startPresentationPhase(roomCode);
     }
@@ -109,8 +115,8 @@ function startDraftingPhase(roomCode) {
     room.drafts = {}; // Reset drafts
     const duration = 90; // seconds
 
-    // إرسال قائمة اللاعبين الذين ينتظرون (جميع اللاعبين في البداية)
-    const waitingFor = room.players.map(p => p.id);
+    // Only active players participate
+    const waitingFor = room.players.filter(p => !p.eliminated).map(p => p.id);
     
     io.to(roomCode).emit('startDrafting', { 
         duration,
@@ -137,16 +143,31 @@ function startDraftingPhase(roomCode) {
     }, 1000);
 
     // Witness Flash Memory (V4)
-    const witness = room.players.find(p => p.role === ROLE_TYPES.WITNESS);
-    if (witness) {
-        io.to(witness.id).emit('witnessFlash', { 
-            keywords: room.currentScenario.keywords 
-        });
-    }
+    const witness = room.players.filter(p => p.role === ROLE_TYPES.WITNESS && !p.eliminated);
+    witness.forEach(w => {
+        let flashKeywords = room.currentScenario.keywords;
 
-    // Handle Bots - مع تأخير متدرج لتجنب Rate Limit
+        if (room.gameMode === 'BLITZ') {
+             // In Blitz, filter out keywords that are actually the answers (blanks)
+             const blanks = room.currentScenario.blanks || [];
+             // Filter keywords that are NOT contained in any blank
+             flashKeywords = flashKeywords.filter(k => 
+                 !blanks.some(b => b.includes(k) || k.includes(b))
+             );
+             
+             if (flashKeywords.length === 0) {
+                 flashKeywords = ["ركز", "في", "السياق"];
+             }
+        }
+        
+        io.to(w.id).emit('witnessFlash', { 
+            keywords: flashKeywords
+        });
+    });
+
+    // Handle Bots - only active ones
     room.players.forEach((p, index) => {
-        if (p.isBot) {
+        if (p.isBot && !p.eliminated) {
             // تأخير متدرج: كل بوت يبدأ بعد الآخر بـ 2 ثانية
             setTimeout(() => {
                 simulateBotDrafting(room, p);
@@ -986,11 +1007,139 @@ io.on('connection', (socket) => {
             const botCount = room.players.filter(p => p.isBot).length + 1;
             const botId = `bot_${Date.now()}_${botCount}`;
             
+            // Determine preferred role for this bot based on current count and existing preferences
+            // 1. Get ideal role distribution for (current count + 1)
+            const targetCount = room.players.length + 1;
+            const idealRoles = getRolesForPlayerCount(targetCount);
+            
+            // 2. Identify roles already "taken" by players with preferredRole
+            const takenRoles = room.players
+                .filter(p => p.preferredRole)
+                .map(p => p.preferredRole);
+            
+            // 3. Find first role in idealRoles that isn't taken
+            // We need to match the specific "slot" logic if possible, or just fill gaps.
+            // The assignRoles logic fills linearly from idealRoles list, skipping taken ones.
+            // So if we want this bot to "be" the next role, we should assign it as preferredRole?
+            // Actually, if we assign preferredRole to the bot, it LOCKS it.
+            // If we don't, it might get shuffled.
+            // The user wants to "add bots one by one according to roles". 
+            // This implies visual feedback or certainty.
+            // Let's assign preferredRole to the bot to guarantee the distribution order.
+            
+            let nextRole = null;
+            
+            // Filter out roles that are already preferred by others
+            const availableRoles = [...idealRoles];
+            takenRoles.forEach(taken => {
+                const idx = availableRoles.indexOf(taken);
+                if (idx !== -1) availableRoles.splice(idx, 1);
+            });
+            
+            // The bot takes the next available role from the ideal list
+            // However, ideal list grows. 
+            // E.g. 3 players: [C, D, W]. 4 players: [C, D, W, M].
+            // If we have 3 players (C, D, W taken), and add 4th.
+            // idealRoles(4) = [C, D, W, M].
+            // Available = [M]. So bot gets Mastermind.
+            
+            // What if we have 1 player (no pref). Add bot 1.
+            // idealRoles(2) = [C, D]. 
+            // taken = []. 
+            // available = [C, D]. 
+            // Bot gets C? Then Human gets D?
+            // If we assign C to bot, it's locked. Human is forced to D.
+            // This seems to be what is requested: "Add bot... according to roles".
+            
+            // BUT: randomized shuffling in assignRoles might be desired for humans?
+            // "Upon adding bots manually... add one by one... according to basic roles... respecting existing players"
+            // If the user wants to CONSTRUCT the game composition, we should lock roles.
+            
+            // Let's try to find the "new" role introduced by incrementing count.
+            // roles(n) vs roles(n+1). The difference is usually the last one, but not always if priority changes.
+            // In getRolesForPlayerCount, it adds sequentially.
+            // So the "new" role is the last one in idealRoles.
+            
+            // Wait, if I have 1 player (Human).
+            // Add Bot 1 -> Count 2. roles=[C, D]. Human has no pref.
+            // Should Bot be C or D?
+            // If I assume Human fills one slot, Bot fills the other.
+            // If I lock Bot to C, Human is D.
+            // If I lock Bot to D, Human is C.
+            // The previous logic didn't lock bots in Lobby.
+            
+            // If the user request implies "I want to add a Detective Bot", then I should lock it.
+            // The UI shows " + Bot (Detective) ".
+            // So yes, I should lock it.
+            
+            // Which role to lock?
+            // The UI uses `nextRole` logic: `ROLE_ORDER[players.length]`.
+            // Let's use the SAME logic as UI to be consistent.
+            
+            // UI Logic:
+            const ROLE_ORDER = [
+                ROLE_TYPES.CULPRIT, 
+                ROLE_TYPES.DETECTIVE, 
+                ROLE_TYPES.WITNESS, 
+                ROLE_TYPES.MASTERMIND, 
+                ROLE_TYPES.SEER, 
+                ROLE_TYPES.SABOTEUR, 
+                ROLE_TYPES.MINISTER, 
+                ROLE_TYPES.BENEFICIARY
+            ];
+            
+            // We need to find the first role in ROLE_ORDER that is NOT taken by any existing player (preferred)
+            // AND we want to fill up to current count.
+            
+            // Actually, simply assigning the `nextRole` from the list based on current count is risky if players have random prefs.
+            // But usually players don't have prefs in Host mode.
+            // In Training mode, they do.
+            
+            // Algorithm:
+            // 1. Get set of preferred roles from existing players.
+            // 2. Iterate ROLE_ORDER.
+            // 3. Skip roles that are taken.
+            // 4. Assign the first available role to the new bot.
+            // 5. BUT: We only want to assign ONE role.
+            // And we want it to be consistent with "adding one by one".
+            
+            // If I have 1 player (preferred=Detective).
+            // ROLE_ORDER: C, D, W, M...
+            // C is free. D is taken. W is free.
+            // Should the new bot be C? Yes.
+            // Next bot? W.
+            
+            // If I have 1 player (No pref).
+            // C is free.
+            // Bot 1 -> C.
+            // Bot 2 -> D.
+            // Human -> ? (Will be assigned leftover, e.g. W).
+            
+            // This seems fair.
+            
+            let assignedRole = null;
+            let assignedRoleName = "";
+            
+            for (const roleCode of ROLE_ORDER) {
+                if (!takenRoles.includes(roleCode)) {
+                    // Check if this role is already assigned to a bot we just added?
+                    // We need to check all players in room.
+                    const isAssigned = room.players.some(p => p.preferredRole === roleCode);
+                    if (!isAssigned) {
+                        assignedRole = roleCode;
+                        const info = getRoleInfo(roleCode);
+                        assignedRoleName = info ? `(${info.nameAr})` : "";
+                        break;
+                    }
+                }
+            }
+            
             room.players.push({
                 id: botId,
-                name: `Bot ${botCount} 🤖`,
+                name: `Bot ${botCount} 🤖 ${assignedRoleName}`,
                 score: 0,
-                role: null,
+                role: assignedRole, // Set as role (will be preferredRole in logic)
+                preferredRole: assignedRole, // Lock it
                 isLeader: false,
                 connected: true,
                 isBot: true
@@ -998,7 +1147,7 @@ io.on('connection', (socket) => {
 
             // Notify everyone
             io.to(roomCode).emit('playerJoined', room.players);
-            console.log(`🤖 Added 1 bot to room ${roomCode} by host request`);
+            console.log(`🤖 Added 1 bot (${assignedRole}) to room ${roomCode}`);
         } else {
             socket.emit('error', 'العدد مكتمل (الحد الأقصى 8)');
         }
@@ -1263,7 +1412,8 @@ io.on('connection', (socket) => {
 
             // Culprit gets full story
             if (role === ROLE_TYPES.CULPRIT) {
-                specialInfo = room.currentScenario.fullStory; 
+                // Use fullStory if available, otherwise story
+                specialInfo = room.currentScenario.fullStory || room.currentScenario.story; 
             } 
             // Mastermind gets Crime Team list
             else if (role === ROLE_TYPES.MASTERMIND) {
@@ -1470,6 +1620,12 @@ io.on('connection', (socket) => {
         const room = rooms[roomCode];
         if (room && room.state === 'DRAFTING') {
             room.answers[socket.id] = answer;
+            
+            // Check for Blitz Sabotage (Word Swap)
+            const player = room.players.find(p => p.id === socket.id);
+            if (player && player.sabotageType === 'WORD_SWAP') {
+                applyBlitzSabotage(room, socket.id);
+            }
 
             // 👮 قدرة الضابط - تتبع وقت الإرسال
             if (!room.submissionTimes) {
@@ -1478,7 +1634,6 @@ io.on('connection', (socket) => {
             room.submissionTimes[socket.id] = Date.now();
 
             // Notify host
-            const player = room.players.find(p => p.id === socket.id);
             if (player) {
                 io.to(room.hostId).emit('playerSubmitted', { playerId: socket.id, playerName: player.name });
             }
@@ -1487,6 +1642,35 @@ io.on('connection', (socket) => {
             checkDraftingComplete(roomCode);
         }
     });
+
+    // Helper: Apply Sabotage Word Swap
+    function applyBlitzSabotage(room, targetId) {
+        const answer = room.answers[targetId];
+        if (!answer || typeof answer !== 'string') return;
+        
+        const targetPlayer = room.players.find(p => p.id === targetId);
+        const tricksterWord = targetPlayer?.tricksterWord || "بطيخة";
+        
+        // Split into words
+        const words = answer.split(/\s+/);
+        
+        // Find candidates (length > 3) to replace
+        const candidates = [];
+        words.forEach((w, i) => {
+             if (w.length > 3) candidates.push(i);
+        });
+        
+        if (candidates.length > 0) {
+            const randomIdx = candidates[Math.floor(Math.random() * candidates.length)];
+            words[randomIdx] = tricksterWord; // Swap!
+            room.answers[targetId] = words.join(' ');
+            console.log(`😈 Sabotage applied on ${targetPlayer.name}: Replaced word with ${tricksterWord}`);
+        } else if (words.length > 0) {
+            // Fallback: replace last word
+             words[words.length - 1] = tricksterWord;
+             room.answers[targetId] = words.join(' ');
+        }
+    }
 
     // Real-time draft update for Spy ability
     socket.on('updateDraft', ({ roomCode, draft }) => {
@@ -1592,10 +1776,26 @@ io.on('connection', (socket) => {
             });
             
         } else if (player.role === ROLE_TYPES.WITNESS && abilityType === 'FLASH_MEMORY') {
-             // 👁️ Witness Ability: Show keywords again
+             // 👁️ Witness Ability
+             let flashKeywords = room.currentScenario.keywords;
+
+             if (room.gameMode === 'BLITZ') {
+                 // In Blitz, filter out keywords that are actually the answers (blanks)
+                 const blanks = room.currentScenario.blanks || [];
+                 // Filter keywords that are NOT contained in any blank
+                 flashKeywords = flashKeywords.filter(k => 
+                     !blanks.some(b => b.includes(k) || k.includes(b))
+                 );
+                 
+                 // If we filtered everything (rare), fallback to original or generic
+                 if (flashKeywords.length === 0) {
+                     flashKeywords = ["ركز", "في", "السياق"];
+                 }
+             }
+
              socket.emit('abilityResult', {
                  type: 'FLASH_MEMORY',
-                 keywords: room.currentScenario.keywords
+                 keywords: flashKeywords
              });
              player.abilityUsed = true;
 
@@ -1606,10 +1806,28 @@ io.on('connection', (socket) => {
              
              targetPlayer.sabotagedBy = player.id;
              
-             socket.emit('abilityResult', {
-                 type: 'SABOTAGE',
-                 message: `تم تخريب سجل ${targetPlayer.name}. سيظهر عكس حقيقته للمحقق.`
-             });
+             if (room.gameMode === 'BLITZ') {
+                 // Blitz Sabotage: Word Swap
+                 targetPlayer.sabotageType = 'WORD_SWAP';
+                 targetPlayer.tricksterWord = room.currentScenario.tricksterWord || "بطيخة";
+                 
+                 // If target already submitted, apply immediately
+                 if (room.answers[targetId]) {
+                     applyBlitzSabotage(room, targetId);
+                 }
+
+                 socket.emit('abilityResult', {
+                     type: 'SABOTAGE',
+                     message: `تم تخريب سيناريو ${targetPlayer.name} بإضافة كلمة دخيلة!`
+                 });
+             } else {
+                 // Classic Sabotage: Investigation Flip
+                 targetPlayer.sabotageType = 'INVESTIGATION_FLIP';
+                 socket.emit('abilityResult', {
+                     type: 'SABOTAGE',
+                     message: `تم تخريب سجل ${targetPlayer.name}. سيظهر عكس حقيقته للمحقق.`
+                 });
+             }
              
              player.abilityUsed = true;
         }

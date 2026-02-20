@@ -267,11 +267,13 @@ const styles = StyleSheet.create({
       borderBottomWidth: 1,
       borderBottomColor: '#D2B48C',
       paddingBottom: spacing.s,
+      direction: 'rtl',
   },
   modalTitle: {
       fontSize: fonts.large,
       fontFamily: theme.fonts.bold,
       color: '#8B4513',
+      textAlign: 'right', // RTL
   },
   closeButton: {
       fontSize: 24,
@@ -286,6 +288,7 @@ const styles = StyleSheet.create({
       fontSize: fonts.medium,
       color: '#333',
       marginBottom: 4,
+      textAlign: 'right',
   },
   modalSubtitle: {
       fontFamily: theme.fonts.bold,
@@ -293,6 +296,7 @@ const styles = StyleSheet.create({
       color: '#555',
       marginBottom: 2,
       marginTop: 8,
+      textAlign: 'right',
   },
   modalText: {
       fontFamily: theme.fonts.main,
@@ -300,6 +304,7 @@ const styles = StyleSheet.create({
       color: '#444',
       lineHeight: 24,
       marginBottom: spacing.s,
+      textAlign: 'right',
   },
   divider: {
       height: 1,

@@ -140,27 +140,55 @@ async function generateBotAnswer(role, scenario, otherAnswers = [], gameMode = '
  * ⚡ Blitz Mode: توليد ملء فراغ للبوت
  */
 function generateBotBlankFill(role, scenario) {
-    // 1. Justice Team: Use Truth Keywords
-    if (role === ROLE_TYPES.SEER || role === ROLE_TYPES.DETECTIVE || role === ROLE_TYPES.WITNESS || role === ROLE_TYPES.MINISTER) {
-        const word = scenario.keywords[Math.floor(Math.random() * scenario.keywords.length)];
-        return word;
-    } 
+    const template = scenario.template;
+    if (!template) return "سيناريو غير صالح";
+
+    const parts = template.split('_____');
+    if (parts.length <= 1) return template; // No blanks
+
+    let fullAnswer = "";
     
-    // 2. Crime Team: Mix of Truth and Lies
-    else if (role === ROLE_TYPES.CULPRIT || role === ROLE_TYPES.MASTERMIND || role === ROLE_TYPES.BENEFICIARY) {
-        // 50% Truth (to blend in), 50% Trickster (to mislead or if forced)
-        return Math.random() > 0.5 ? scenario.keywords[0] : (scenario.tricksterWord || "شيء مريب");
-    } 
-    
-    // 3. Saboteur: Always Trickster Word
-    else if (role === ROLE_TYPES.SABOTEUR) {
-        return scenario.tricksterWord || "فيل";
+    // We need to fill (parts.length - 1) blanks
+    for (let i = 0; i < parts.length - 1; i++) {
+        fullAnswer += parts[i];
+        
+        // Generate a word for this blank
+        let word = "";
+        
+        // 1. Justice Team: Use Truth Keywords or Context
+        if (role === ROLE_TYPES.SEER || role === ROLE_TYPES.DETECTIVE || role === ROLE_TYPES.WITNESS || role === ROLE_TYPES.MINISTER) {
+            // Use a keyword if available, otherwise a generic plausible word
+            word = scenario.keywords[i % scenario.keywords.length] || "شيء ما";
+        } 
+        
+        // 2. Crime Team: Mix of Truth and Lies
+        else if (role === ROLE_TYPES.CULPRIT || role === ROLE_TYPES.MASTERMIND || role === ROLE_TYPES.BENEFICIARY) {
+            // 50% Truth (to blend in), 50% Trickster (to mislead)
+            if (Math.random() > 0.5) {
+                word = scenario.keywords[i % scenario.keywords.length] || "شيء";
+            } else {
+                word = scenario.tricksterWord || "شيء مريب";
+            }
+        } 
+        
+        // 3. Saboteur: Always Trickster Word
+        else if (role === ROLE_TYPES.SABOTEUR) {
+            word = scenario.tricksterWord || "فيل";
+        }
+        
+        // 4. Citizen: Confused
+        else {
+            const randomWords = ["لا أعلم", "ربما", "شيء غريب", "نسيت"];
+            word = randomWords[Math.floor(Math.random() * randomWords.length)];
+        }
+        
+        fullAnswer += word;
     }
     
-    // 4. Citizen: Confused
-    else {
-        return "لا أعلم";
-    }
+    // Add the last part
+    fullAnswer += parts[parts.length - 1];
+    
+    return fullAnswer;
 }
 
 /**
