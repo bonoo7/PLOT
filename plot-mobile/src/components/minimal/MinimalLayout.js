@@ -14,9 +14,20 @@ import { theme } from '../../styles/theme';
  * 4. Immersive mode on Android (hidden navigation bar)
  * 5. Optional persistent Role Reveal button
  */
-const MinimalLayout = ({ children, style, roleData }) => {
+const MinimalLayout = ({ children, style, roleData, roomCode }) => {
   const { isDesktop } = useResponsiveLayout();
   const [showRole, setShowRole] = useState(false);
+  
+  // Render Room Code if provided
+  const renderRoomCode = () => {
+      if (!roomCode) return null;
+      return (
+          <View style={styles.roomCodeBadge}>
+              <Text style={styles.roomCodeLabel}>CODE</Text>
+              <Text style={styles.roomCodeValue}>{roomCode}</Text>
+          </View>
+      );
+  };
 
   useEffect(() => {
     if (Platform.OS === 'android') {
@@ -135,6 +146,9 @@ const MinimalLayout = ({ children, style, roleData }) => {
           {children}
         </View>
 
+        {/* Persistent Room Code Badge */}
+        {renderRoomCode()}
+
         {/* Persistent Role Button */}
         {roleData && (
             <>
@@ -237,6 +251,32 @@ const styles = StyleSheet.create({
     resizeMode: 'contain',
     borderRadius: 25,
   },
+  
+  // Room Code Badge
+  roomCodeBadge: {
+      position: 'absolute',
+      top: 40,
+      left: 20, // Opposite side of Role Button
+      backgroundColor: 'rgba(0,0,0,0.6)',
+      paddingHorizontal: 12,
+      paddingVertical: 6,
+      borderRadius: 8,
+      borderWidth: 1,
+      borderColor: 'rgba(255,255,255,0.2)',
+      alignItems: 'center',
+      zIndex: 100,
+  },
+  roomCodeLabel: {
+      color: '#AAA',
+      fontSize: 10,
+      fontFamily: theme.fonts.main,
+  },
+  roomCodeValue: {
+      color: '#FFD700',
+      fontSize: 16,
+      fontFamily: theme.fonts.bold,
+  },
+
   modalRoleImage: {
     width: 120,
     height: 120,

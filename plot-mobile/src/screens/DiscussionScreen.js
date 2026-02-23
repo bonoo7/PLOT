@@ -19,7 +19,9 @@ export const DiscussionScreen = ({
     onSelectSpeaker, // Host function to set speaker
     onEndDiscussion, // Host function to proceed
     scenarios = [],
-    roleData // Added roleData
+    roleData, // Added roleData
+    hint, // Added hint prop
+    roomCode // Added roomCode prop
 }) => {
     const { isDesktop } = useResponsiveLayout();
     const [showScenarios, setShowScenarios] = useState(false);
@@ -27,12 +29,20 @@ export const DiscussionScreen = ({
     const speakingPlayer = players.find(p => p.id === speakingPlayerId);
 
     return (
-        <MinimalLayout roleData={roleData}>
+        <MinimalLayout roleData={roleData} roomCode={roomCode}>
             <View style={styles.container}>
                 <MinimalHeader 
                     title="وقت النقاش" 
                     subtitle={isHost ? "إدارة النقاش" : "استمع للمناقشة"} 
                 />
+
+                {/* Display Hint if available */}
+                {hint && (
+                    <MinimalCard style={styles.hintCard}>
+                        <Text style={styles.hintTitle}>💡 تلميح:</Text>
+                        <Text style={styles.hintText}>{hint}</Text>
+                    </MinimalCard>
+                )}
 
                 <View style={[styles.contentWrapper, isDesktop && styles.contentWrapperDesktop]}>
                     {/* Left Panel: Active Speaker & Scenarios */}
@@ -155,6 +165,28 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.l,
     },
     
+    // Hint
+    hintCard: {
+        width: '100%',
+        backgroundColor: 'rgba(255, 215, 0, 0.1)', // Gold tint
+        borderColor: '#FFD700',
+        marginBottom: spacing.m,
+        alignItems: 'center',
+        padding: spacing.m,
+    },
+    hintTitle: {
+        fontFamily: theme.fonts.bold,
+        color: '#FFD700',
+        marginBottom: spacing.xs,
+        fontSize: fonts.medium,
+    },
+    hintText: {
+        fontFamily: theme.fonts.main,
+        color: '#FFF',
+        fontSize: fonts.default,
+        textAlign: 'center',
+    },
+
     // Panels
     mainPanel: {
         flex: 1,

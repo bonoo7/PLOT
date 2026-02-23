@@ -7,7 +7,8 @@ import {
   SafeAreaView,
   Platform,
   I18nManager,
-  Alert
+  Alert,
+  AppState // Added AppState
 } from 'react-native';
 import io from 'socket.io-client';
 import { registerRootComponent } from 'expo';
@@ -44,9 +45,9 @@ if (Platform.OS !== 'web') {
 }
 
 // Server configuration
-const DEV_SERVER_IP = process.env.EXPO_PUBLIC_DEV_SERVER_IP || '192.168.8.19';
+const DEV_SERVER_IP = process.env.EXPO_PUBLIC_DEV_SERVER_IP || '192.168.8.48';
 const DEV_SERVER_PORT = process.env.EXPO_PUBLIC_DEV_SERVER_PORT || 3000;
-const PROD_SERVER_URL = process.env.EXPO_PUBLIC_PROD_SERVER_URL || 'http://localhost:3000';
+const PROD_SERVER_URL = process.env.EXPO_PUBLIC_PROD_SERVER_URL || 'http://192.168.8.48:3000';
 
 const SOCKET_URL = Platform.OS === 'web'
   ? PROD_SERVER_URL
@@ -139,8 +140,42 @@ function App() {
   // Dramatic Reveal state
   const [revealedScenarios, setRevealedScenarios] = useState([]);
   const [currentReveal, setCurrentReveal] = useState(null);
+  const [lastHint, setLastHint] = useState(null); // Added state
   const [hostHint, setHostHint] = useState(null);
   
+  // AppState for Reconnection (مراقبة حالة التطبيق لإعادة الاتصال)
+  const appState = useRef(AppState.currentState);
+
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        console.log('📱 App has come to the foreground!');
+        
+        // إعادة الانضمام للغرفة تلقائياً عند العودة للتطبيق
+        if (socket && roomCode && playerName) {
+             if (socket.connected) {
+                 console.log('🔄 Socket connected. Re-joining room...', roomCode);
+                 // نرسل طلب الانضمام مجدداً ليقوم السيرفر بتحديث حالة اللاعب
+                 socket.emit('joinRoom', { roomCode, playerName });
+             } else {
+                 console.log('🔄 Socket disconnected. Attempting to connect...');
+                 socket.connect(); 
+                 // سيتم الانضمام تلقائياً عبر مستمع 'connect' في الأسفل
+             }
+        }
+      }
+
+      appState.current = nextAppState;
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [socket, roomCode, playerName]);
+
   // Socket connection
   useEffect(() => {
     if (socket || socketRef.current) return;
@@ -156,6 +191,12 @@ function App() {
     newSocket.on('connect', () => {
       console.log('✅ Socket connected');
       setConnecting(false);
+      
+      // إعادة الاتصال التلقائي إذا كانت بيانات الغرفة واللاعب موجودة
+      if (roomCode && playerName) {
+          console.log('🔄 Auto-rejoining room:', roomCode);
+          newSocket.emit('joinRoom', { roomCode, playerName });
+      }
     });
     
     newSocket.on('disconnect', () => {
@@ -358,17 +399,28 @@ function App() {
           voters: []
         }))]);
       } else if (step === 'HINT') {
+        const hintText = data.data.hint;
         setCurrentReveal({
              type: 'HINT',
-             text: data.data.hint
+             text: hintText
         });
+        setLastHint(hintText); // Persist hint for discussion phase
       }
     });
 
     // Discussion Phase Listeners
-    socket.on('discussionStarted', () => {
+    socket.on('discussionStarted', (data) => {
       console.log('🗣️ Discussion started');
       setSpeakingPlayerId(null);
+      if (data && data.hint) {
+        // If hint is passed (from reconnection or startDiscussion), set it
+        // We reuse currentReveal for simplicity or add a new state?
+        // Let's use currentReveal but override type to ensure DiscussionScreen sees it?
+        // Actually DiscussionScreen doesn't take currentReveal prop currently.
+        // We should add a 'hint' state.
+        setLastHint(data.hint);
+      }
+      
       if (userRole === 'HOST') {
         setScreen(SCREENS.HOST_DISCUSSION);
       } else {
@@ -729,6 +781,7 @@ function App() {
       case SCREENS.HOST_GAME_INTRO:
         return (
           <HostGameIntroScreen
+            roomCode={generatedRoomCode} // Pass roomCode
             scenarioTitle={scenario}
             round={currentRound}
             totalRounds={totalRounds}
@@ -738,6 +791,7 @@ function App() {
       case SCREENS.HOST_DRAFTING:
         return (
           <HostDraftingScreen
+            roomCode={generatedRoomCode} // Pass roomCode
             players={players}
             waitingFor={waitingFor}
             timeLeft={timeLeft}
@@ -748,6 +802,7 @@ function App() {
       case SCREENS.HOST_DRAMATIC_REVEAL:
         return (
           <HostDramaticRevealScreen
+            roomCode={generatedRoomCode} // Pass roomCode
             revealedScenarios={revealedScenarios}
             currentReveal={currentReveal}
           />
@@ -756,18 +811,21 @@ function App() {
       case SCREENS.HOST_DISCUSSION:
         return (
            <DiscussionScreen
+             roomCode={generatedRoomCode} // Pass roomCode
              isHost={true}
              players={players}
              speakingPlayerId={speakingPlayerId}
              onSelectSpeaker={handleSelectSpeaker}
              onEndDiscussion={handleEndDiscussion}
              scenarios={revealedScenarios}
+             hint={lastHint} // Pass hint
            />
         );
 
       case SCREENS.HOST_QUALITY_VOTING:
         return (
           <HostVotingScreen
+            roomCode={generatedRoomCode} // Pass roomCode
             votingType="quality"
             scenarios={scenarios}
             liveVotes={liveVotes}
@@ -778,6 +836,7 @@ function App() {
       case SCREENS.HOST_CULPRIT_VOTING:
         return (
           <HostVotingScreen
+            roomCode={generatedRoomCode} // Pass roomCode
             votingType="culprit"
             scenarios={scenarios}
             liveVotes={liveVotes}
@@ -788,6 +847,7 @@ function App() {
       case SCREENS.HOST_RESULTS:
         return (
           <HostResultsScreen
+            roomCode={generatedRoomCode} // Pass roomCode
             roundResults={roundResults}
             onContinue={handleContinue}
           />
@@ -864,6 +924,7 @@ function App() {
              speakingPlayerId={speakingPlayerId}
              scenarios={revealedScenarios}
              roleData={roleData}
+             hint={lastHint} // Pass hint
            />
         );
       

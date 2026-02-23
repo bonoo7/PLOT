@@ -285,7 +285,11 @@ function checkQualityVotingComplete(roomCode) {
     const room = rooms[roomCode];
     if (!room) return;
 
-    if (Object.keys(room.qualityVotes).length === room.players.length) {
+    // Filter for active (non-eliminated) and connected players
+    const activePlayers = room.players.filter(p => !p.eliminated && p.connected !== false);
+    const voteCount = Object.keys(room.qualityVotes).length;
+
+    if (voteCount >= activePlayers.length) {
         startDramaticReveal(roomCode);
     }
 }
@@ -408,7 +412,7 @@ function startDramaticReveal(roomCode) {
                 }
             });
         }, currentDelay);
-        currentDelay += 5000; // 5 ثواني لقراءة التلميح
+        currentDelay += 15000; // Increased to 15 seconds
     }
 
     // بعد انتهاء العرض: الانتقال مباشرة إلى التصويت على الجاني
@@ -467,7 +471,8 @@ function startDiscussion(roomCode) {
     }
 
     io.to(roomCode).emit('discussionStarted', {
-        timer: 120
+        timer: 120,
+        hint: room.currentScenario.hint // Pass hint to persist in discussion
     });
 }
 
@@ -539,12 +544,14 @@ function checkCulpritVotingComplete(roomCode) {
     const room = rooms[roomCode];
     if (!room) return;
     
-    // Better logic: Check if all NON-ELIMINATED players have voted
-    const activePlayers = room.players.filter(p => !p.eliminated);
+    // Better logic: Check if all NON-ELIMINATED and CONNECTED players have voted
+    const activePlayers = room.players.filter(p => !p.eliminated && p.connected !== false);
     const voteCount = Object.keys(room.culpritVotes).length;
 
     console.log(`🔍 Culprit Voting: ${voteCount}/${activePlayers.length} votes received`);
     
+    // Check if we have enough votes (considering some might have disconnected after voting)
+    // Also, handle the case where voteCount > activePlayers (if someone voted then disconnected)
     if (voteCount >= activePlayers.length) {
         console.log(`✅ All votes received, processing result...`);
         handleVotingResult(roomCode);
@@ -690,7 +697,7 @@ function endRound(roomCode, result) {
     }).sort((a, b) => b.totalScore - a.totalScore);
 
     // Send Results
-    io.to(roomCode).emit('roundResults', { 
+    const resultPayload = { 
         winner: result ? result.winner : null,
         scores: results, // Renamed from results to scores to match Client
         teamScores,
@@ -702,7 +709,10 @@ function endRound(roomCode, result) {
         reason: result ? result.reason : null,
         victim: result ? result.victim : null,
         eliminatedPlayer: result ? result.eliminatedPlayer : null
-    });
+    };
+    
+    room.lastRoundResult = resultPayload; // Store for reconnection
+    io.to(roomCode).emit('roundResults', resultPayload);
     room.state = 'RESULTS';
 }
 
@@ -790,66 +800,102 @@ io.on('connection', (socket) => {
                 console.log(`${playerName} reconnected to room ${roomCode}`);
 
                 // If game is running, send current state
-                if (room.state === 'PLAYING' || room.state === 'DRAFTING' || room.state === 'PRESENTATION' || room.state === 'VOTING' || room.state === 'QUALITY_VOTING' || room.state === 'CULPRIT_VOTING' || room.state === 'DISCUSSION' || room.state === 'DRAMATIC_REVEAL') {
-                    // Send game started info
+                if (room.state !== 'LOBBY' && room.state !== 'END') {
+                    // 1. Send game started info
                     socket.emit('gameStarted', {
                         title: room.currentScenario.title,
                         round: room.currentRound,
                         totalRounds: room.totalRounds
                     });
 
-                    // Send role info
+                    // 2. Send role info (Correctly populated)
                     if (existingPlayer.role) {
+                        const roleInfo = getRoleInfo(existingPlayer.role);
+                        const scenario = room.currentScenario;
+                        
+                        let infoContent = "انتظر التعليمات...";
+                        
+                        // Populate role specific info based on role type
+                        if (existingPlayer.role === ROLE_TYPES.WITNESS) {
+                             // Witness sees keywords for 2 seconds typically, on reconnect we can show them again or history
+                             infoContent = `الكلمات المفتاحية: ${scenario.keywords.join(' - ')}`;
+                        } else if (existingPlayer.role === ROLE_TYPES.DETECTIVE) {
+                            infoContent = `عنوان القضية: ${scenario.title}`;
+                        } else if (existingPlayer.role === ROLE_TYPES.SEER) {
+                            infoContent = `لديك القدرة على كشف القصة`;
+                        } else if (existingPlayer.role === ROLE_TYPES.CULPRIT) {
+                            infoContent = `القصة الكاملة: ${scenario.story}`;
+                        } else if (existingPlayer.role === ROLE_TYPES.MASTERMIND) {
+                             const crimeMembers = room.players.filter(p => {
+                                const r = getRoleInfo(p.role);
+                                return r && r.team === TEAMS.CRIME && p.id !== existingPlayer.id;
+                            }).map(p => `${p.name} (${getRoleName(p.role)})`);
+                            infoContent = `أعضاء فريقك: ${crimeMembers.join(', ')}`;
+                        } else if (existingPlayer.role === ROLE_TYPES.MINISTER) {
+                            const keyRoles = room.players.filter(p => 
+                                p.role === ROLE_TYPES.DETECTIVE || p.role === ROLE_TYPES.BENEFICIARY
+                            ).map(p => `${p.name} (${getRoleName(p.role)})`);
+                            infoContent = `الأدوار المكشوفة لك: ${keyRoles.join(', ')}`;
+                        } else if (existingPlayer.role === ROLE_TYPES.SABOTEUR) {
+                            infoContent = "مهمتك تخريب تحقيقات المحقق.";
+                        } else if (existingPlayer.role === ROLE_TYPES.BENEFICIARY) {
+                            infoContent = "لديك رصيد إضافي +1000.";
+                        }
+
                         let roleData = {
                             role: existingPlayer.role,
                             roleName: getRoleName(existingPlayer.role),
                             description: getRoleDescription(existingPlayer.role),
-                            info: null,
+                            team: roleInfo.team,
+                            emoji: roleInfo.emoji,
+                            goal: getRoleGoal(existingPlayer.role),
+                            ability: roleInfo.ability,
+                            info: infoContent,
+                            secretHint: existingPlayer.secretHint, // Restore hint if any
                             round: room.currentRound,
                             totalRounds: room.totalRounds,
                             isTutorial: room.isTutorial
                         };
-
-                        const scenario = room.currentScenario;
-                        if (existingPlayer.role === 'WITNESS') {
-                            roleData.info = scenario.story;
-                        } else if (existingPlayer.role === 'ARCHITECT') {
-                            roleData.info = `كلماتك المفتاحية: ${scenario.keywords.join(' - ')}`;
-                        } else if (existingPlayer.role === 'DETECTIVE') {
-                            roleData.info = `عنوان القضية: ${scenario.title}`;
-                        } else if (existingPlayer.role === 'TRICKSTER') {
-                            roleData.info = `كلمتك الدخيلة: ${scenario.tricksterWord}`;
-                        } else {
-                            roleData.info = "انتظر التعليمات...";
-                        }
+                        
                         socket.emit('roleAssigned', roleData);
                     }
 
-                    // Send phase specific data
+                    // 3. Send Phase Specific Data to move client to correct screen
                     if (room.state === 'DRAFTING') {
-                        // We don't have exact time left stored, but client will sync on next tick
                         socket.emit('startDrafting', { 
-                            duration: 90,
-                            caseTitle: room.currentScenario.title // Ensure title is sent on reconnect
-                        }); // Approximate
+                            duration: 90, // Timer will be out of sync but client will handle
+                            caseTitle: room.currentScenario.title,
+                            waitingFor: room.players.filter(p => !room.answers[p.id]).map(p => p.id)
+                        });
+                        // If already submitted, notify client
+                        if (room.answers[existingPlayer.id]) {
+                             // Client handles "isSubmitted" locally usually, but we might need to tell them
+                             // For now, they might see drafting screen again.Ideally we send "playerSubmitted" event back to them?
+                             // Or just let them see "Waiting for others" if logic handles it.
+                        }
                     } else if (room.state === 'PRESENTATION') {
                         socket.emit('startPresentation');
                     } else if (room.state === 'DISCUSSION') {
                         socket.emit('discussionStarted', {
-                            timer: 120
+                            timer: 120,
+                            hint: room.currentScenario.hint // Restore hint
                         });
+                        // Resend speaker if any
+                        // We need to track current speaker in room object (not currently done explicitly in robust way for reconnect)
                     } else if (room.state === 'QUALITY_VOTING') {
-                        // Resend voting data
                         const anonymousAnswers = room.players.map(p => ({
                             index: room.players.indexOf(p),
-                            answer: room.answers[p.id] || "...",
-                            // Don't send names in Quality Voting
+                            answer: room.answers[p.id] || "..."
                         }));
                         socket.emit('qualityVotingStarted', {
                             scenarios: anonymousAnswers
                         });
+                    } else if (room.state === 'DRAMATIC_REVEAL') {
+                         socket.emit('dramaticRevealStarted', {
+                            totalScenarios: room.players.length
+                        });
+                        // We might need to send current reveal step too? Complex for V1.
                     } else if (room.state === 'CULPRIT_VOTING') {
-                        // Resend voting data
                         const scenariosWithAuthors = room.players.map((p, index) => ({
                             index: index,
                             playerId: p.id,
@@ -859,24 +905,12 @@ io.on('connection', (socket) => {
                         socket.emit('culpritVotingStarted', {
                             scenarios: scenariosWithAuthors
                         });
-                    } else if (room.state === 'DRAMATIC_REVEAL') {
-                         socket.emit('dramaticRevealStarted', {
-                            totalScenarios: room.players.length
-                        });
-                    } else if (room.state === 'VOTING') {
-                        // Resend voting data
-                        const anonymousAnswers = room.players.map(p => ({
-                            id: p.id,
-                            answer: room.answers[p.id] || "..."
-                        }));
-                        const playersList = room.players.map(p => ({
-                            id: p.id,
-                            name: p.name
-                        }));
-                        socket.emit('startVoting', {
-                            answers: anonymousAnswers,
-                            players: playersList
-                        });
+                    } else if (room.state === 'RESULTS') {
+                         // Send last round results
+                         // We need to store last results in room object to resend
+                         if (room.lastRoundResult) {
+                            socket.emit('roundResults', room.lastRoundResult);
+                         }
                     }
                 }
                 
@@ -1990,6 +2024,14 @@ io.on('connection', (socket) => {
                 // We don't remove the player to allow reconnection
                 // But we notify others
                 io.to(code).emit('playerJoined', room.players); // Update list to show status
+                
+                // If in voting phase, check if we can proceed now that a player disconnected
+                if (room.state === 'CULPRIT_VOTING') {
+                    checkCulpritVotingComplete(code);
+                } else if (room.state === 'QUALITY_VOTING') {
+                    checkQualityVotingComplete(code);
+                }
+                
                 break;
             }
         }

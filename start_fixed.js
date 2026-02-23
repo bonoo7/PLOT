@@ -5,23 +5,11 @@ const os = require('os');
 const path = require('path');
 const qrcode = require('qrcode-terminal');
 
-// Get local IP address
-function getLocalIP() {
-    const interfaces = os.networkInterfaces();
-    for (const name of Object.keys(interfaces)) {
-        for (const iface of interfaces[name]) {
-            if (iface.family === 'IPv4' && !iface.internal) {
-                return iface.address;
-            }
-        }
-    }
-    return 'localhost';
-}
+// Force IP address as requested
+const localIP = '192.168.8.48';
 
-const localIP = '192.168.8.19'; // Forced IP address
-console.log('DEBUG: localIP is set to ' + localIP);
 console.log('\n╔════════════════════════════════════════════════════════════╗');
-console.log('║          🎮 الحبكة - THE PLOT GAME 🎮                    ║');
+console.log('║          🎮 الحبكة - THE PLOT GAME (FIXED) 🎮           ║');
 console.log('╚════════════════════════════════════════════════════════════╝\n');
 console.log(`📱 Server IP Address: ${localIP}`);
 console.log(`🌐 Web App URL: http://${localIP}:3000 (Browser)\n`);
@@ -46,7 +34,8 @@ try {
 }
 
 // Start server
-console.log('\n🚀 Starting server...');
+console.log('\n🚀 Starting server on port 3000...');
+// Use PORT environment variable if needed, but for now default to 3000
 const server = exec(`cd "${serverPath}" && npm start`, (error, stdout, stderr) => {
     if (error) console.error(`Server error: ${error.message}`);
 });
@@ -58,7 +47,8 @@ server.stdout.on('data', (data) => {
 // Wait for server to start before starting client
 setTimeout(() => {
     console.log('\n🚀 Starting mobile app (Port 8082)...');
-    const client = exec(`cd "${clientPath}" && npx expo start --clear --port 8082`, (error, stdout, stderr) => {
+    // Ensure we bind to the specific IP if possible, or just default (0.0.0.0)
+    const client = exec(`cd "${clientPath}" && set REACT_NATIVE_PACKAGER_HOSTNAME=${localIP} && set EXPO_DEVTOOLS_LISTEN_ADDRESS=${localIP} && npx expo start --clear --port 8082 --host lan`, (error, stdout, stderr) => {
         if (error) console.error(`Client error: ${error.message}`);
     });
 
@@ -70,6 +60,7 @@ setTimeout(() => {
         if (output.includes('Expo Go') || output.includes('QR') || output.includes('Scan')) {
             console.log('\n✅ QR Code is displayed above!');
             console.log('📷 Scan the QR code with your phone to run the app\n');
+            console.log('⚠️  If you cannot connect, ensure your firewall allows Node.js and Expo.\n');
         }
     });
 

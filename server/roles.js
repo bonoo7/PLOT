@@ -124,44 +124,40 @@ function getTeamMembers(team) {
 }
 
 function getRolesForPlayerCount(count) {
-    // Priority List for distribution
-    // Must always include Culprit (Crime) and Detective (Justice)
+    // Priority List based on User Request:
+    // 1. Culprit (الجاني)
+    // 2. Witness (الشاهد)
+    // 3. Saboteur (المخرب)
+    // 4. Detective (المحقق)
+    // 5. Minister (الوزير)
+    // 6. Beneficiary (المستفيد)
+    // 7. Seer (العراف)
+    // 8. Mastermind (العقل المدبر)
+
+    // Define the strict order of roles to be added one by one
+    const priorityList = [
+        ROLE_TYPES.CULPRIT,     // 1. الجاني
+        ROLE_TYPES.WITNESS,     // 2. الشاهد
+        ROLE_TYPES.SABOTEUR,    // 3. المخرب
+        ROLE_TYPES.DETECTIVE,   // 4. المحقق
+        ROLE_TYPES.MINISTER,    // 5. الوزير
+        ROLE_TYPES.BENEFICIARY, // 6. المستفيد
+        ROLE_TYPES.SEER,        // 7. العراف
+        ROLE_TYPES.MASTERMIND   // 8. العقل المدبر
+    ];
+
+    const distribution = [];
     
-    // 3 Players: Culprit, Detective, Citizen (or Witness?) -> Minimal
-    // Let's define distribution based on rules V4:
-    
-    // Core Roles:
-    // 1. Culprit (Crime)
-    // 2. Detective (Justice)
-    // 3. Witness (Justice) - "Badla an Al-Muzawwir" -> Replaces Forger, implies core role.
-    
-    const distribution = [ROLE_TYPES.CULPRIT, ROLE_TYPES.DETECTIVE, ROLE_TYPES.WITNESS];
-    
-    // 4th Player: Mastermind (Crime)
-    if (count >= 4) distribution.push(ROLE_TYPES.MASTERMIND);
-    
-    // 5th Player: Seer (Justice)
-    if (count >= 5) distribution.push(ROLE_TYPES.SEER);
-    
-    // 6th Player: Saboteur (Crime)
-    if (count >= 6) distribution.push(ROLE_TYPES.SABOTEUR);
-    
-    // 7th Player: Minister (Justice)
-    if (count >= 7) distribution.push(ROLE_TYPES.MINISTER);
-    
-    // 8th Player: Beneficiary (Crime)
-    if (count >= 8) distribution.push(ROLE_TYPES.BENEFICIARY);
-    
-    // If more than 8 (shouldn't happen in standard game but for safety):
-    while (distribution.length < count) {
-        distribution.push(ROLE_TYPES.CITIZEN);
+    // Fill distribution based on count from the priority list
+    for (let i = 0; i < count; i++) {
+        if (i < priorityList.length) {
+            distribution.push(priorityList[i]);
+        } else {
+            distribution.push(ROLE_TYPES.CITIZEN); // Fallback if count > 8
+        }
     }
     
-    // If fewer than needed (e.g. testing with 3 bots), cut from end?
-    // The distribution array grows with count, so slicing is fine.
-    // Wait, the logic above ADDS based on count.
-    
-    return distribution.slice(0, count);
+    return distribution;
 }
 
 module.exports = {

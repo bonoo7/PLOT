@@ -14,10 +14,11 @@ import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 export const HostGameIntroScreen = ({ 
   scenarioTitle = '',
   round = 1,
-  totalRounds = 3
+  totalRounds = 3,
+  roomCode
 }) => {
   return (
-    <MinimalLayout>
+    <MinimalLayout roomCode={roomCode}>
       <View style={styles.centerContent}>
         <View style={styles.badgeContainer}>
           <Text style={styles.badgeText}>الجولة {round} / {totalRounds}</Text>
@@ -46,7 +47,8 @@ export const HostDraftingScreen = ({
   players = [],
   waitingFor = [],
   timeLeft = 90,
-  hint = null
+  hint = null,
+  roomCode
 }) => {
   const { isDesktop } = useResponsiveLayout();
   const submittedCount = players.length - waitingFor.length;
@@ -59,7 +61,7 @@ export const HostDraftingScreen = ({
   };
 
   return (
-    <MinimalLayout>
+    <MinimalLayout roomCode={roomCode}>
       <View style={[styles.container, isDesktop && styles.containerDesktop]}>
         <MinimalHeader title="مرحلة الكتابة" subtitle="يراقب المضيف" />
 
@@ -130,7 +132,8 @@ export const HostVotingScreen = ({
   votingType = 'quality', 
   scenarios = [],
   liveVotes = [],
-  players = []
+  players = [],
+  roomCode
 }) => {
   const { isDesktop } = useResponsiveLayout();
   const votedCount = liveVotes.length;
@@ -145,7 +148,7 @@ export const HostVotingScreen = ({
   };
 
   return (
-    <MinimalLayout>
+    <MinimalLayout roomCode={roomCode}>
       <View style={[styles.container, isDesktop && styles.containerDesktop]}>
         <MinimalHeader 
           title={votingType === 'quality' ? 'تصويت الجودة' : 'تصويت الجاني'} 
@@ -209,7 +212,8 @@ export const HostVotingScreen = ({
 export const HostResultsScreen = ({ 
   roundResults = null,
   onContinue,
-  isLastRound = false
+  isLastRound = false,
+  roomCode
 }) => {
   const { isDesktop } = useResponsiveLayout();
   const [revealStep, setRevealStep] = React.useState(0);
@@ -245,7 +249,7 @@ export const HostResultsScreen = ({
   const getTeamName = (team) => team === 'CRIME' ? 'فريق الجريمة' : 'فريق العدالة';
 
   return (
-    <MinimalLayout>
+    <MinimalLayout roomCode={roomCode}>
       <View style={[styles.container, { maxWidth: 1000 }]}>
          <MinimalHeader title="نتائج الجولة" />
          
@@ -353,12 +357,13 @@ export const HostResultsScreen = ({
  */
 export const HostDramaticRevealScreen = ({ 
   revealedScenarios = [],
-  currentReveal = null
+  currentReveal = null,
+  roomCode
 }) => {
   // Check for HINT type first
   if (currentReveal?.type === 'HINT') {
       return (
-        <MinimalLayout>
+        <MinimalLayout roomCode={roomCode}>
            <View style={styles.centerContent}>
               <MinimalHeader title="تلميح درامي" />
               <View style={[styles.revealCard, { backgroundColor: '#FFFACD', borderWidth: 2, borderColor: '#DAA520' }]}> 
@@ -379,7 +384,7 @@ export const HostDramaticRevealScreen = ({
   const showAuthor = currentReveal?.author !== undefined;
 
   return (
-    <MinimalLayout>
+    <MinimalLayout roomCode={roomCode}>
        <View style={styles.centerContent}>
           <MinimalHeader title="كشف النتائج" />
           
@@ -423,6 +428,13 @@ export const HostDramaticRevealScreen = ({
                 <View key={i} style={styles.miniRevealCard}>
                    <Text numberOfLines={2} style={styles.miniRevealText}>{s.text}</Text>
                    <Text style={styles.miniRevealAuthor}>{s.author}</Text>
+                   {/* Show Voters */}
+                   <View style={styles.miniVotersList}>
+                       <Text style={styles.miniVotersLabel}>أصوات ({s.voteCount}):</Text>
+                       <Text numberOfLines={1} style={styles.miniVotersNames}>
+                           {s.voters && s.voters.length > 0 ? s.voters.join(', ') : 'لا أحد'}
+                       </Text>
+                   </View>
                 </View>
              ))}
           </ScrollView>
@@ -773,10 +785,13 @@ const styles = StyleSheet.create({
       color: '#8B4513',
       marginTop: 4,
   },
-  revealHistory: { maxHeight: 100, marginTop: spacing.l, width: '100%' },
-  miniRevealCard: { width: 150, height: 80, backgroundColor: 'rgba(255,255,255,0.1)', marginHorizontal: spacing.s, padding: spacing.s, borderRadius: 8 },
-  miniRevealText: { color: '#CCC', fontSize: 10 },
-  miniRevealAuthor: { color: '#AAA', fontSize: 9, marginTop: 4 },
+  revealHistory: { maxHeight: 120, marginTop: spacing.l, width: '100%' },
+  miniRevealCard: { width: 180, height: 100, backgroundColor: 'rgba(255,255,255,0.1)', marginHorizontal: spacing.s, padding: spacing.s, borderRadius: 8 },
+  miniRevealText: { color: '#CCC', fontSize: 10, marginBottom: 4 },
+  miniRevealAuthor: { color: '#AAA', fontSize: 9, marginBottom: 4 },
+  miniVotersList: { marginTop: 'auto', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)', paddingTop: 2 },
+  miniVotersLabel: { color: theme.colors.primary, fontSize: 8, fontWeight: 'bold' },
+  miniVotersNames: { color: '#888', fontSize: 8 },
   waitingText: { color: '#AAA', fontSize: fonts.medium },
   
   // Host Hint Styles
