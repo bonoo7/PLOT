@@ -40,7 +40,6 @@ const GlobalRTLWrapper = ({ children }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    direction: 'rtl', // Ensures children inherit RTL direction
   },
 });
 

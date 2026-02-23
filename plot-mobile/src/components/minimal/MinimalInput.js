@@ -113,7 +113,6 @@ const getStyles = (isDesktop) => StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: spacing.xs,
-    direction: 'rtl',
   },
 
   errorText: {

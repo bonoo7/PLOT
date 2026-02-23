@@ -50,7 +50,7 @@ const DEV_SERVER_PORT = process.env.EXPO_PUBLIC_DEV_SERVER_PORT || 3000;
 const PROD_SERVER_URL = process.env.EXPO_PUBLIC_PROD_SERVER_URL || 'http://192.168.8.48:3000';
 
 const SOCKET_URL = Platform.OS === 'web'
-  ? PROD_SERVER_URL
+  ? (typeof window !== 'undefined' ? window.location.origin : PROD_SERVER_URL)
   : (__DEV__ ? `http://${DEV_SERVER_IP}:${DEV_SERVER_PORT}` : PROD_SERVER_URL);
 
 console.log('🌐 Socket URL:', SOCKET_URL);

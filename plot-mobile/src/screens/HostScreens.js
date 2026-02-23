@@ -225,7 +225,6 @@ const styles = StyleSheet.create({
   },
   infoRow: {
     marginBottom: spacing.s,
-    direction: 'rtl',
   },
   infoText: {
     fontFamily: theme.fonts.main,
@@ -294,7 +293,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: spacing.s,
-    direction: 'rtl',
   },
   modeDescription: {
     fontSize: fonts.small,
@@ -321,7 +319,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(0,0,0,0.1)',
     paddingBottom: spacing.s,
-    direction: 'rtl',
   },
   sectionTitle: {
     fontFamily: theme.fonts.bold,

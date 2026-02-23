@@ -307,7 +307,6 @@ const styles = StyleSheet.create({
       borderBottomWidth: 1,
       borderBottomColor: '#D2B48C',
       paddingBottom: spacing.s,
-      direction: 'rtl',
   },
   modalTitle: {
       fontSize: fonts.large,

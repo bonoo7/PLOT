@@ -615,7 +615,6 @@ const styles = StyleSheet.create({
   // Identity Section
   identitySection: {
     alignItems: 'center',
-    direction: 'rtl',
   },
   roleImageLarge: {
     width: 120,
@@ -898,7 +897,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'flex-start',
     gap: 8,
-    direction: 'rtl', // Ensure content inside flows RTL
   },
   blitzText: {
     fontFamily: theme.fonts.heading,
@@ -918,8 +916,6 @@ const styles = StyleSheet.create({
     color: '#B22222', // Red for emphasis
     paddingVertical: 4,
     backgroundColor: 'rgba(255, 254, 247, 0.6)', // Paper-like translucent
-    // In React Native Web, inputs might need direction explicitly if they don't inherit
-    direction: 'rtl',
   },
   disabledInput: {
     opacity: 0.7,
