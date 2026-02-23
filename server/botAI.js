@@ -356,7 +356,7 @@ function generateBotVote(botRole, botTeam, players, answers, scenario, difficult
     qualityTarget = voteForInvestigationTeam(suspicions, difficulty);
     identityTarget = voteToProtectCrime(suspicions, difficulty);
     
-  } else if (botTeam === TEAMS.INVESTIGATION) {
+  } else if (botTeam === TEAMS.JUSTICE) {
     // فريق التحقيق: البحث عن الجاني
     qualityTarget = voteForMostSuspicious(suspicions, difficulty);
     identityTarget = voteForCulprit(suspicions, difficulty);

@@ -83,16 +83,19 @@ function getRoleTeam(roleId) {
 
 function generateRoomCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    let code = '';
-    for (let i = 0; i < 4; i++) {
-        code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
+    let code;
+    do {
+        code = '';
+        for (let i = 0; i < 4; i++) {
+            code += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+    } while (rooms[code]);
     return code;
 }
 
 function checkDraftingComplete(roomCode) {
     const room = rooms[roomCode];
-    if (!room) return;
+    if (!room || room.state !== 'DRAFTING') return;
 
     const activePlayers = room.players.filter(p => !p.eliminated);
     const submittedCount = Object.keys(room.answers).filter(id => {
@@ -111,6 +114,7 @@ function startDraftingPhase(roomCode) {
     if (!room) return;
 
     room.state = 'DRAFTING';
+    room.draftStartTime = Date.now();
     room.answers = {};
     room.drafts = {}; // Reset drafts
     const duration = 90; // seconds
@@ -170,45 +174,53 @@ function startDraftingPhase(roomCode) {
         if (p.isBot && !p.eliminated) {
             // تأخير متدرج: كل بوت يبدأ بعد الآخر بـ 2 ثانية
             setTimeout(() => {
-                simulateBotDrafting(room, p);
+                simulateBotDrafting(roomCode, p);
             }, index * 2000); // 0s, 2s, 4s, 6s, etc.
         }
     });
 }
 
-async function simulateBotDrafting(room, bot) {
+async function simulateBotDrafting(roomCode, bot) {
+    const room = rooms[roomCode];
+    if (!room || room.state !== 'DRAFTING') return;
     try {
         // استخدام محرك الذكاء الجديد (DeepSeek AI) لتوليد إجابة ذكية
         const targetText = await generateBotAnswer(bot.role, room.currentScenario, [], room.gameMode);
         
+        if (!rooms[roomCode] || rooms[roomCode].state !== 'DRAFTING') return;
+
         // Simulate typing
         let charIndex = 0;
         const typingSpeed = 50 + Math.random() * 100; // Random speed
 
-        const typingInterval = setInterval(() => {
+        bot._typingInterval = setInterval(() => {
             if (charIndex < targetText.length) {
                 if (!room.drafts[bot.id]) room.drafts[bot.id] = "";
                 room.drafts[bot.id] += targetText[charIndex];
                 charIndex++;
             } else {
-                clearInterval(typingInterval);
+                clearInterval(bot._typingInterval);
+                bot._typingInterval = null;
             }
         }, typingSpeed);
 
         // Submit after delay (10-30 seconds)
         const submitDelay = 10000 + Math.random() * 20000;
-        setTimeout(() => {
+        bot._submitTimer = setTimeout(() => {
+            bot._submitTimer = null;
+            if (!rooms[roomCode] || rooms[roomCode].state !== 'DRAFTING') return;
             room.answers[bot.id] = targetText;
             // Notify host
             io.to(room.hostId).emit('playerSubmitted', { playerId: bot.id, playerName: bot.name });
-            checkDraftingComplete(room.id || Object.keys(rooms).find(key => rooms[key] === room));
+            checkDraftingComplete(roomCode);
         }, submitDelay);
     } catch (error) {
         console.error(`❌ Bot ${bot.name} failed to draft:`, error);
+        if (!rooms[roomCode] || rooms[roomCode].state !== 'DRAFTING') return;
         // Fallback: Submit a simple answer
         room.answers[bot.id] = "لم أستطع كتابة سيناريو...";
         io.to(room.hostId).emit('playerSubmitted', { playerId: bot.id, playerName: bot.name });
-        checkDraftingComplete(room.id || Object.keys(rooms).find(key => rooms[key] === room));
+        checkDraftingComplete(roomCode);
     }
 }
 
@@ -216,15 +228,6 @@ function startPresentationPhase(roomCode) {
     // ❌ تم إلغاء مرحلة العرض القديمة
     // الانتقال مباشرة إلى التصويت على الجودة
     startVotingPhase(roomCode);
-}
-
-function checkVotingComplete(roomCode) {
-    const room = rooms[roomCode];
-    if (!room) return;
-
-    if (Object.keys(room.votes).length === room.players.length) {
-        endRound(roomCode);
-    }
 }
 
 // ============================================
@@ -260,9 +263,15 @@ function startQualityVoting(roomCode) {
                 // ✅ GUARD: Check if bot already voted
                 if (room.qualityVotes[p.id] !== undefined) return;
 
-                const qualityVote = generateQualityVote(
-                    room.players.map(player => room.answers[player.id] || '')
-                );
+                const botIndex = room.players.findIndex(pl => pl.id === p.id);
+                const scenarioTexts = room.players.map(player => room.answers[player.id] || '');
+                let qualityVote = generateQualityVote(scenarioTexts);
+
+                // Prevent self-vote
+                if (qualityVote === botIndex) {
+                    qualityVote = (botIndex + 1) % room.players.length;
+                }
+
                 room.qualityVotes[p.id] = qualityVote;
                 
                 // 🆕 إرسال للهوست أن البوت صوّت
@@ -509,13 +518,13 @@ function startCulpritVoting(roomCode) {
                     id: player.id,
                     name: player.name,
                     role: player.role,
-                    team: player.team,
+                    team: getRoleInfo(player.role)?.team ?? TEAMS.JUSTICE,
                     answer: room.answers[player.id] || ''
                 }));
                 
                 const culpritVote = generateBotVote(
                     p.role,
-                    p.team,
+                    getRoleInfo(p.role)?.team ?? TEAMS.JUSTICE,
                     room.players,
                     answersData,
                     room.currentScenario,
@@ -729,16 +738,6 @@ io.on('connection', (socket) => {
         console.error('❌ Connection error:', socket.id, error);
     });
 
-    // Discussion Controls
-    socket.on('setSpeaker', ({ roomCode, playerId }) => {
-        const room = rooms[roomCode];
-        if (!room) return;
-
-        io.to(roomCode).emit('speakerUpdated', { playerId });
-    });
-
-    // Remove Duplicate endDiscussion here (handled around line 1455)
-
     // Host creates a room
     socket.on('createRoom', () => {
         const roomCode = generateRoomCode();
@@ -862,8 +861,10 @@ io.on('connection', (socket) => {
 
                     // 3. Send Phase Specific Data to move client to correct screen
                     if (room.state === 'DRAFTING') {
+                        const elapsed = Math.floor((Date.now() - (room.draftStartTime || Date.now())) / 1000);
+                        const remaining = Math.max(0, 90 - elapsed);
                         socket.emit('startDrafting', { 
-                            duration: 90, // Timer will be out of sync but client will handle
+                            duration: remaining,
                             caseTitle: room.currentScenario.title,
                             waitingFor: room.players.filter(p => !room.answers[p.id]).map(p => p.id)
                         });
@@ -873,8 +874,6 @@ io.on('connection', (socket) => {
                              // For now, they might see drafting screen again.Ideally we send "playerSubmitted" event back to them?
                              // Or just let them see "Waiting for others" if logic handles it.
                         }
-                    } else if (room.state === 'PRESENTATION') {
-                        socket.emit('startPresentation');
                     } else if (room.state === 'DISCUSSION') {
                         socket.emit('discussionStarted', {
                             timer: 120,
@@ -1298,8 +1297,8 @@ io.on('connection', (socket) => {
             room.currentRound = 0;
             room.usedScenarios = [];
             room.players.forEach(p => p.score = 0);
-            room.isTutorial = false;
-            room.totalRounds = 3;
+            room.isTutorial = isTutorial || false;
+            room.totalRounds = (isTutorial) ? 1 : room.totalRounds;
             room.tutorialData = null;
         }
 
@@ -1309,6 +1308,12 @@ io.on('connection', (socket) => {
     function startNewRound(roomCode) {
         const room = rooms[roomCode];
         if (!room) return;
+
+        // Clear any pending bot timers from the previous round
+        room.players.forEach(p => {
+            if (p._submitTimer) { clearTimeout(p._submitTimer); p._submitTimer = null; }
+            if (p._typingInterval) { clearInterval(p._typingInterval); p._typingInterval = null; }
+        });
 
         room.currentRound++;
 
@@ -1395,18 +1400,19 @@ io.on('connection', (socket) => {
                 player.role = rolesForCount[roleIndex];
                 roleIndex++;
             } else {
-                // If preferred role used, remove it from available roles if possible
+                // Assign preferred role and remove it from available pool
+                player.role = player.preferredRole;
                 const prefIndex = rolesForCount.indexOf(player.preferredRole);
                 if (prefIndex > -1) {
                     rolesForCount.splice(prefIndex, 1);
                 }
             }
             
-            player.score = 0; 
+            player.score = (room.currentRound === 1) ? 0 : player.score;
             
-            // Set starting points for Minister/Beneficiary
+            // Set starting points for Minister/Beneficiary (first round only)
             const roleInfo = getRoleInfo(player.role);
-            if (roleInfo && roleInfo.startPoints) {
+            if (room.currentRound === 1 && roleInfo && roleInfo.startPoints) {
                 player.score = roleInfo.startPoints;
             }
 
@@ -1556,6 +1562,12 @@ io.on('connection', (socket) => {
             results: finalResults,
             leaderboard: leaderboard
         });
+
+        // Clean up room after 5 minutes (grace period for reconnection/result viewing)
+        setTimeout(() => {
+            delete rooms[roomCode];
+            console.log(`🧹 Room ${roomCode} cleaned up from memory`);
+        }, 5 * 60 * 1000);
     }
 
     /* 
@@ -1966,7 +1978,7 @@ io.on('connection', (socket) => {
         const room = rooms[roomCode];
         if (room) {
             const voter = room.players.find(p => p.id === socket.id);
-            if (!voter || voter.isExcluded) return; // Prevent excluded players from voting
+            if (!voter || voter.eliminated) return; // Prevent eliminated players from voting
 
             if (room.state === 'QUALITY_VOTING') {
                 room.qualityVotes[socket.id] = qualityVote;

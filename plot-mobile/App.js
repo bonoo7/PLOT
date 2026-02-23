@@ -432,6 +432,11 @@ function App() {
       console.log('🎤 Speaker updated:', data.playerId);
       setSpeakingPlayerId(data.playerId);
     });
+
+    socket.on('ministerRevealAlert', (data) => {
+      console.log('📜 Minister reveal alert:', data);
+      Alert.alert('⚠️ تحذير للوزير', `المستفيد "${data.beneficiaryName}" حاول الاتصال بك!\nلقد كُشف لك.`);
+    });
     
     socket.on('culpritVotingStarted', (data) => {
       console.log('🔍 Culprit voting started');
@@ -543,6 +548,12 @@ function App() {
       socket.off('revealStep');
       socket.off('discussionStarted');
       socket.off('speakerUpdated');
+      socket.off('ministerRevealAlert');
+      socket.off('gameSettingsUpdated');
+      socket.off('newRoundStarted');
+      socket.off('roundContinued');
+      socket.off('secretHint');
+      socket.off('hostHint');
       socket.off('error');
       socket.off('connect_error');
     };
@@ -691,6 +702,8 @@ function App() {
     if (socket) {
       socket.disconnect();
     }
+    setSocket(null);
+    socketRef.current = null;
     setScreen(SCREENS.ROLE_SELECT);
     setUserRole(null);
     setPlayerName('');
@@ -1008,7 +1021,7 @@ function App() {
           <HostResultsScreen
             roundResults={roundResults}
             onContinue={handleContinue}
-            isLastRound={false}
+            isLastRound={currentRound >= totalRounds}
           />
         );
       

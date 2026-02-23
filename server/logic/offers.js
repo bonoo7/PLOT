@@ -121,16 +121,20 @@ function createOffer(io, room, sender, target, amount, type, originalSenderId = 
     });
 
     // Set Timeout to Auto-Reject/Expire
-    setTimeout(() => {
-        if (room.offers[offerId]) {
+    const expireTimer = setTimeout(() => {
+        if (room.offers && room.offers[offerId]) {
             handleOfferResponse(io, room, target, { offerId, accepted: false, timeout: true });
         }
     }, 10000);
+    offer._timer = expireTimer;
 }
 
 function handleOfferResponse(io, room, player, { offerId, accepted }) {
     const offer = room.offers ? room.offers[offerId] : null;
     if (!offer) return; // Already handled
+
+    // Clear the auto-expire timer
+    if (offer._timer) { clearTimeout(offer._timer); offer._timer = null; }
 
     delete room.offers[offerId]; // Remove from active
 

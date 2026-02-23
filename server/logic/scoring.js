@@ -169,8 +169,8 @@ function calculateScores(room, result) {
         // Rule: +1000 if revealed Culprit WITHOUT Saboteur interference
         // We need to pass investigation result data via room or player properties
         const detective = room.players.find(p => p.role === ROLE_TYPES.DETECTIVE);
-        if (detective && detective.investigatedTarget && !detective.acceptedOffer) {
-            const target = room.players.find(p => p.id === detective.investigatedTarget);
+        if (detective && detective.investigationTarget && !detective.acceptedOffer) {
+            const target = room.players.find(p => p.id === detective.investigationTarget);
             
             // Check if successful finding Culprit
             if (target && target.role === ROLE_TYPES.CULPRIT) {
