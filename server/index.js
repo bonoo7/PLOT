@@ -58,8 +58,8 @@ const {
     shouldUseAbility 
 } = require('./botAI');
 
-// DeepSeek AI Integration
-const { testConnection } = require('./deepseekAI');
+// GitHub Models AI Integration
+const { testConnection } = require('./githubAI');
 
 function getRoleName(roleId) {
     const roleInfo = getRoleInfo(roleId);
@@ -184,7 +184,7 @@ async function simulateBotDrafting(roomCode, bot) {
     const room = rooms[roomCode];
     if (!room || room.state !== 'DRAFTING') return;
     try {
-        // استخدام محرك الذكاء الجديد (DeepSeek AI) لتوليد إجابة ذكية
+        // استخدام GitHub Models AI لملء فراغات السيناريو حسب الدور
         const targetText = await generateBotAnswer(bot.role, room.currentScenario, [], room.gameMode);
         
         if (!rooms[roomCode] || rooms[roomCode].state !== 'DRAFTING') return;

@@ -2,13 +2,13 @@
  * 🤖 محرك الذكاء الصناعي للبوتات - Bot AI Engine
  * 
  * يوفر خوارزميات ذكية لتصرفات البوتات:
- * - توليد إجابات واقعية بناءً على الدور (باستخدام DeepSeek AI)
+ * - توليد إجابات واقعية بناءً على الدور (باستخدام GitHub Models AI)
  * - تحليل الإجابات وتصويت ذكي
  * - استخدام القدرات الخاصة
  */
 
 const { TEAMS, ROLE_TYPES, getRoleInfo } = require('./roles');
-const { generateAIAnswer } = require('./deepseekAI');
+const { generateAIAnswer } = require('./githubAI');
 
 // ==================== قوالب الإجابات (Fallback) ====================
 // تُستخدم فقط في حالة فشل DeepSeek API
@@ -120,19 +120,22 @@ async function generateBotAnswer(role, scenario, otherAnswers = [], gameMode = '
     return generateFallbackAnswer(role, scenario);
   }
 
-  // محاولة استخدام DeepSeek AI
+  // محاولة استخدام GitHub Models AI لملء الفراغات
   try {
     const aiAnswer = await generateAIAnswer(role, roleInfo, scenario);
     
     if (aiAnswer) {
-      console.log(`✅ AI Answer for ${roleInfo.nameAr}: ${aiAnswer.substring(0, 50)}...`);
+      console.log(`✅ AI Answer for ${roleInfo.nameAr}: ${aiAnswer.substring(0, 60)}...`);
       return aiAnswer;
     }
   } catch (error) {
     console.warn(`⚠️ فشل AI لـ ${roleInfo.nameAr}, استخدام Fallback`);
   }
   
-  // Fallback: استخدام القوالب القديمة
+  // Fallback: ملء الفراغات من القالب باستخدام الكلمات المفتاحية
+  if (scenario.template) {
+    return generateBotBlankFill(role, scenario);
+  }
   return generateFallbackAnswer(role, scenario);
 }
 
