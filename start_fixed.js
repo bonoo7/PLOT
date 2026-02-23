@@ -5,8 +5,29 @@ const os = require('os');
 const path = require('path');
 const qrcode = require('qrcode-terminal');
 
-// Force IP address as requested
-const localIP = '192.168.8.48';
+// Get local IP address dynamically
+function getLocalIP() {
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+        for (const iface of interfaces[name]) {
+            if (iface.family === 'IPv4' && !iface.internal) {
+                return iface.address;
+            }
+        }
+    }
+    return 'localhost';
+}
+
+const localIP = getLocalIP();
+
+// Update plot-mobile/.env with current IP so Expo build uses correct server
+const envContent = `EXPO_PUBLIC_DEV_SERVER_IP=${localIP}
+EXPO_PUBLIC_DEV_SERVER_PORT=3000
+EXPO_PUBLIC_PROD_SERVER_URL=http://${localIP}:3000
+`;
+const fs = require('fs');
+fs.writeFileSync(path.join(__dirname, 'plot-mobile', '.env'), envContent);
+console.log(`✅ Updated plot-mobile/.env with IP: ${localIP}`);
 
 console.log('\n╔════════════════════════════════════════════════════════════╗');
 console.log('║          🎮 الحبكة - THE PLOT GAME (FIXED) 🎮           ║');

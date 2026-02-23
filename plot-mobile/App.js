@@ -45,9 +45,9 @@ if (Platform.OS !== 'web') {
 }
 
 // Server configuration
-const DEV_SERVER_IP = process.env.EXPO_PUBLIC_DEV_SERVER_IP || '192.168.8.48';
+const DEV_SERVER_IP = process.env.EXPO_PUBLIC_DEV_SERVER_IP || 'localhost';
 const DEV_SERVER_PORT = process.env.EXPO_PUBLIC_DEV_SERVER_PORT || 3000;
-const PROD_SERVER_URL = process.env.EXPO_PUBLIC_PROD_SERVER_URL || 'http://192.168.8.48:3000';
+const PROD_SERVER_URL = process.env.EXPO_PUBLIC_PROD_SERVER_URL || `http://localhost:3000`;
 
 const SOCKET_URL = Platform.OS === 'web'
   ? (typeof window !== 'undefined' ? window.location.origin : PROD_SERVER_URL)

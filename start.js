@@ -2,10 +2,11 @@
 
 const { exec, execSync } = require('child_process');
 const os = require('os');
+const fs = require('fs');
 const path = require('path');
 const qrcode = require('qrcode-terminal');
 
-// Get local IP address
+// Get local IP address dynamically
 function getLocalIP() {
     const interfaces = os.networkInterfaces();
     for (const name of Object.keys(interfaces)) {
@@ -18,8 +19,16 @@ function getLocalIP() {
     return 'localhost';
 }
 
-const localIP = '192.168.8.19'; // Forced IP address
-console.log('DEBUG: localIP is set to ' + localIP);
+const localIP = getLocalIP();
+console.log('✅ IP detected: ' + localIP);
+
+// Update plot-mobile/.env with current IP
+const envContent = `EXPO_PUBLIC_DEV_SERVER_IP=${localIP}
+EXPO_PUBLIC_DEV_SERVER_PORT=3000
+EXPO_PUBLIC_PROD_SERVER_URL=http://${localIP}:3000
+`;
+fs.writeFileSync(path.join(__dirname, 'plot-mobile', '.env'), envContent);
+console.log(`✅ Updated plot-mobile/.env with IP: ${localIP}`);
 console.log('\n╔════════════════════════════════════════════════════════════╗');
 console.log('║          🎮 الحبكة - THE PLOT GAME 🎮                    ║');
 console.log('╚════════════════════════════════════════════════════════════╝\n');
