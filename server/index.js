@@ -55,8 +55,9 @@ const {
     analyzeSuspicion,
     generateBotVote,
     generateQualityVote,
-    generateSmartCulpritVote, // 🆕 التصويت بالمعرفة المحدودة
-    shouldUseAbility 
+    generateSmartCulpritVote,
+    generateSmartQualityVote, // 🆕 Smart Quality Vote
+    shouldUseAbility
 } = require('./botAI');
 
 // GitHub Models AI Integration
@@ -352,23 +353,32 @@ function startQualityVoting(roomCode) {
                 // ✅ GUARD: Check if bot already voted
                 if (room.qualityVotes[p.id] !== undefined) return;
 
-                const botIndex = room.players.findIndex(pl => pl.id === p.id);
-                const scenarioTexts = room.players.map(player => room.answers[player.id] || '');
-                let qualityVote = generateQualityVote(scenarioTexts);
+                // 🤖 Smart Bot Quality Vote
+                const botKnowledge = buildBotKnowledge(p, room);
+                const playersPublic = room.players.map(pl => ({ id: pl.id, name: pl.name })); // just for ID mapping
+                const answers = {};
+                room.players.forEach(pl => { answers[pl.id] = room.answers[pl.id] || ''; });
+                
+                let qualityVoteIndex = generateSmartQualityVote(
+                    botKnowledge,
+                    playersPublic,
+                    answers,
+                    room.currentScenario
+                );
 
-                // Prevent self-vote
-                if (qualityVote === botIndex) {
-                    qualityVote = (botIndex + 1) % room.players.length;
+                // Fallback / Safety: Ensure index is valid
+                if (qualityVoteIndex === undefined || qualityVoteIndex < 0 || qualityVoteIndex >= room.players.length) {
+                     qualityVoteIndex = (room.players.findIndex(pl => pl.id === p.id) + 1) % room.players.length;
                 }
 
-                room.qualityVotes[p.id] = qualityVote;
+                room.qualityVotes[p.id] = qualityVoteIndex;
                 
                 // 🆕 إرسال للهوست أن البوت صوّت
                 io.to(room.hostId).emit('voteReceived', {
                     phase: 'QUALITY',
                     playerId: p.id,
                     playerName: p.name,
-                    choice: qualityVote,
+                    choice: qualityVoteIndex,
                     totalVotes: Object.keys(room.qualityVotes).length,
                     totalPlayers: room.players.length
                 });
@@ -510,14 +520,14 @@ function startDramaticReveal(roomCode) {
                 }
             });
         }, currentDelay);
-        currentDelay += 5000; // 5 seconds for dramatic hint
+        currentDelay += 5000; // 5 seconds duration
     }
 
     // بعد انتهاء العرض: الانتقال مباشرة إلى التصويت على الجاني
     setTimeout(() => {
         console.log(`⏰ Dramatic reveal finished. Starting discussion for room ${roomCode}`);
         startDiscussion(roomCode);
-    }, currentDelay + 1000);
+    }, currentDelay);
 }
 
 // ============================================
@@ -1208,8 +1218,8 @@ io.on('connection', (socket) => {
                 ROLE_TYPES.WITNESS,     // 2. الشاهد
                 ROLE_TYPES.DETECTIVE,   // 3. المحقق
                 ROLE_TYPES.SABOTEUR,    // 4. المخرب
-                ROLE_TYPES.MINISTER,    // 5. الوزير
-                ROLE_TYPES.BENEFICIARY, // 6. المستفيد
+                ROLE_TYPES.BENEFICIARY, // 5. المستفيد (قبل الوزير)
+                ROLE_TYPES.MINISTER,    // 6. الوزير
                 ROLE_TYPES.SEER,        // 7. العراف
                 ROLE_TYPES.MASTERMIND   // 8. العقل المدبر
             ];
@@ -1571,6 +1581,9 @@ io.on('connection', (socket) => {
                 };
             }
 
+            // Store specialInfo on player object for use in voting and abilities
+            player.specialInfo = specialInfo;
+
             let roleData = {
                 role: role,
                 roleName: roleInfo.nameAr,
@@ -1590,10 +1603,8 @@ io.on('connection', (socket) => {
             };
 
             io.to(player.id).emit('roleAssigned', roleData);
-            // 🤖 حفظ specialInfo على البوت لاستخدامه في التصويت والقدرات
-            if (player.isBot && specialInfo) {
-                player.specialInfo = specialInfo;
-            }
+            // specialInfo is now stored on all players, including bots
+            // (see assignment above)
         });
         
         // Notify Host

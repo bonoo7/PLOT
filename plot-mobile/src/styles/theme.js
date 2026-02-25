@@ -24,6 +24,8 @@ export const theme = {
     paperclip: '#B8B8B8',           // رمادي فضي للمشابك
     
     // ألوان الحالات
+    primary: '#2D5F2E', // ✅ Added primary
+    secondary: '#E1AD01', // ✅ Added secondary
     success: '#2D5F2E',
     warning: '#E1AD01',
     error: '#B22222',

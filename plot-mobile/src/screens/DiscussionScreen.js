@@ -4,9 +4,18 @@ import MinimalLayout from '../components/minimal/MinimalLayout';
 import MinimalHeader from '../components/minimal/MinimalHeader';
 import MinimalCard from '../components/minimal/MinimalCard';
 import MinimalButton from '../components/minimal/MinimalButton';
+import { PlayerBadge } from '../components/minimal/PlayerBadge';
 import { theme } from '../styles/theme';
 import { spacing, fonts, borderRadius } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
+
+console.log('DiscussionScreen Imports Check:', {
+    MinimalLayout: !!MinimalLayout,
+    MinimalHeader: !!MinimalHeader,
+    MinimalCard: !!MinimalCard,
+    MinimalButton: !!MinimalButton,
+    PlayerBadge: !!PlayerBadge
+});
 
 /**
  * DiscussionScreen - Manages the discussion phase
@@ -23,9 +32,11 @@ export const DiscussionScreen = ({
     hint, // Added hint prop
     roomCode // Added roomCode prop
 }) => {
+    // Safety check for imports
+    if (!MinimalLayout) return <Text>Error: MinimalLayout missing</Text>;
+    
     const { isDesktop } = useResponsiveLayout();
-    const [showScenarios, setShowScenarios] = useState(false);
-
+    const [showScenarios, setShowScenarios] = useState(true); // Default to true per request "better/clearer"
     const speakingPlayer = players.find(p => p.id === speakingPlayerId);
 
     return (
@@ -90,7 +101,24 @@ export const DiscussionScreen = ({
                                         <ScrollView horizontal contentContainerStyle={styles.scenariosScrollContent}>
                                             {scenarios.map((s, i) => (
                                                 <View key={i} style={styles.miniScenarioCard}>
-                                                    <Text numberOfLines={4} style={styles.miniScenarioText}>{s.text || s.answer}</Text>
+                                                    <ScrollView style={{flex: 1}}>
+                                                        <Text style={styles.miniScenarioText}>{s.text || s.answer}</Text>
+                                                    </ScrollView>
+                                                    
+                                                    {/* Voters Display */}
+                                                    {s.voters && s.voters.length > 0 && (
+                                                        <View style={styles.votersContainer}>
+                                                            <Text style={styles.votersLabel}>المصوتون:</Text>
+                                                            <View style={styles.votersList}>
+                                                                {s.voters.map((v, idx) => (
+                                                                    <View key={idx} style={styles.voterBadge}>
+                                                                        <Text style={styles.voterName}>{typeof v === 'object' ? v.name : v}</Text>
+                                                                    </View>
+                                                                ))}
+                                                            </View>
+                                                        </View>
+                                                    )}
+
                                                     <View style={styles.miniScenarioMeta}>
                                                         <Text style={styles.miniScenarioAuthor}>✍️ {s.author}</Text>
                                                         <Text style={styles.miniScenarioVotes}>⭐ {s.voteCount || 0}</Text>
@@ -119,12 +147,16 @@ export const DiscussionScreen = ({
                                             ]}
                                             onPress={() => onSelectSpeaker(player.id === speakingPlayerId ? null : player.id)}
                                         >
-                                            <Text style={[
-                                                styles.playerName,
-                                                speakingPlayerId === player.id && styles.playerNameActive
-                                            ]}>
-                                                {player.name}
-                                            </Text>
+                                            <PlayerBadge 
+                                                name={player.name}
+                                                role={player.role}
+                                                score={player.score}
+                                                isSelf={false}
+                                                isActive={speakingPlayerId === player.id}
+                                                isEliminated={player.eliminated}
+                                                size="small"
+                                                style={{borderWidth: 0, backgroundColor: 'transparent', padding: 0}}
+                                            />
                                             {speakingPlayerId === player.id && <Text style={styles.micStatus}>🎤</Text>}
                                         </TouchableOpacity>
                                     ))}
@@ -314,15 +346,6 @@ const styles = StyleSheet.create({
         backgroundColor: theme.colors.primary,
         borderColor: theme.colors.primary,
     },
-    playerName: {
-        color: '#FFF',
-        fontFamily: theme.fonts.main,
-        fontSize: fonts.small,
-    },
-    playerNameActive: {
-        color: '#FFF',
-        fontFamily: theme.fonts.bold,
-    },
     micStatus: {
         fontSize: 12,
     },
@@ -350,40 +373,84 @@ const styles = StyleSheet.create({
         fontSize: fonts.small,
     },
     scenariosListContainer: {
-        height: 140,
+        height: 220, // Increased height
         width: '100%',
     },
     scenariosScrollContent: {
-        gap: 10,
+        gap: 15, // Increased gap
         paddingHorizontal: 10,
+        paddingBottom: 10,
     },
     miniScenarioCard: {
-        width: 200,
-        height: 120,
+        width: 280, // Increased width
+        height: 200, // Increased height
         backgroundColor: '#FDF5E6',
         borderRadius: 8,
-        padding: 10,
+        padding: 12,
         justifyContent: 'space-between',
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.25,
+        shadowRadius: 3.84,
+        elevation: 5,
+        borderWidth: 1,
+        borderColor: '#D2B48C',
     },
     miniScenarioText: {
         fontFamily: theme.fonts.main,
-        fontSize: 10,
+        fontSize: 12, // Slightly larger text
         color: '#333',
-        lineHeight: 14,
+        lineHeight: 18,
+        textAlign: 'right', // RTL
     },
     miniScenarioMeta: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginTop: 5,
+        marginTop: 8,
+        paddingTop: 8,
+        borderTopWidth: 1,
+        borderTopColor: '#E0E0E0',
     },
     miniScenarioAuthor: {
-        fontSize: 9,
+        fontSize: 10,
         color: '#666',
         fontWeight: 'bold',
     },
     miniScenarioVotes: {
-        fontSize: 9,
+        fontSize: 12,
         color: theme.colors.primary,
         fontWeight: 'bold',
+    },
+    
+    // Voters
+    votersContainer: {
+        marginTop: 8,
+        padding: 4,
+        backgroundColor: 'rgba(0,0,0,0.03)',
+        borderRadius: 4,
+    },
+    votersLabel: {
+        fontSize: 10,
+        color: '#888',
+        marginBottom: 4,
+        textAlign: 'right',
+    },
+    votersList: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 4,
+        justifyContent: 'flex-end', // RTL
+    },
+    voterBadge: {
+        backgroundColor: '#FFF',
+        paddingHorizontal: 6,
+        paddingVertical: 2,
+        borderRadius: 10,
+        borderWidth: 1,
+        borderColor: '#DDD',
+    },
+    voterName: {
+        fontSize: 9,
+        color: '#555',
     },
 });

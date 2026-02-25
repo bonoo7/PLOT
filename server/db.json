@@ -11,49 +11,50 @@
     },
     "Bot 1 🤖": {
       "name": "Bot 1 🤖",
-      "gamesPlayed": 52,
-      "wins": 24,
-      "totalScore": 157800,
+      "gamesPlayed": 60,
+      "wins": 26,
+      "totalScore": 166600,
       "rolesPlayed": {
         "SPY": 4,
-        "WITNESS": 5,
-        "DETECTIVE": 12,
+        "WITNESS": 8,
+        "DETECTIVE": 14,
         "ARCHITECT": 3,
-        "CULPRIT": 11,
+        "CULPRIT": 13,
         "CHIEF_DETECTIVE": 5,
-        "SABOTEUR": 12
+        "SABOTEUR": 13
       }
     },
     "Bot 2 🤖": {
       "name": "Bot 2 🤖",
-      "gamesPlayed": 52,
-      "wins": 17,
-      "totalScore": 146100,
+      "gamesPlayed": 60,
+      "wins": 20,
+      "totalScore": 159000,
       "rolesPlayed": {
-        "DETECTIVE": 17,
+        "DETECTIVE": 18,
         "ARCHITECT": 5,
         "SPY": 3,
-        "WITNESS": 19,
+        "WITNESS": 21,
         "TRICKSTER": 1,
         "FORGER": 2,
-        "CULPRIT": 5
+        "CULPRIT": 8,
+        "SABOTEUR": 2
       }
     },
     "Bot 3 🤖": {
       "name": "Bot 3 🤖",
-      "gamesPlayed": 52,
-      "wins": 3,
-      "totalScore": 170200,
+      "gamesPlayed": 60,
+      "wins": 6,
+      "totalScore": 179600,
       "rolesPlayed": {
         "ARCHITECT": 9,
         "SPY": 4,
-        "DETECTIVE": 3,
-        "WITNESS": 6,
+        "DETECTIVE": 6,
+        "WITNESS": 8,
         "TRICKSTER": 2,
         "LAWYER": 1,
         "INFILTRATOR": 2,
         "SABOTEUR": 9,
-        "CULPRIT": 16
+        "CULPRIT": 19
       }
     },
     "Nuclei": {
@@ -283,6 +284,42 @@
       "totalScore": 7200,
       "rolesPlayed": {
         "WITNESS": 12
+      }
+    },
+    "والخوف": {
+      "name": "والخوف",
+      "gamesPlayed": 2,
+      "wins": 0,
+      "totalScore": 0,
+      "rolesPlayed": {
+        "DETECTIVE": 2
+      }
+    },
+    "Dec": {
+      "name": "Dec",
+      "gamesPlayed": 2,
+      "wins": 0,
+      "totalScore": 400,
+      "rolesPlayed": {
+        "DETECTIVE": 2
+      }
+    },
+    "M7": {
+      "name": "M7",
+      "gamesPlayed": 1,
+      "wins": 0,
+      "totalScore": 400,
+      "rolesPlayed": {
+        "WITNESS": 1
+      }
+    },
+    "Muua": {
+      "name": "Muua",
+      "gamesPlayed": 3,
+      "wins": 0,
+      "totalScore": 0,
+      "rolesPlayed": {
+        "WITNESS": 3
       }
     }
   },
@@ -1759,6 +1796,214 @@
         }
       ],
       "timestamp": "2026-02-25T14:29:21.103Z"
+    },
+    {
+      "roomCode": "FBYT",
+      "players": [
+        {
+          "name": "والخوف",
+          "score": 0,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 2700,
+          "role": "CULPRIT"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 2200,
+          "role": "SABOTEUR"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 250,
+          "role": "WITNESS"
+        }
+      ],
+      "timestamp": "2026-02-25T15:44:18.824Z"
+    },
+    {
+      "roomCode": "FBYT",
+      "players": [
+        {
+          "name": "والخوف",
+          "score": 0,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 2700,
+          "role": "CULPRIT"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 2200,
+          "role": "SABOTEUR"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 250,
+          "role": "WITNESS"
+        }
+      ],
+      "timestamp": "2026-02-25T15:45:10.273Z"
+    },
+    {
+      "roomCode": "WORW",
+      "players": [
+        {
+          "name": "Dec",
+          "score": 200,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 400,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 200,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 2500,
+          "role": "CULPRIT"
+        }
+      ],
+      "timestamp": "2026-02-25T16:08:32.182Z"
+    },
+    {
+      "roomCode": "WORW",
+      "players": [
+        {
+          "name": "Dec",
+          "score": 200,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 400,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 200,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 2500,
+          "role": "CULPRIT"
+        }
+      ],
+      "timestamp": "2026-02-25T16:09:32.173Z"
+    },
+    {
+      "roomCode": "OZFZ",
+      "players": [
+        {
+          "name": "M7",
+          "score": 400,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 2000,
+          "role": "SABOTEUR"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 0,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 2700,
+          "role": "CULPRIT"
+        }
+      ],
+      "timestamp": "2026-02-25T16:30:04.603Z"
+    },
+    {
+      "roomCode": "MUUA",
+      "players": [
+        {
+          "name": "Muua",
+          "score": 0,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 200,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 2700,
+          "role": "CULPRIT"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 400,
+          "role": "DETECTIVE"
+        }
+      ],
+      "timestamp": "2026-02-25T16:36:47.782Z"
+    },
+    {
+      "roomCode": "MUUA",
+      "players": [
+        {
+          "name": "Muua",
+          "score": 0,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 200,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 2700,
+          "role": "CULPRIT"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 400,
+          "role": "DETECTIVE"
+        }
+      ],
+      "timestamp": "2026-02-25T16:37:42.216Z"
+    },
+    {
+      "roomCode": "MUUA",
+      "players": [
+        {
+          "name": "Muua",
+          "score": 0,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 1 🤖",
+          "score": 200,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 2 🤖",
+          "score": 2700,
+          "role": "CULPRIT"
+        },
+        {
+          "name": "Bot 3 🤖",
+          "score": 400,
+          "role": "DETECTIVE"
+        }
+      ],
+      "timestamp": "2026-02-25T16:37:43.362Z"
     }
   ]
 }

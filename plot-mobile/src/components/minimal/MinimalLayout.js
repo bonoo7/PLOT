@@ -8,12 +8,6 @@ import { theme } from '../../styles/theme';
 
 /**
  * MinimalLayout - The base wrapper for all V3 minimalist screens.
- * Enforces:
- * 1. Full screen noir background
- * 2. No scrolling by default (content must fit)
- * 3. Centralized content container
- * 4. Immersive mode on Android (hidden navigation bar)
- * 5. Optional persistent Role Reveal button
  */
 const MinimalLayout = ({ children, style, roleData, roomCode }) => {
   const { isDesktop } = useResponsiveLayout();
@@ -47,11 +41,6 @@ const MinimalLayout = ({ children, style, roleData, roomCode }) => {
       
       // Run immediately
       enableImmersiveMode();
-      
-      // Add listener for visibility changes (if user swipes up, try to hide again after delay?)
-      // Note: expo-navigation-bar doesn't have a direct "onShow" listener easily accessible without native code,
-      // but we can re-enforce it on layout updates or focus.
-      // For now, let's just make sure we set the background color too.
     }
   }, []);
 
@@ -135,11 +124,7 @@ const MinimalLayout = ({ children, style, roleData, roomCode }) => {
         <View style={[
           styles.container, 
           { 
-            // On desktop/wide screens, allow up to 1200px but with flex to fill if needed
-            // On mobile, use 100%
             maxWidth: isDesktop ? 1400 : '100%',
-            // Padding logic: Large Desktop (S), Mobile (S), Medium (M/L) handled by responsive.js?
-            // User says it's too narrow. Let's use reduced padding.
             padding: isDesktop ? spacing.m : spacing.s 
           },
           style
@@ -150,23 +135,38 @@ const MinimalLayout = ({ children, style, roleData, roomCode }) => {
         {/* Persistent Room Code Badge */}
         {renderRoomCode()}
 
-        {/* Persistent Role Button */}
+        {/* Persistent Role Badge & Score */}
         {roleData && (
             <>
-                <TouchableOpacity 
-                    style={styles.roleButton}
-                    onPress={() => setShowRole(true)}
-                    activeOpacity={0.8}
-                >
-                    {theme.roleImages && theme.roleImages[roleData.role] ? (
-                        <Image 
-                            source={theme.roleImages[roleData.role]} 
-                            style={styles.roleButtonImage}
-                        />
-                    ) : (
-                        <Text style={styles.roleButtonIcon}>🆔</Text>
+                <View style={styles.roleContainer}>
+                    {/* Score Badge (appears to the left of the image) */}
+                    {(roleData.totalScore !== undefined || roleData.score !== undefined) && (
+                        <View style={styles.scoreBadge}>
+                            <Text style={styles.scoreText}>
+                                {roleData.totalScore !== undefined ? roleData.totalScore : roleData.score}
+                            </Text>
+                            <Text style={styles.scoreIcon}>💰</Text>
+                        </View>
                     )}
-                </TouchableOpacity>
+
+                    {/* Role Image Button */}
+                    <TouchableOpacity 
+                        style={styles.roleButton}
+                        onPress={() => setShowRole(true)}
+                        activeOpacity={0.8}
+                    >
+                        {theme.roleImages && theme.roleImages[roleData.role] ? (
+                            <Image 
+                                source={theme.roleImages[roleData.role]} 
+                                style={styles.roleButtonImage}
+                            />
+                        ) : (
+                            <View style={[styles.roleButtonImage, {backgroundColor: '#333', justifyContent: 'center', alignItems: 'center'}]}>
+                                <Text style={styles.roleButtonIcon}>🆔</Text>
+                            </View>
+                        )}
+                    </TouchableOpacity>
+                </View>
 
                 <Modal
                     visible={showRole}
@@ -219,7 +219,7 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     height: '100%',
-    backgroundColor: '#1a1410', // Fallback color
+    backgroundColor: '#1a1410', 
   },
   safeArea: {
     flex: 1,
@@ -229,35 +229,71 @@ const styles = StyleSheet.create({
     flex: 1,
     width: '100%',
     alignSelf: 'center',
-    justifyContent: 'center', // Default to center vertically
-    alignItems: 'center',     // Default to center horizontally
+    justifyContent: 'center', 
+    alignItems: 'center',     
   },
   
-  // Role Button & Modal
-  roleButton: {
+  // Role Container (Top Right)
+  roleContainer: {
       position: 'absolute',
-      top: 40, // Below status bar
-      right: 20, // RTL: positions on visual LEFT, LTR: positions on visual RIGHT
-      width: 60,
-      height: 60,
-      borderRadius: 30,
-      justifyContent: 'center',
+      top: 40, 
+      right: 20, 
+      flexDirection: 'row',
       alignItems: 'center',
       zIndex: 100,
-  },
-  roleButtonIcon: { fontSize: 16 },
-  roleButtonImage: {
-    width: 50,
-    height: 50,
-    resizeMode: 'contain',
-    borderRadius: 25,
+      gap: 8,
   },
   
-  // Room Code Badge
+  roleButton: {
+      width: 70, // Slightly larger
+      height: 70,
+      borderRadius: 35,
+      justifyContent: 'center',
+      alignItems: 'center',
+      borderWidth: 2,
+      borderColor: '#DAA520', // Gold border
+      backgroundColor: '#FFF',
+      shadowColor: "#000",
+      shadowOffset: { width: 0, height: 2 },
+      shadowOpacity: 0.25,
+      shadowRadius: 3.84,
+      elevation: 5,
+  },
+  roleButtonIcon: { fontSize: 24 },
+  roleButtonImage: {
+    width: 66,
+    height: 66,
+    resizeMode: 'contain',
+    borderRadius: 33,
+  },
+  
+  // Score Badge
+  scoreBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      backgroundColor: 'rgba(0,0,0,0.8)',
+      paddingHorizontal: 10,
+      paddingVertical: 4,
+      borderRadius: 20,
+      borderWidth: 1,
+      borderColor: '#DAA520',
+  },
+  scoreText: {
+      color: '#FFD700',
+      fontSize: 14,
+      fontFamily: theme.fonts.bold,
+      fontWeight: 'bold',
+      marginRight: 4,
+  },
+  scoreIcon: {
+      fontSize: 12,
+  },
+
+  // Room Code Badge (Top Left)
   roomCodeBadge: {
       position: 'absolute',
-      top: 40,
-      left: 20, // Opposite side of Role Button
+      top: 50,
+      left: 20, 
       backgroundColor: 'rgba(0,0,0,0.6)',
       paddingHorizontal: 12,
       paddingVertical: 6,
@@ -282,8 +318,6 @@ const styles = StyleSheet.create({
     width: 120,
     height: 120,
   },
-
-  
   modalOverlay: {
       flex: 1,
       backgroundColor: 'rgba(0,0,0,0.85)',
@@ -350,6 +384,12 @@ const styles = StyleSheet.create({
       height: 1,
       backgroundColor: '#D2B48C',
       marginVertical: spacing.m,
+  },
+  intelBox: {
+      backgroundColor: 'rgba(0,0,0,0.05)',
+      padding: spacing.s,
+      borderRadius: borderRadius.small,
+      marginBottom: spacing.s,
   }
 });
 

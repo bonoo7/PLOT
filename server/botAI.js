@@ -150,6 +150,7 @@ async function generateBotAnswer(role, scenario, otherAnswers = [], gameMode = '
 
 /**
  * ⚡ Blitz Mode: توليد ملء فراغ للبوت مع تنويع عشوائي لكل بوت
+ * يحاول تكوين جمل مفيدة بدلاً من مجرد حشو كلمات
  */
 function generateBotBlankFill(role, scenario) {
     const template = scenario.template;
@@ -158,51 +159,129 @@ function generateBotBlankFill(role, scenario) {
     const parts = template.split('_____');
     if (parts.length <= 1) return template; // No blanks
 
-    const keywords = [...scenario.keywords]; // نسخة للخلط
-    // خلط الكلمات المفتاحية لتنويع إجابات كل بوت
+    // 1. توسيع قائمة الكلمات لتشمل كلمات ربط وصفات ويافعة (Enhanced Diversity)
+    const keywords = [...scenario.keywords];
+    const adjectives = [
+        "غامض", "سريع", "كبير", "مخيف", "غريب", "واضح", "صغير",
+        "غريب الأطوار", "مريب", "مشبوه", "صارخ", "عميق", "خفيف",
+        "ثقيل", "حاد", "ناعم", "قاسي", "لطيف"
+    ];
+    const actions = [
+        "ركض", "اختفى", "ظهر", "صرخ", "همس", "هرب",
+        "اقتحم", "انسحب", "اختبأ", "تسلل", "انطلق", "توقف"
+    ];
+    const conjunctions = [
+        "مع", "ضد", "بواسطة", "من خلال", "بسبب", "بعد"
+    ];
+    
+    // خلط الكلمات المفتاحية
     for (let i = keywords.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [keywords[i], keywords[j]] = [keywords[j], keywords[i]];
     }
 
     let fullAnswer = "";
+    let usedKeywords = 0;
     
     for (let i = 0; i < parts.length - 1; i++) {
         fullAnswer += parts[i];
         
         let word = "";
+        const remainingBlanks = (parts.length - 1) - i;
         
-        // فريق العدالة: كلمات مفتاحية حقيقية (عشوائية)
-        if ([ROLE_TYPES.SEER, ROLE_TYPES.DETECTIVE, ROLE_TYPES.WITNESS, ROLE_TYPES.MINISTER].includes(role)) {
-            // الشاهد أحياناً يخطئ (30%)
-            if (role === ROLE_TYPES.WITNESS && Math.random() < 0.3) {
-                const confused = ["شيء ما", "لا أتذكر", "ربما", "شيئاً غريباً"];
+        // استراتيجية اختيار الكلمة حسب الدور (Enhanced Role Logic)
+        
+        // 🕵️‍♂️ فريق العدالة (يحاولون استخدام الكلمات الصحيحة)
+        if ([ROLE_TYPES.SEER, ROLE_TYPES.DETECTIVE, ROLE_TYPES.MINISTER].includes(role)) {
+            // العراف يعرف كل شيء تقريباً
+            if (role === ROLE_TYPES.SEER && Math.random() < 0.85) {
+                word = keywords[usedKeywords % keywords.length] || "الحقيقة";
+                usedKeywords++;
+            } 
+            // المحقق يحاول الربط بحذر
+            else if (role === ROLE_TYPES.DETECTIVE) {
+                if (Math.random() < 0.7) {
+                    word = keywords[usedKeywords % keywords.length] || "دليل";
+                    usedKeywords++;
+                } else {
+                    word = adjectives[Math.floor(Math.random() * adjectives.length)];
+                }
+            }
+            // الوزير رسمي وواضح
+            else {
+                if (Math.random() < 0.75) {
+                    word = keywords[usedKeywords % keywords.length] || "واقعة";
+                    usedKeywords++;
+                } else {
+                    word = actions[Math.floor(Math.random() * actions.length)];
+                }
+            }
+        } 
+        
+        // 👁️ الشاهد (ذاكرة مشوشة وضبابية)
+        else if (role === ROLE_TYPES.WITNESS) {
+            if (Math.random() < 0.45) {
+                const confused = [
+                    "شخص ما", "شيء أسود", "حركة سريعة", "صوت عالي",
+                    "ظل غريب", "همسة خافتة", "خطوات ثقيلة", "ضجة غريبة"
+                ];
                 word = confused[Math.floor(Math.random() * confused.length)];
             } else {
-                word = keywords[i % keywords.length] || "شيء ما";
+                word = keywords[usedKeywords % keywords.length];
+                usedKeywords++;
             }
-        } 
-        
-        // فريق الجريمة: خلط بين الحقيقة والكذب
-        else if ([ROLE_TYPES.CULPRIT, ROLE_TYPES.MASTERMIND, ROLE_TYPES.BENEFICIARY].includes(role)) {
-            const useTruth = role === ROLE_TYPES.BENEFICIARY ? Math.random() < 0.7 : Math.random() < 0.4;
-            if (useTruth) {
-                word = keywords[i % keywords.length] || "شيء";
-            } else {
-                // الجاني يستخدم كلمة مختلفة (وليس بالضرورة tricksterWord)
-                const decoys = ["أمر عادي", "موقف اعتيادي", keywords[(i + 1) % keywords.length] || scenario.tricksterWord];
-                word = decoys[Math.floor(Math.random() * decoys.length)];
-            }
-        } 
-        
-        // المخرب: دائماً tricksterWord في أحد الفراغات
-        else if (role === ROLE_TYPES.SABOTEUR) {
-            word = i === 0 ? (scenario.tricksterWord || "فيل") : (keywords[i % keywords.length] || "شيء");
         }
         
+        // 🎭 فريق الجريمة (مراوغة وتضليل)
+        else if ([ROLE_TYPES.CULPRIT, ROLE_TYPES.MASTERMIND, ROLE_TYPES.BENEFICIARY].includes(role)) {
+            // الجاني يتجنب الكلمات الدقيقة جداً ويستخدم التلميحات الكاذبة
+            if (role === ROLE_TYPES.CULPRIT) {
+                const evasive = [
+                    "لا أحد", "مكان آخر", "وقت مختلف", "شخص غريب",
+                    "قد لا يكون", "ربما", "أعتقد أنني", "لست متأكداً"
+                ];
+                word = Math.random() < 0.55 ? evasive[Math.floor(Math.random() * evasive.length)] : keywords[usedKeywords % keywords.length];
+                if (word === keywords[usedKeywords % keywords.length]) usedKeywords++;
+            }
+            // العقل المدبر يخلط الأوراق بذكاء
+            else if (role === ROLE_TYPES.MASTERMIND) {
+                const misleading = [
+                    "مؤامرة", "خطة", "اتفاق", "سر",
+                    "استراتيجية", "حساب", "ترتيب", "توافق"
+                ];
+                word = Math.random() < 0.65 ? misleading[Math.floor(Math.random() * misleading.length)] : keywords[(usedKeywords + 1) % keywords.length];
+            }
+            // المستفيد يهتم بالمال/المكسب والفائدة
+            else {
+                const greedy = [
+                    "نقود", "ثروة", "فرصة", "ذهب",
+                    "فائدة", "مكسب", "حظ", "ملكية"
+                ];
+                word = Math.random() < 0.45 ? greedy[Math.floor(Math.random() * greedy.length)] : keywords[usedKeywords % keywords.length];
+                if (word === keywords[usedKeywords % keywords.length]) usedKeywords++;
+            }
+        } 
+        
+        // 🧨 المخرب (كلمة الخداع + فوضى وفوضوية)
+        else if (role === ROLE_TYPES.SABOTEUR) {
+            // يجب أن يضع الكلمة المخادعة في مكان ما
+            const mustPlaceTrickster = !fullAnswer.includes(scenario.tricksterWord) && remainingBlanks === 1;
+            
+            if (mustPlaceTrickster || Math.random() < 0.35) {
+                word = scenario.tricksterWord || "فيل";
+            } else {
+                const chaos = [
+                    "انفجار", "ضحك", "سقوط", "طيران",
+                    "طير", "عاصفة", "زلزال", "ألعاب"
+                ];
+                word = chaos[Math.floor(Math.random() * chaos.length)];
+            }
+        }
+        
+        // 👤 مواطن (عشوائي مع توازن)
         else {
-            const randomWords = ["لا أعلم", "ربما", "شيء غريب", "نسيت"];
-            word = randomWords[Math.floor(Math.random() * randomWords.length)];
+            const randomMix = [...keywords, ...adjectives, ...actions, "لا أعلم", "ربما", "أعتقد"];
+            word = randomMix[Math.floor(Math.random() * randomMix.length)];
         }
         
         fullAnswer += word;
@@ -569,53 +648,145 @@ function shouldUseAbility(role, roundNumber, difficulty = 'medium') {
  * @param {Object} scenario - السيناريو الحالي (keywords, tricksterWord…)
  */
 function generateSmartCulpritVote(botKnowledge, playersPublic, answers, scenario) {
-  const { myId, myRole, myTeam, knownCrimeTeam = [], knownBeneficiaryId, investigationResult } = botKnowledge;
+  const { myId, myRole, myTeam, knownCrimeTeam = [], knownDetectiveId, knownBeneficiaryId, investigationResult } = botKnowledge;
 
-  const others = playersPublic.filter(p => p.id !== myId);
-  if (others.length === 0) return null;
+  // استبعاد نفسي من القائمة
+  const candidates = playersPublic.filter(p => p.id !== myId);
+  if (candidates.length === 0) return null;
 
-  // تحليل الشك بناءً على النص فقط — لا نمرر الدور لأننا لا نعرفه
-  const suspicions = others.map(p => ({
-    playerId: p.id,
-    playerName: p.name,
-    suspicion: analyzeSuspicion(answers[p.id] || '', scenario, null),
-    answer: answers[p.id] || ''
-  }));
-  const sorted = [...suspicions].sort((a, b) => b.suspicion - a.suspicion);
+  // 1. حساب مستوى الشك لكل لاعب بناءً على إجابته
+  const suspicions = candidates.map(p => {
+    const text = answers[p.id] || "";
+    let score = analyzeSuspicion(text, scenario, null); // تحليل النص فقط
+    return { playerId: p.id, suspicion: score };
+  });
 
-  // ── فريق الجريمة ──
+  // ترتيب المرشحين من الأكثر شكاً للأقل
+  suspicions.sort((a, b) => b.suspicion - a.suspicion);
+
+  // 2. منطق التصويت حسب الدور (Role-Based Logic)
+
+  // 🕵️‍♂️ المحقق (Detective)
+  if (myRole === ROLE_TYPES.DETECTIVE) {
+    // إذا فحص شخصاً ووجده من فريق الجريمة، يصوت له فوراً
+    if (investigationResult && investigationResult.targetTeam === TEAMS.CRIME) {
+      // (إلا إذا كان هناك تخريب، النتيجة قد تكون خاطئة، لكن المحقق يثق بها)
+      console.log(`🕵️ Detective found Crime Team member: ${investigationResult.targetName}`);
+      return investigationResult.targetId;
+    }
+    // إذا فحص شخصاً ووجده بريئاً، يتجنب التصويت له
+    if (investigationResult && investigationResult.targetTeam === TEAMS.JUSTICE) {
+       // يختار الأكثر شكاً من الباقين (غير المفحوص)
+       const others = suspicions.filter(s => s.playerId !== investigationResult.targetId);
+       return others.length > 0 ? others[0].playerId : suspicions[0].playerId;
+    }
+  }
+
+  // 🧠 العقل المدبر (Mastermind)
+  if (myRole === ROLE_TYPES.MASTERMIND) {
+    // يعرف كل فريق الجريمة، لذا يصوت لأي شخص *ليس* منهم (لتشتيت الانتباه)
+    // يفضل التصويت للمحقق إذا كان معروفاً له (عن طريق الوزير مثلاً - لو أضفنا ميكانيكا تواصل)
+    // حالياً: يصوت للأكثر شكاً من الأبرياء
+    const innocentSuspects = suspicions.filter(s => !knownCrimeTeam.includes(s.playerId));
+    if (innocentSuspects.length > 0) {
+        // يصوت للأكثر شكاً بينهم ليبدو كمواطن صالح
+        return innocentSuspects[0].playerId;
+    }
+  }
+
+  // 📜 الوزير (Minister)
+  if (myRole === ROLE_TYPES.MINISTER) {
+    // يعرف المستفيد (Beneficiary) والمحقق (Detective)
+    // هدفه القضاء على المستفيد (لأنه من فريق الجريمة)
+    if (knownBeneficiaryId) {
+        // يصوت للمستفيد فوراً (بنسبة عالية)
+        if (Math.random() < 0.9) return knownBeneficiaryId;
+    }
+    // يحاول حماية المحقق (يتجنب التصويت له)
+    if (knownDetectiveId) {
+        const others = suspicions.filter(s => s.playerId !== knownDetectiveId);
+        return others.length > 0 ? others[0].playerId : suspicions[0].playerId;
+    }
+  }
+
+  // 🎭 الجاني (Culprit)
+  if (myRole === ROLE_TYPES.CULPRIT) {
+    // يعرف القصة كاملة. يحاول التصويت لأي شخص يهدده (من ذكر كلمات مفتاحية صحيحة)
+    // أو يصوت عشوائياً لتشتيت الانتباه.
+    // استراتيجية: صوت لمن يشك فيه الجميع (الأعلى شكاً) لينجو بنفسه
+    return suspicions[0].playerId; 
+  }
+
+  // 🧨 المخرب (Saboteur) & 💰 المستفيد (Beneficiary)
   if (myTeam === TEAMS.CRIME) {
-    if (myRole === ROLE_TYPES.MASTERMIND && knownCrimeTeam.length > 0) {
-      // العقل المدبر: يصوت للأكثر شكاً من خارج فريقه
-      const safeCandidates = sorted.filter(s => !knownCrimeTeam.includes(s.playerId));
-      if (safeCandidates.length > 0) return safeCandidates[0].playerId;
-    }
-    // بقية الجريمة: يصوتون للأكثر شكاً (لا يعرفون الفرق)
-    const pick = Math.random() < 0.7 ? sorted[0] : sorted[Math.floor(Math.random() * sorted.length)];
-    return pick?.playerId || others[0].id;
+    // يعرفون الجاني؟ لا (في القواعد الافتراضية لا يعرفون إلا إذا كان الماستر مايند)
+    // لكن يعرفون الماستر مايند (إذا أضفنا ذلك).
+    // استراتيجية عامة: صوت لأحد أعضاء فريق العدالة (عشوائي أو الأكثر شكاً)
+    // في غياب معلومات، يصوتون للأعلى شكاً مثل الجميع ليبدوا طبيعيين
+    return suspicions[0].playerId;
   }
 
-  // ── فريق العدالة ──
-  if (myTeam === TEAMS.JUSTICE) {
-    // المحقق: يستخدم نتيجة فحصه إذا كشفت عن فريق الجريمة
-    if (myRole === ROLE_TYPES.DETECTIVE && investigationResult) {
-      const { targetId, targetTeam } = investigationResult;
-      if (targetTeam === TEAMS.CRIME && Math.random() < 0.85) return targetId;
-    }
-    // الوزير: يعرف المستفيد (جريمة) → يصوت له بثقة
-    if (myRole === ROLE_TYPES.MINISTER && knownBeneficiaryId) {
-      if (Math.random() < 0.8) return knownBeneficiaryId;
-    }
-    // الباقون: يصوتون للأكثر شكاً بناءً على النص
-    const pick = Math.random() < 0.7 ? sorted[0] : sorted[Math.floor(Math.random() * sorted.length)];
-    return pick?.playerId || others[0].id;
-  }
-
-  // fallback عشوائي
-  return others[Math.floor(Math.random() * others.length)].id;
+  // 👁️ الشاهد (Witness) & 🔮 العراف (Seer) & 👤 المواطن (Citizen)
+  // يصوتون بناءً على الشك في النص فقط
+  return suspicions[0].playerId;
 }
 
 
+
+/**
+ * 🎯 التصويت الذكي على الجودة — يحترم قاعدة المعرفة المحدودة
+ */
+function generateSmartQualityVote(botKnowledge, playersPublic, answers, scenario) {
+  const { myId, myRole, knownCrimeTeam = [] } = botKnowledge;
+
+  // 1. تحليل جودة النصوص (للجميع)
+  const scenarios = playersPublic.map((p, index) => {
+    if (p.id === myId) return { index, score: -1000, playerId: p.id }; // لا تصوت لنفسك
+    
+    let score = 0;
+    const text = answers[p.id] || "";
+    
+    // معايير الجودة الأساسية
+    if (text.length > 50) score += 20;
+    if (text.length > 100) score += 10;
+    
+    // التنوع
+    const uniqueWords = new Set(text.split(/\s+/));
+    if (uniqueWords.size > 10) score += 10;
+    
+    // كلمات مفتاحية (للجودة)
+    const hasKeywords = scenario.keywords.some(k => text.includes(k));
+    if (hasKeywords) score += 15;
+    
+    // عشوائية
+    score += Math.random() * 20;
+    
+    return { index, score, playerId: p.id };
+  });
+
+  // 2. تعديلات بناءً على الدور والمعرفة
+  if (myRole === ROLE_TYPES.MASTERMIND && knownCrimeTeam.length > 0) {
+    // العقل المدبر: يفضل التصويت لأعضاء فريقه (+50 نقطة) لدعمهم في النقاط
+    scenarios.forEach(s => {
+      if (knownCrimeTeam.includes(s.playerId)) {
+        s.score += 50;
+      }
+    });
+  }
+
+  else if (myRole === ROLE_TYPES.CULPRIT) {
+    // الجاني: يتجنب التصويت لمن كشف القصة الحقيقية بدقة عالية
+    scenarios.forEach(s => {
+      const text = answers[s.playerId] || "";
+      const keywordCount = scenario.keywords.filter(k => text.includes(k)).length;
+      if (keywordCount > 2) s.score -= 20; // يعاقب من يكشف الحقيقة
+    });
+  }
+
+  // 3. اختيار الأعلى نقاطاً
+  scenarios.sort((a, b) => b.score - a.score);
+  return scenarios[0].index;
+}
 
 module.exports = {
   generateBotAnswer,
@@ -623,7 +794,8 @@ module.exports = {
   calculateSimilarity,
   generateBotVote,
   generateQualityVote,
-  generateSmartCulpritVote, // 🆕 التصويت المعتمد على المعرفة المحدودة
+  generateSmartCulpritVote,
+  generateSmartQualityVote, // 🆕
   shouldUseAbility,
   addNaturalMistakes
 };

@@ -17,3 +17,4 @@ export { default as MinimalStamp } from './MinimalStamp';
 export { default as MinimalTimer } from './MinimalTimer';
 export { default as MinimalDossier } from './MinimalDossier';
 export { default as MinimalMeter } from './MinimalMeter';
+export { PlayerBadge } from './PlayerBadge';

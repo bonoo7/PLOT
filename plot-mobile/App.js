@@ -8,7 +8,8 @@ import {
   Alert,
   AppState,
   TouchableOpacity,
-  ActivityIndicator
+  ActivityIndicator,
+  StatusBar as RNStatusBar
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import io from 'socket.io-client';
@@ -32,8 +33,14 @@ if (Platform.OS !== 'web') {
   try {
     I18nManager.forceRTL(true);
     I18nManager.allowRTL(true);
+    // Hide Navigation Bar on Android
+    if (Platform.OS === 'android') {
+      NavigationBar.setVisibilityAsync("hidden");
+      NavigationBar.setBehaviorAsync("overlay-swipe");
+      RNStatusBar.setHidden(true);
+    }
   } catch (e) {
-    console.error('RTL Error:', e);
+    console.error('RTL/Nav Error:', e);
   }
 } else {
   // Web specific RTL enforcement
@@ -115,6 +122,14 @@ function App() {
   const [generatedRoomCode, setGeneratedRoomCode] = useState('');
   // مزامنة ref مع state لالتقاطه في closures
   useEffect(() => { generatedRoomCodeRef.current = generatedRoomCode; }, [generatedRoomCode]);
+
+  const [notification, setNotification] = useState(null); // { message, type }
+
+  // Helper to show notification
+  const showNotification = (message, type = 'info') => {
+      setNotification({ message, type });
+  };
+
   
   // Game state
   const [players, setPlayers] = useState([]);
@@ -124,7 +139,7 @@ function App() {
   const [template, setTemplate] = useState(null); // For Blitz Mode
   const [currentRound, setCurrentRound] = useState(1);
   const [totalRounds, setTotalRounds] = useState(3);
-  const [gameMode, setGameMode] = useState('CLASSIC'); // CLASSIC or BLITZ
+  const [gameMode, setGameMode] = useState('BLITZ'); // CLASSIC or BLITZ
   const [answer, setAnswer] = useState('');
   const [timeLeft, setTimeLeft] = useState(0);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -292,19 +307,21 @@ function App() {
     });
 
     // Handle New Round Explicitly to clear old state
-    socket.on('newRoundStarted', (data) => {
-        console.log('🔄 New Round Started:', data);
-        setRoundResults(null);
-        setIsSubmitted(false);
-        setAnswer('');
-        setHasVoted(false);
-        setLiveVotes([]);
-        setRevealedScenarios([]);
-        // ✅ HOST ينتقل فوراً من شاشة النتائج — لا ينتظر gameStarted
-        if (userRole === 'HOST') {
-            setScreen(SCREENS.HOST_GAME_INTRO);
-        }
-    });
+  socket.on('newRoundStarted', (data) => {
+    console.log('🔄 New Round Started:', data);
+    setRoundResults(null);
+    setIsSubmitted(false);
+    setAnswer('');
+    setHasVoted(false);
+    setLiveVotes([]);
+    setRevealedScenarios([]);
+    // ✅ HOST ينتقل فوراً من شاشة النتائج — لا ينتظر gameStarted
+    if (userRole === 'HOST') {
+        // If it's a new round, go to INTRO or DRAFTING?
+        // Usually HOST_GAME_INTRO is the "Round X" screen.
+        setScreen(SCREENS.HOST_GAME_INTRO);
+    }
+  });
 
     socket.on('roundContinued', (data) => {
         console.log('🔄 Round Continued:', data);
@@ -724,9 +741,14 @@ function App() {
   };
   
   const handleContinue = () => {
+    const code = generatedRoomCode || generatedRoomCodeRef.current;
     if (!socket) return;
-    console.log('📤 Emitting nextRound event');
-    socket.emit('nextRound', { roomCode: generatedRoomCode });
+    console.log('📤 Emitting nextRound event for room:', code);
+    if (!code) {
+      console.error('❌ generatedRoomCode is missing!');
+      return;
+    }
+    socket.emit('nextRound', { roomCode: code });
   };
   
   const handleFillBots = () => {
@@ -1050,6 +1072,7 @@ function App() {
       case SCREENS.HOST_DISCUSSION:
         return (
           <DiscussionScreen
+            roomCode={generatedRoomCode}
             isHost={true}
             players={players}
             speakingPlayerId={speakingPlayerId}
@@ -1078,7 +1101,7 @@ function App() {
             players={players}
           />
         );
-      
+
       case SCREENS.HOST_END:
         return (
           <EndScreen
