@@ -206,9 +206,9 @@ const styles = StyleSheet.create({
     width: '48%', // Desktop: 2 columns
   },
   voteCardSelected: {
-    borderColor: theme.colors.primary,
+    borderColor: '#2D5F2E',
     borderWidth: 2,
-    backgroundColor: '#FFF',
+    backgroundColor: '#F0FFF0',
     transform: [{ scale: 1.02 }],
   },
   voteCardSelectedDanger: {
@@ -236,8 +236,9 @@ const styles = StyleSheet.create({
     color: '#8B4513',
   },
   checkMark: {
-    color: theme.colors.primary,
+    color: '#2D5F2E',
     fontWeight: 'bold',
+    fontSize: 18,
   },
   checkMarkDanger: {
     fontSize: 16,
@@ -280,7 +281,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.s,
   },
   statusBadge: {
-    backgroundColor: theme.colors.primary,
+    backgroundColor: '#2D5F2E',
     padding: spacing.m,
     borderRadius: borderRadius.medium,
     alignItems: 'center',

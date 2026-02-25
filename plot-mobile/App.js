@@ -294,16 +294,15 @@ function App() {
     // Handle New Round Explicitly to clear old state
     socket.on('newRoundStarted', (data) => {
         console.log('🔄 New Round Started:', data);
-        setRoundResults(null); // Clear previous results
+        setRoundResults(null);
         setIsSubmitted(false);
         setAnswer('');
         setHasVoted(false);
         setLiveVotes([]);
         setRevealedScenarios([]);
-        // We wait for 'roleAssigned' or 'gameStarted' to switch screen, 
-        // but let's ensure we leave results screen if stuck
-        if (userRole !== 'HOST') {
-             // force update if needed, but gameStarted usually handles it
+        // ✅ HOST ينتقل فوراً من شاشة النتائج — لا ينتظر gameStarted
+        if (userRole === 'HOST') {
+            setScreen(SCREENS.HOST_GAME_INTRO);
         }
     });
 
@@ -923,9 +922,10 @@ function App() {
       case SCREENS.HOST_RESULTS:
         return (
           <HostResultsScreen
-            roomCode={generatedRoomCode} // Pass roomCode
+            roomCode={generatedRoomCode}
             roundResults={roundResults}
             onContinue={handleContinue}
+            isLastRound={currentRound >= totalRounds}
           />
         );
       
@@ -1076,15 +1076,6 @@ function App() {
             scenarios={scenarios}
             liveVotes={liveVotes}
             players={players}
-          />
-        );
-      
-      case SCREENS.HOST_RESULTS:
-        return (
-          <HostResultsScreen
-            roundResults={roundResults}
-            onContinue={handleContinue}
-            isLastRound={currentRound >= totalRounds}
           />
         );
       

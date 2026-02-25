@@ -832,7 +832,7 @@ io.on('connection', (socket) => {
             currentRound: 0,
             totalRounds: 3,
             usedScenarios: [],
-            gameMode: 'CLASSIC' // CLASSIC or BLITZ
+            gameMode: 'BLITZ' // CLASSIC or BLITZ
         };
         socket.join(roomCode);
         socket.emit('roomCreated', roomCode);
@@ -2105,7 +2105,6 @@ io.on('connection', (socket) => {
             // تحديث hostId إذا تغيّر (حالة إعادة الاتصال)
             if (rooms[roomCode].hostId !== socket.id) {
                 rooms[roomCode].hostId = socket.id;
-                socket.join(roomCode);
             }
         }
 
@@ -2122,6 +2121,8 @@ io.on('connection', (socket) => {
         console.log(`[nextRound] room=${roomCode} socket=${socket.id.substring(0,8)} provided=${providedCode}`);
 
         if (roomCode) {
+            // ✅ دائماً أضف الـ socket للغرفة لضمان استلام الأحداث
+            socket.join(roomCode);
             const room = rooms[roomCode];
             if (room.roundOutcome === 'CONTINUE') {
                 room.roundOutcome = null; 

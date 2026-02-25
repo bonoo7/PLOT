@@ -108,16 +108,25 @@ const ENDINGS = [
  * يستخدم DeepSeek AI أولاً، ثم يعود للقوالب في حالة الفشل
  */
 async function generateBotAnswer(role, scenario, otherAnswers = [], gameMode = 'CLASSIC') {
-  // ⚡ Blitz Mode: Fill in the blank
-  if (gameMode === 'BLITZ') {
-      return generateBotBlankFill(role, scenario);
-  }
-
   const roleInfo = getRoleInfo(role);
   
   if (!roleInfo) {
     console.error(`⚠️ دور غير معروف: ${role}`);
     return generateFallbackAnswer(role, scenario);
+  }
+
+  // ⚡ Blitz Mode: جرّب GitHub AI أولاً، ثم الـ fallback المحلي
+  if (gameMode === 'BLITZ') {
+    try {
+      const aiAnswer = await generateAIAnswer(role, roleInfo, scenario);
+      if (aiAnswer) {
+        console.log(`✅ AI Answer (BLITZ) for ${roleInfo.nameAr}`);
+        return aiAnswer;
+      }
+    } catch (error) {
+      console.warn(`⚠️ فشل AI في Blitz لـ ${roleInfo.nameAr}, استخدام Fallback`);
+    }
+    return generateBotBlankFill(role, scenario);
   }
 
   // محاولة استخدام GitHub Models AI لملء الفراغات
