@@ -73,13 +73,13 @@ export const HostLobbyScreen = ({
   // Essential Roles Order (matching server/roles.js logic)
   const ROLE_ORDER = [
     { code: 'CULPRIT', name: 'الجاني 🎭' },
-    { code: 'DETECTIVE', name: 'المحقق 🕵️‍♂️' },
     { code: 'WITNESS', name: 'الشاهد 👁️' },
-    { code: 'MASTERMIND', name: 'العقل المدبر 🧠' },
-    { code: 'SEER', name: 'العرّاف 🔮' },
+    { code: 'DETECTIVE', name: 'المحقق 🕵️‍♂️' },
     { code: 'SABOTEUR', name: 'المخرب 🧨' },
+    { code: 'BENEFICIARY', name: 'المستفيد 💰' },
     { code: 'MINISTER', name: 'الوزير 📜' },
-    { code: 'BENEFICIARY', name: 'المستفيد 💰' }
+    { code: 'SEER', name: 'العرّاف 🔮' },
+    { code: 'MASTERMIND', name: 'العقل المدبر 🧠' }
   ];
 
   // Calculate next role

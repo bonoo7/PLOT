@@ -1111,14 +1111,14 @@ io.on('connection', (socket) => {
             
             // UI Logic:
             const ROLE_ORDER = [
-                ROLE_TYPES.CULPRIT, 
-                ROLE_TYPES.DETECTIVE, 
-                ROLE_TYPES.WITNESS, 
-                ROLE_TYPES.MASTERMIND, 
-                ROLE_TYPES.SEER, 
-                ROLE_TYPES.SABOTEUR, 
-                ROLE_TYPES.MINISTER, 
-                ROLE_TYPES.BENEFICIARY
+                ROLE_TYPES.CULPRIT,     // 1. الجاني
+                ROLE_TYPES.WITNESS,     // 2. الشاهد
+                ROLE_TYPES.DETECTIVE,   // 3. المحقق
+                ROLE_TYPES.SABOTEUR,    // 4. المخرب
+                ROLE_TYPES.BENEFICIARY, // 5. المستفيد
+                ROLE_TYPES.MINISTER,    // 6. الوزير
+                ROLE_TYPES.SEER,        // 7. العراف
+                ROLE_TYPES.MASTERMIND   // 8. العقل المدبر
             ];
             
             // We need to find the first role in ROLE_ORDER that is NOT taken by any existing player (preferred)

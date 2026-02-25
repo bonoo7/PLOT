@@ -124,13 +124,13 @@ function getTeamMembers(team) {
 }
 
 function getRolesForPlayerCount(count) {
-    // Priority List based on User Request:
+    // Priority Order:
     // 1. Culprit (الجاني)
     // 2. Witness (الشاهد)
-    // 3. Saboteur (المخرب)
-    // 4. Detective (المحقق)
-    // 5. Minister (الوزير)
-    // 6. Beneficiary (المستفيد)
+    // 3. Detective (المحقق)
+    // 4. Saboteur (المخرب)
+    // 5. Beneficiary (المستفيد)
+    // 6. Minister (الوزير)
     // 7. Seer (العراف)
     // 8. Mastermind (العقل المدبر)
 
@@ -138,10 +138,10 @@ function getRolesForPlayerCount(count) {
     const priorityList = [
         ROLE_TYPES.CULPRIT,     // 1. الجاني
         ROLE_TYPES.WITNESS,     // 2. الشاهد
-        ROLE_TYPES.SABOTEUR,    // 3. المخرب
-        ROLE_TYPES.DETECTIVE,   // 4. المحقق
-        ROLE_TYPES.MINISTER,    // 5. الوزير
-        ROLE_TYPES.BENEFICIARY, // 6. المستفيد
+        ROLE_TYPES.DETECTIVE,   // 3. المحقق
+        ROLE_TYPES.SABOTEUR,    // 4. المخرب
+        ROLE_TYPES.BENEFICIARY, // 5. المستفيد
+        ROLE_TYPES.MINISTER,    // 6. الوزير
         ROLE_TYPES.SEER,        // 7. العراف
         ROLE_TYPES.MASTERMIND   // 8. العقل المدبر
     ];
