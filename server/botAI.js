@@ -493,7 +493,7 @@ function voteForCulprit(suspicions, difficulty) {
  * التصويت لفريق التحقيق (فريق الجريمة يحاول إرباكهم)
  */
 function voteForInvestigationTeam(suspicions, difficulty) {
-  const investigationPlayers = suspicions.filter(s => s.team === TEAMS.INVESTIGATION);
+  const investigationPlayers = suspicions.filter(s => s.team === TEAMS.JUSTICE);
   
   if (investigationPlayers.length === 0) {
     return suspicions[Math.floor(Math.random() * suspicions.length)].playerId;
@@ -550,12 +550,71 @@ function shouldUseAbility(role, roundNumber, difficulty = 'medium') {
 
 // ==================== التصدير ====================
 
+/**
+ * 🎯 التصويت الذكي على الجاني — يحترم قاعدة المعرفة المحدودة
+ * كل بوت يصوت فقط بناءً على ما يُسمح له معرفته
+ *
+ * @param {Object} botKnowledge - { myId, myRole, myTeam, knownCrimeTeam[], knownDetectiveId, knownBeneficiaryId, investigationResult }
+ * @param {Array}  playersPublic - [{ id, name }] — بدون role أو team
+ * @param {Object} answers - { playerId: answerText }
+ * @param {Object} scenario - السيناريو الحالي (keywords, tricksterWord…)
+ */
+function generateSmartCulpritVote(botKnowledge, playersPublic, answers, scenario) {
+  const { myId, myRole, myTeam, knownCrimeTeam = [], knownBeneficiaryId, investigationResult } = botKnowledge;
+
+  const others = playersPublic.filter(p => p.id !== myId);
+  if (others.length === 0) return null;
+
+  // تحليل الشك بناءً على النص فقط — لا نمرر الدور لأننا لا نعرفه
+  const suspicions = others.map(p => ({
+    playerId: p.id,
+    playerName: p.name,
+    suspicion: analyzeSuspicion(answers[p.id] || '', scenario, null),
+    answer: answers[p.id] || ''
+  }));
+  const sorted = [...suspicions].sort((a, b) => b.suspicion - a.suspicion);
+
+  // ── فريق الجريمة ──
+  if (myTeam === TEAMS.CRIME) {
+    if (myRole === ROLE_TYPES.MASTERMIND && knownCrimeTeam.length > 0) {
+      // العقل المدبر: يصوت للأكثر شكاً من خارج فريقه
+      const safeCandidates = sorted.filter(s => !knownCrimeTeam.includes(s.playerId));
+      if (safeCandidates.length > 0) return safeCandidates[0].playerId;
+    }
+    // بقية الجريمة: يصوتون للأكثر شكاً (لا يعرفون الفرق)
+    const pick = Math.random() < 0.7 ? sorted[0] : sorted[Math.floor(Math.random() * sorted.length)];
+    return pick?.playerId || others[0].id;
+  }
+
+  // ── فريق العدالة ──
+  if (myTeam === TEAMS.JUSTICE) {
+    // المحقق: يستخدم نتيجة فحصه إذا كشفت عن فريق الجريمة
+    if (myRole === ROLE_TYPES.DETECTIVE && investigationResult) {
+      const { targetId, targetTeam } = investigationResult;
+      if (targetTeam === TEAMS.CRIME && Math.random() < 0.85) return targetId;
+    }
+    // الوزير: يعرف المستفيد (جريمة) → يصوت له بثقة
+    if (myRole === ROLE_TYPES.MINISTER && knownBeneficiaryId) {
+      if (Math.random() < 0.8) return knownBeneficiaryId;
+    }
+    // الباقون: يصوتون للأكثر شكاً بناءً على النص
+    const pick = Math.random() < 0.7 ? sorted[0] : sorted[Math.floor(Math.random() * sorted.length)];
+    return pick?.playerId || others[0].id;
+  }
+
+  // fallback عشوائي
+  return others[Math.floor(Math.random() * others.length)].id;
+}
+
+
+
 module.exports = {
   generateBotAnswer,
   analyzeSuspicion,
   calculateSimilarity,
   generateBotVote,
-  generateQualityVote, // 🆕 التصويت على جودة السيناريو
+  generateQualityVote,
+  generateSmartCulpritVote, // 🆕 التصويت المعتمد على المعرفة المحدودة
   shouldUseAbility,
   addNaturalMistakes
 };

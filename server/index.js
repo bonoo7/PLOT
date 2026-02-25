@@ -54,7 +54,8 @@ const {
     generateBotAnswer, 
     analyzeSuspicion,
     generateBotVote,
-    generateQualityVote, // 🆕 التصويت على جودة السيناريو
+    generateQualityVote,
+    generateSmartCulpritVote, // 🆕 التصويت بالمعرفة المحدودة
     shouldUseAbility 
 } = require('./botAI');
 
@@ -105,8 +106,77 @@ function checkDraftingComplete(roomCode) {
 
     if (submittedCount >= activePlayers.length) {
         clearInterval(room.timer);
+        executeBotAbilities(roomCode); // 🤖 قدرات البوتات قبل التصويت
         startPresentationPhase(roomCode);
     }
+}
+
+// ============================================
+// 🤖 BOT ABILITIES & KNOWLEDGE
+// ============================================
+
+/**
+ * بناء كائن المعرفة المحدودة لكل بوت — يعكس ما يعرفه فعلياً في اللعبة
+ */
+function buildBotKnowledge(bot, room) {
+    return {
+        myId: bot.id,
+        myRole: bot.role,
+        myTeam: getRoleInfo(bot.role)?.team,
+        knownCrimeTeam: (bot.role === ROLE_TYPES.MASTERMIND && bot.specialInfo?.crimeTeam)
+            ? bot.specialInfo.crimeTeam.map(p => p.id)
+            : [],
+        knownDetectiveId: (bot.role === ROLE_TYPES.MINISTER && bot.specialInfo?.detective)
+            ? bot.specialInfo.detective.id : null,
+        knownBeneficiaryId: (bot.role === ROLE_TYPES.MINISTER && bot.specialInfo?.beneficiary)
+            ? bot.specialInfo.beneficiary.id : null,
+        investigationResult: bot.investigationResult || null,
+    };
+}
+
+/**
+ * تنفيذ قدرات البوتات بعد انتهاء مرحلة الكتابة
+ */
+function executeBotAbilities(roomCode) {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    const bots = room.players.filter(p => p.isBot && !p.eliminated);
+
+    bots.forEach(bot => {
+        if (bot.abilityUsed) return;
+
+        if (bot.role === ROLE_TYPES.DETECTIVE) {
+            // المحقق: يفحص لاعباً عشوائياً (لا يعرف من هو الجاني)
+            const targets = room.players.filter(p => p.id !== bot.id && !p.eliminated);
+            if (targets.length > 0) {
+                const target = targets[Math.floor(Math.random() * targets.length)];
+                const targetTeam = getRoleInfo(target.role)?.team;
+                bot.investigatedTarget = target.id;
+                bot.investigationResult = { targetId: target.id, targetName: target.name, targetTeam };
+                bot.abilityUsed = true;
+                console.log(`🔍 Bot Detective ${bot.name} investigated ${target.name} (${targetTeam})`);
+            }
+        } else if (bot.role === ROLE_TYPES.SABOTEUR) {
+            // المخرب: يخرب المحقق إذا كان الماستر مايند أخبره، وإلا عشوائي
+            let targetId = null;
+            if (bot.specialInfo?.detectiveId) {
+                targetId = bot.specialInfo.detectiveId;
+            } else {
+                const targets = room.players.filter(p => p.id !== bot.id && !p.eliminated);
+                if (targets.length > 0) targetId = targets[Math.floor(Math.random() * targets.length)].id;
+            }
+            if (targetId) {
+                const target = room.players.find(p => p.id === targetId);
+                if (target) {
+                    bot.sabotageTarget = targetId;
+                    target.sabotagedBy = bot.id;
+                    bot.abilityUsed = true;
+                    console.log(`💣 Bot Saboteur ${bot.name} sabotaged ${target.name}`);
+                }
+            }
+        }
+    });
 }
 
 function startDraftingPhase(roomCode) {
@@ -184,6 +254,19 @@ async function simulateBotDrafting(roomCode, bot) {
     const room = rooms[roomCode];
     if (!room || room.state !== 'DRAFTING') return;
     try {
+        // ⚡ العراف: يرسل القصة الحقيقية مباشرة (قدرة الوحي)
+        if (bot.role === ROLE_TYPES.SEER) {
+            const realStory = room.currentScenario.fullStory || room.currentScenario.story;
+            const answerText = Array.isArray(realStory) ? realStory.join('\n') : (realStory || '');
+            setTimeout(() => {
+                if (!rooms[roomCode] || rooms[roomCode].state !== 'DRAFTING') return;
+                room.answers[bot.id] = answerText;
+                bot.abilityUsed = true;
+                io.to(room.hostId).emit('playerSubmitted', { playerId: bot.id, playerName: bot.name });
+                checkDraftingComplete(roomCode);
+            }, 5000 + Math.random() * 5000);
+            return;
+        }
         // تمرير الإجابات السابقة للـ AI لتنويع كل بوت
         const prevAnswers = Object.values(room.answers).filter(Boolean);
         const scenarioWithContext = {
@@ -520,31 +603,26 @@ function startCulpritVoting(roomCode) {
                 // ✅ GUARD: Check if bot already voted
                 if (room.culpritVotes[p.id] !== undefined) return;
 
-                const answersData = room.players.map(player => ({
-                    id: player.id,
-                    name: player.name,
-                    role: player.role,
-                    team: getRoleInfo(player.role)?.team ?? TEAMS.JUSTICE,
-                    answer: room.answers[player.id] || ''
-                }));
-                
-                const culpritVote = generateBotVote(
-                    p.role,
-                    getRoleInfo(p.role)?.team ?? TEAMS.JUSTICE,
-                    room.players,
-                    answersData,
-                    room.currentScenario,
-                    'medium'
+                const botKnowledge = buildBotKnowledge(p, room);
+                const playersPublic = room.players.map(pl => ({ id: pl.id, name: pl.name }));
+                const answers = {};
+                room.players.forEach(pl => { answers[pl.id] = room.answers[pl.id] || ''; });
+
+                const culpritVoteId = generateSmartCulpritVote(
+                    botKnowledge,
+                    playersPublic,
+                    answers,
+                    room.currentScenario
                 );
                 
-                room.culpritVotes[p.id] = culpritVote.identity;
+                room.culpritVotes[p.id] = culpritVoteId;
                 
                 // 🆕 إرسال للهوست أن البوت صوّت
                 io.to(room.hostId).emit('voteReceived', {
                     phase: 'CULPRIT',
                     playerId: p.id,
                     playerName: p.name,
-                    choice: culpritVote.identity,
+                    choice: culpritVoteId,
                     totalVotes: Object.keys(room.culpritVotes).length,
                     totalPlayers: room.players.length
                 });
@@ -1512,6 +1590,10 @@ io.on('connection', (socket) => {
             };
 
             io.to(player.id).emit('roleAssigned', roleData);
+            // 🤖 حفظ specialInfo على البوت لاستخدامه في التصويت والقدرات
+            if (player.isBot && specialInfo) {
+                player.specialInfo = specialInfo;
+            }
         });
         
         // Notify Host
