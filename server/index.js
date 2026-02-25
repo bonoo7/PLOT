@@ -755,6 +755,16 @@ io.on('connection', (socket) => {
         console.log(`Room created: ${roomCode} by ${socket.id}`);
     });
 
+    // Host reconnect — يُحدّث hostId عند إعادة اتصال الهوست
+    socket.on('rejoinHost', ({ roomCode }) => {
+        const room = roomCode && rooms[roomCode.toUpperCase()];
+        if (room) {
+            room.hostId = socket.id;
+            socket.join(roomCode.toUpperCase());
+            console.log(`Host rejoined room ${roomCode}`);
+        }
+    });
+
     // Update Game Settings (Host Only)
     socket.on('updateGameSettings', ({ roomCode, settings }) => {
         const room = rooms[roomCode];
@@ -1998,14 +2008,23 @@ io.on('connection', (socket) => {
     });
 
     // Host requests next round
-    socket.on('nextRound', () => {
-        // Find room where this socket is host
+    socket.on('nextRound', ({ roomCode: providedCode } = {}) => {
+        // البحث عن الغرفة بـ hostId أولاً (الحالة العادية)
         let roomCode = null;
         for (const code in rooms) {
             if (rooms[code].hostId === socket.id) {
                 roomCode = code;
                 break;
             }
+        }
+
+        // Fallback: استخدم roomCode المُرسل من العميل (حالة إعادة الاتصال)
+        if (!roomCode && providedCode && rooms[providedCode.toUpperCase()]) {
+            roomCode = providedCode.toUpperCase();
+            // تحديث hostId بعد إعادة الاتصال
+            rooms[roomCode].hostId = socket.id;
+            socket.join(roomCode);
+            console.log(`Host socket updated for room ${roomCode}`);
         }
 
         if (roomCode) {

@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 import io from 'socket.io-client';
 import { registerRootComponent } from 'expo';
+import * as NavigationBar from 'expo-navigation-bar';
 import { theme } from './src/styles/theme';
 import { RoleSelectScreen } from './src/screens/RoleSelectScreen';
 import { LoginScreen, LobbyScreen } from './src/screens/PlayerScreens';
@@ -98,6 +99,7 @@ function App() {
   const [socket, setSocket] = useState(null);
   const [connecting, setConnecting] = useState(false);
   const [reconnecting, setReconnecting] = useState(false); // ← زر إعادة الاتصال اليدوي
+  const generatedRoomCodeRef = useRef(''); // ref لالتقاط roomCode الهوست في closures
   
   // Screen & role state
   const [screen, setScreen] = useState(SCREENS.ROLE_SELECT);
@@ -112,6 +114,8 @@ function App() {
   
   // Host state
   const [generatedRoomCode, setGeneratedRoomCode] = useState('');
+  // مزامنة ref مع state لالتقاطه في closures
+  useEffect(() => { generatedRoomCodeRef.current = generatedRoomCode; }, [generatedRoomCode]);
   
   // Game state
   const [players, setPlayers] = useState([]);
@@ -149,6 +153,20 @@ function App() {
   // AppState for Reconnection (مراقبة حالة التطبيق لإعادة الاتصال)
   const appState = useRef(AppState.currentState);
 
+  // إخفاء شريط التنقل السفلي على Android
+  const hideNavBar = async () => {
+    if (Platform.OS === 'android') {
+      try {
+        await NavigationBar.setVisibilityAsync('hidden');
+        await NavigationBar.setBehaviorAsync('overlay-swipe');
+        await NavigationBar.setBackgroundColorAsync('#00000000');
+      } catch (e) { /* silent */ }
+    }
+  };
+
+  // إخفاء عند بدء التطبيق
+  useEffect(() => { hideNavBar(); }, []);
+
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (
@@ -156,6 +174,9 @@ function App() {
         nextAppState === 'active'
       ) {
         console.log('📱 App has come to the foreground!');
+        
+        // إعادة إخفاء شريط التنقل
+        hideNavBar();
         
         // إعادة الانضمام للغرفة تلقائياً عند العودة للتطبيق
         if (socket && roomCode && playerName) {
@@ -168,6 +189,14 @@ function App() {
                  socket.connect(); 
                  // سيتم الانضمام تلقائياً عبر مستمع 'connect' في الأسفل
              }
+        } else if (socket && generatedRoomCode && !playerName) {
+            // إعادة اتصال الهوست
+            if (socket.connected) {
+                console.log('🔄 Host re-joining room:', generatedRoomCode);
+                socket.emit('rejoinHost', { roomCode: generatedRoomCode });
+            } else {
+                socket.connect();
+            }
         }
       }
 
@@ -177,7 +206,7 @@ function App() {
     return () => {
       subscription.remove();
     };
-  }, [socket, roomCode, playerName]);
+  }, [socket, roomCode, playerName, generatedRoomCode]);
 
   // Socket connection
   useEffect(() => {
@@ -195,10 +224,16 @@ function App() {
       console.log('✅ Socket connected');
       setConnecting(false);
       
-      // إعادة الاتصال التلقائي إذا كانت بيانات الغرفة واللاعب موجودة
+      // إعادة الاتصال التلقائي — لاعب
       if (roomCode && playerName) {
           console.log('🔄 Auto-rejoining room:', roomCode);
           newSocket.emit('joinRoom', { roomCode, playerName });
+      }
+      // إعادة الاتصال التلقائي — هوست (استخدم ref لأن الـ closure لا تلتقط state)
+      const hostRoom = generatedRoomCodeRef.current;
+      if (hostRoom && !playerName) {
+          console.log('🔄 Host auto-rejoining room:', hostRoom);
+          newSocket.emit('rejoinHost', { roomCode: hostRoom });
       }
     });
     
@@ -693,7 +728,7 @@ function App() {
   const handleContinue = () => {
     if (!socket) return;
     console.log('📤 Emitting nextRound event');
-    socket.emit('nextRound');
+    socket.emit('nextRound', { roomCode: generatedRoomCode });
   };
   
   const handleFillBots = () => {
