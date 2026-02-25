@@ -76,8 +76,8 @@ export const HostLobbyScreen = ({
     { code: 'WITNESS', name: 'الشاهد 👁️' },
     { code: 'DETECTIVE', name: 'المحقق 🕵️‍♂️' },
     { code: 'SABOTEUR', name: 'المخرب 🧨' },
-    { code: 'BENEFICIARY', name: 'المستفيد 💰' },
     { code: 'MINISTER', name: 'الوزير 📜' },
+    { code: 'BENEFICIARY', name: 'المستفيد 💰' },
     { code: 'SEER', name: 'العرّاف 🔮' },
     { code: 'MASTERMIND', name: 'العقل المدبر 🧠' }
   ];

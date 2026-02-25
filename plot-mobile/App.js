@@ -8,7 +8,9 @@ import {
   Platform,
   I18nManager,
   Alert,
-  AppState // Added AppState
+  AppState, // Added AppState
+  TouchableOpacity,
+  ActivityIndicator
 } from 'react-native';
 import io from 'socket.io-client';
 import { registerRootComponent } from 'expo';
@@ -95,6 +97,7 @@ function App() {
   const socketRef = useRef(null);
   const [socket, setSocket] = useState(null);
   const [connecting, setConnecting] = useState(false);
+  const [reconnecting, setReconnecting] = useState(false); // ← زر إعادة الاتصال اليدوي
   
   // Screen & role state
   const [screen, setScreen] = useState(SCREENS.ROLE_SELECT);
@@ -241,8 +244,11 @@ function App() {
       console.log('✅ Joined room:', data.roomCode);
       setRoomCode(data.roomCode);
       setConnecting(false);
-      setScreen(SCREENS.LOBBY);
       if (data.gameMode) setGameMode(data.gameMode);
+      // إذا كانت إعادة اتصال في منتصف لعبة، لا ننتقل للـ LOBBY — السيرفر سيُرسل حدث المرحلة الصحيحة
+      if (!data.isReconnect) {
+        setScreen(SCREENS.LOBBY);
+      }
     });
 
     socket.on('gameSettingsUpdated', (data) => {
@@ -302,9 +308,16 @@ function App() {
       if (data.caseTitle) setScenario(data.caseTitle);
       if (data.template) setTemplate(data.template); // Blitz Mode
       setTimeLeft(data.duration || 300);
-      setIsSubmitted(false);
-      setAnswer('');
       setHostHint(null);
+
+      // استعادة حالة الإرسال عند إعادة الاتصال
+      if (data.alreadySubmitted) {
+        setIsSubmitted(true);
+        setAnswer(data.submittedAnswer || '');
+      } else {
+        setIsSubmitted(false);
+        setAnswer('');
+      }
       
       if (userRole === 'HOST') {
         setScreen(SCREENS.HOST_DRAFTING);
@@ -716,7 +729,23 @@ function App() {
     setHasVoted(false);
   };
 
-  // Discussion Handlers
+  // Manual reconnect for players stuck mid-game
+  const handleManualReconnect = () => {
+    if (!socket || !roomCode || !playerName) return;
+    setReconnecting(true);
+    socket.emit('joinRoom', { roomCode, playerName });
+    setTimeout(() => setReconnecting(false), 2000);
+  };
+
+  // Screens where the reconnect button should appear (player only, mid-game)
+  const RECONNECT_SCREENS = [
+    SCREENS.GAME, SCREENS.DRAFTING, SCREENS.QUALITY_VOTING,
+    SCREENS.PLAYER_DRAMATIC_REVEAL, SCREENS.DISCUSSION,
+    SCREENS.CULPRIT_VOTING, SCREENS.WAITING,
+  ];
+  const showReconnectBtn = userRole === 'PLAYER' && RECONNECT_SCREENS.includes(screen);
+
+
   const handleSelectSpeaker = (playerId) => {
     if (!socket) return;
     console.log('📤 Emitting setSpeaker event:', playerId);
@@ -1047,10 +1076,23 @@ function App() {
     <GlobalRTLWrapper>
       <SafeAreaView style={styles.container}>
         <StatusBar 
-          barStyle="dark-content" 
+          barStyle="dark-content"
           backgroundColor={theme.colors.background}
         />
         {renderScreen()}
+        {/* زر إعادة الاتصال اليدوي — يظهر فقط للاعب في منتصف اللعبة */}
+        {showReconnectBtn && (
+          <TouchableOpacity
+            style={styles.reconnectBtn}
+            onPress={handleManualReconnect}
+            disabled={reconnecting}
+          >
+            {reconnecting
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Text style={styles.reconnectBtnText}>↻</Text>
+            }
+          </TouchableOpacity>
+        )}
       </SafeAreaView>
     </GlobalRTLWrapper>
   );
@@ -1074,6 +1116,23 @@ const styles = StyleSheet.create({
   tempSubtext: {
     fontSize: 18,
     color: theme.colors.textSecondary,
+  },
+  reconnectBtn: {
+    position: 'absolute',
+    bottom: 20,
+    left: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 999,
+  },
+  reconnectBtnText: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
   },
 });
 

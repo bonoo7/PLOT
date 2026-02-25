@@ -44,8 +44,8 @@
 | 2 | الشاهد (Witness) |
 | 3 | المحقق (Detective) |
 | 4 | المخرب (Saboteur) |
-| 5 | المستفيد (Beneficiary) |
-| 6 | الوزير (Minister) |
+| 5 | الوزير (Minister) |
+| 6 | المستفيد (Beneficiary) |
 | 7 | العراف (Seer) |
 | 8 | العقل المدبر (Mastermind) |
 

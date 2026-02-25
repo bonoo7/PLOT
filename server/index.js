@@ -793,7 +793,8 @@ io.on('connection', (socket) => {
                     roomCode: roomCode.toUpperCase(),
                     playerId: socket.id,
                     isLeader: existingPlayer.isLeader,
-                    gameMode: room.gameMode
+                    gameMode: room.gameMode,
+                    isReconnect: room.state !== 'LOBBY' && room.state !== 'END' // ← لا تُعيد لـ LOBBY إذا اللعبة جارية
                 });
 
                 console.log(`${playerName} reconnected to room ${roomCode}`);
@@ -863,17 +864,15 @@ io.on('connection', (socket) => {
                     if (room.state === 'DRAFTING') {
                         const elapsed = Math.floor((Date.now() - (room.draftStartTime || Date.now())) / 1000);
                         const remaining = Math.max(0, 90 - elapsed);
+                        const playerAnswer = room.answers[existingPlayer.id];
                         socket.emit('startDrafting', { 
                             duration: remaining,
                             caseTitle: room.currentScenario.title,
-                            waitingFor: room.players.filter(p => !room.answers[p.id]).map(p => p.id)
+                            template: room.currentScenario.template || null, // Blitz mode
+                            waitingFor: room.players.filter(p => !room.answers[p.id] && !p.eliminated).map(p => p.id),
+                            alreadySubmitted: !!playerAnswer,      // ← هل اللاعب أرسل مسبقاً؟
+                            submittedAnswer: playerAnswer || ''    // ← استعد إجابته
                         });
-                        // If already submitted, notify client
-                        if (room.answers[existingPlayer.id]) {
-                             // Client handles "isSubmitted" locally usually, but we might need to tell them
-                             // For now, they might see drafting screen again.Ideally we send "playerSubmitted" event back to them?
-                             // Or just let them see "Waiting for others" if logic handles it.
-                        }
                     } else if (room.state === 'DISCUSSION') {
                         socket.emit('discussionStarted', {
                             timer: 120,
@@ -1115,8 +1114,8 @@ io.on('connection', (socket) => {
                 ROLE_TYPES.WITNESS,     // 2. الشاهد
                 ROLE_TYPES.DETECTIVE,   // 3. المحقق
                 ROLE_TYPES.SABOTEUR,    // 4. المخرب
-                ROLE_TYPES.BENEFICIARY, // 5. المستفيد
-                ROLE_TYPES.MINISTER,    // 6. الوزير
+                ROLE_TYPES.MINISTER,    // 5. الوزير
+                ROLE_TYPES.BENEFICIARY, // 6. المستفيد
                 ROLE_TYPES.SEER,        // 7. العراف
                 ROLE_TYPES.MASTERMIND   // 8. العقل المدبر
             ];

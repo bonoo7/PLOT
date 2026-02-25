@@ -19,8 +19,8 @@ export const TrainingRoleSelectScreen = ({ onSelectRole, onBack }) => {
     { id: 'WITNESS', nameAr: 'الشاهد', description: 'فريق العدالة: تلمح كلمات القصة', icon: '👁️' },
     { id: 'DETECTIVE', nameAr: 'المحقق', description: 'فريق العدالة: تكشف هوية الفرق', icon: '🔍' },
     { id: 'SABOTEUR', nameAr: 'المخرب', description: 'فريق الجريمة: تقلب نتائج التحقيق', icon: '🧨' },
-    { id: 'BENEFICIARY', nameAr: 'المستفيد', description: 'فريق الجريمة: تبدأ بنقاط إضافية', icon: '💰' },
     { id: 'MINISTER', nameAr: 'الوزير', description: 'فريق العدالة: تعرف شخصيات هامة', icon: '📜' },
+    { id: 'BENEFICIARY', nameAr: 'المستفيد', description: 'فريق الجريمة: تبدأ بنقاط إضافية', icon: '💰' },
     { id: 'SEER', nameAr: 'العراف', description: 'فريق العدالة: تنسخ القصة الحقيقية', icon: '🔮' },
     { id: 'MASTERMIND', nameAr: 'العقل المدبر', description: 'فريق الجريمة: تعرف أعضاء عصابتك', icon: '🧠' },
   ];
