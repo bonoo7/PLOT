@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, ImageBackground, StyleSheet, SafeAreaView, StatusBar, Platform, TouchableOpacity, Text, Modal, ScrollView, Image } from 'react-native';
+import { View, ImageBackground, StyleSheet, SafeAreaView, Platform, TouchableOpacity, Text, Modal, ScrollView, Image } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import * as NavigationBar from 'expo-navigation-bar';
 import { getContainerPadding, borderRadius, spacing, fonts } from '../../styles/responsive';
 import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
@@ -129,7 +130,7 @@ const MinimalLayout = ({ children, style, roleData, roomCode }) => {
       style={styles.backgroundImage}
       resizeMode="cover"
     >
-      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent hidden={Platform.OS === 'android'} />
+      <StatusBar style="light" hidden={Platform.OS !== 'web'} />
       <SafeAreaView style={styles.safeArea}>
         <View style={[
           styles.container, 

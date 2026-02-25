@@ -3,15 +3,14 @@ import {
   StyleSheet, 
   View, 
   Text,
-  StatusBar,
-  SafeAreaView,
   Platform,
   I18nManager,
   Alert,
-  AppState, // Added AppState
+  AppState,
   TouchableOpacity,
   ActivityIndicator
 } from 'react-native';
+import { StatusBar } from 'expo-status-bar';
 import io from 'socket.io-client';
 import { registerRootComponent } from 'expo';
 import * as NavigationBar from 'expo-navigation-bar';
@@ -1109,11 +1108,9 @@ function App() {
   
   return (
     <GlobalRTLWrapper>
-      <SafeAreaView style={styles.container}>
-        <StatusBar 
-          barStyle="dark-content"
-          backgroundColor={theme.colors.background}
-        />
+      <View style={styles.container}>
+        {/* إخفاء شريط الحالة على الجوال لشاشة كاملة */}
+        <StatusBar style="light" hidden={Platform.OS !== 'web'} />
         {renderScreen()}
         {/* زر إعادة الاتصال اليدوي — يظهر فقط للاعب في منتصف اللعبة */}
         {showReconnectBtn && (
@@ -1128,7 +1125,7 @@ function App() {
             }
           </TouchableOpacity>
         )}
-      </SafeAreaView>
+      </View>
     </GlobalRTLWrapper>
   );
 }

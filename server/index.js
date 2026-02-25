@@ -184,8 +184,14 @@ async function simulateBotDrafting(roomCode, bot) {
     const room = rooms[roomCode];
     if (!room || room.state !== 'DRAFTING') return;
     try {
-        // استخدام GitHub Models AI لملء فراغات السيناريو حسب الدور
-        const targetText = await generateBotAnswer(bot.role, room.currentScenario, [], room.gameMode);
+        // تمرير الإجابات السابقة للـ AI لتنويع كل بوت
+        const prevAnswers = Object.values(room.answers).filter(Boolean);
+        const scenarioWithContext = {
+            ...room.currentScenario,
+            _prevAnswers: prevAnswers.slice(-3).join(' | ') // آخر 3 إجابات كسياق
+        };
+
+        const targetText = await generateBotAnswer(bot.role, scenarioWithContext, prevAnswers, room.gameMode);
         
         if (!rooms[roomCode] || rooms[roomCode].state !== 'DRAFTING') return;
 
@@ -421,7 +427,7 @@ function startDramaticReveal(roomCode) {
                 }
             });
         }, currentDelay);
-        currentDelay += 15000; // Increased to 15 seconds
+        currentDelay += 5000; // 5 seconds for dramatic hint
     }
 
     // بعد انتهاء العرض: الانتقال مباشرة إلى التصويت على الجاني
@@ -2009,36 +2015,41 @@ io.on('connection', (socket) => {
 
     // Host requests next round
     socket.on('nextRound', ({ roomCode: providedCode } = {}) => {
-        // البحث عن الغرفة بـ hostId أولاً (الحالة العادية)
         let roomCode = null;
-        for (const code in rooms) {
-            if (rooms[code].hostId === socket.id) {
-                roomCode = code;
-                break;
+
+        // Priority 1: استخدم roomCode المُرسل من العميل مباشرة (أكثر موثوقية)
+        if (providedCode && rooms[providedCode.toUpperCase()]) {
+            roomCode = providedCode.toUpperCase();
+            // تحديث hostId إذا تغيّر (حالة إعادة الاتصال)
+            if (rooms[roomCode].hostId !== socket.id) {
+                rooms[roomCode].hostId = socket.id;
+                socket.join(roomCode);
             }
         }
 
-        // Fallback: استخدم roomCode المُرسل من العميل (حالة إعادة الاتصال)
-        if (!roomCode && providedCode && rooms[providedCode.toUpperCase()]) {
-            roomCode = providedCode.toUpperCase();
-            // تحديث hostId بعد إعادة الاتصال
-            rooms[roomCode].hostId = socket.id;
-            socket.join(roomCode);
-            console.log(`Host socket updated for room ${roomCode}`);
+        // Priority 2: Fallback — بحث بـ hostId
+        if (!roomCode) {
+            for (const code in rooms) {
+                if (rooms[code].hostId === socket.id) {
+                    roomCode = code;
+                    break;
+                }
+            }
         }
+
+        console.log(`[nextRound] room=${roomCode} socket=${socket.id.substring(0,8)} provided=${providedCode}`);
 
         if (roomCode) {
             const room = rooms[roomCode];
-            // Check if game should continue (e.g. Crime member eliminated but not Culprit)
             if (room.roundOutcome === 'CONTINUE') {
                 room.roundOutcome = null; 
-                // Notify players we are returning to Discussion/Game (Round continues)
                 io.to(roomCode).emit('roundContinued', { round: room.currentRound });
-                // Return to Discussion
                 startDiscussion(roomCode);
             } else {
                 startNewRound(roomCode);
             }
+        } else {
+            console.warn(`[nextRound] Room not found! socket=${socket.id}`);
         }
     });
 

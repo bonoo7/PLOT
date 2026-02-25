@@ -140,7 +140,7 @@ async function generateBotAnswer(role, scenario, otherAnswers = [], gameMode = '
 }
 
 /**
- * ⚡ Blitz Mode: توليد ملء فراغ للبوت
+ * ⚡ Blitz Mode: توليد ملء فراغ للبوت مع تنويع عشوائي لكل بوت
  */
 function generateBotBlankFill(role, scenario) {
     const template = scenario.template;
@@ -149,37 +149,48 @@ function generateBotBlankFill(role, scenario) {
     const parts = template.split('_____');
     if (parts.length <= 1) return template; // No blanks
 
+    const keywords = [...scenario.keywords]; // نسخة للخلط
+    // خلط الكلمات المفتاحية لتنويع إجابات كل بوت
+    for (let i = keywords.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [keywords[i], keywords[j]] = [keywords[j], keywords[i]];
+    }
+
     let fullAnswer = "";
     
-    // We need to fill (parts.length - 1) blanks
     for (let i = 0; i < parts.length - 1; i++) {
         fullAnswer += parts[i];
         
-        // Generate a word for this blank
         let word = "";
         
-        // 1. Justice Team: Use Truth Keywords or Context
-        if (role === ROLE_TYPES.SEER || role === ROLE_TYPES.DETECTIVE || role === ROLE_TYPES.WITNESS || role === ROLE_TYPES.MINISTER) {
-            // Use a keyword if available, otherwise a generic plausible word
-            word = scenario.keywords[i % scenario.keywords.length] || "شيء ما";
-        } 
-        
-        // 2. Crime Team: Mix of Truth and Lies
-        else if (role === ROLE_TYPES.CULPRIT || role === ROLE_TYPES.MASTERMIND || role === ROLE_TYPES.BENEFICIARY) {
-            // 50% Truth (to blend in), 50% Trickster (to mislead)
-            if (Math.random() > 0.5) {
-                word = scenario.keywords[i % scenario.keywords.length] || "شيء";
+        // فريق العدالة: كلمات مفتاحية حقيقية (عشوائية)
+        if ([ROLE_TYPES.SEER, ROLE_TYPES.DETECTIVE, ROLE_TYPES.WITNESS, ROLE_TYPES.MINISTER].includes(role)) {
+            // الشاهد أحياناً يخطئ (30%)
+            if (role === ROLE_TYPES.WITNESS && Math.random() < 0.3) {
+                const confused = ["شيء ما", "لا أتذكر", "ربما", "شيئاً غريباً"];
+                word = confused[Math.floor(Math.random() * confused.length)];
             } else {
-                word = scenario.tricksterWord || "شيء مريب";
+                word = keywords[i % keywords.length] || "شيء ما";
             }
         } 
         
-        // 3. Saboteur: Always Trickster Word
+        // فريق الجريمة: خلط بين الحقيقة والكذب
+        else if ([ROLE_TYPES.CULPRIT, ROLE_TYPES.MASTERMIND, ROLE_TYPES.BENEFICIARY].includes(role)) {
+            const useTruth = role === ROLE_TYPES.BENEFICIARY ? Math.random() < 0.7 : Math.random() < 0.4;
+            if (useTruth) {
+                word = keywords[i % keywords.length] || "شيء";
+            } else {
+                // الجاني يستخدم كلمة مختلفة (وليس بالضرورة tricksterWord)
+                const decoys = ["أمر عادي", "موقف اعتيادي", keywords[(i + 1) % keywords.length] || scenario.tricksterWord];
+                word = decoys[Math.floor(Math.random() * decoys.length)];
+            }
+        } 
+        
+        // المخرب: دائماً tricksterWord في أحد الفراغات
         else if (role === ROLE_TYPES.SABOTEUR) {
-            word = scenario.tricksterWord || "فيل";
+            word = i === 0 ? (scenario.tricksterWord || "فيل") : (keywords[i % keywords.length] || "شيء");
         }
         
-        // 4. Citizen: Confused
         else {
             const randomWords = ["لا أعلم", "ربما", "شيء غريب", "نسيت"];
             word = randomWords[Math.floor(Math.random() * randomWords.length)];
@@ -188,9 +199,7 @@ function generateBotBlankFill(role, scenario) {
         fullAnswer += word;
     }
     
-    // Add the last part
     fullAnswer += parts[parts.length - 1];
-    
     return fullAnswer;
 }
 
