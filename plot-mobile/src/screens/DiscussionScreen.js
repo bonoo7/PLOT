@@ -30,7 +30,8 @@ export const DiscussionScreen = ({
     scenarios = [],
     roleData, // Added roleData
     hint, // Added hint prop
-    roomCode // Added roomCode prop
+    roomCode, // Added roomCode prop
+    onRefresh // Added onRefresh prop
 }) => {
     // Safety check for imports
     if (!MinimalLayout) return <Text>Error: MinimalLayout missing</Text>;
@@ -40,7 +41,7 @@ export const DiscussionScreen = ({
     const speakingPlayer = players.find(p => p.id === speakingPlayerId);
 
     return (
-        <MinimalLayout roleData={roleData} roomCode={roomCode}>
+        <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={onRefresh}>
             <View style={styles.container}>
                 <MinimalHeader 
                     title="وقت النقاش" 
@@ -149,7 +150,7 @@ export const DiscussionScreen = ({
                                         >
                                             <PlayerBadge 
                                                 name={player.name}
-                                                role={player.role}
+                                                // role={player.role} // HIDDEN IN DISCUSSION
                                                 score={player.score}
                                                 isSelf={false}
                                                 isActive={speakingPlayerId === player.id}
@@ -382,25 +383,25 @@ const styles = StyleSheet.create({
         paddingBottom: 10,
     },
     miniScenarioCard: {
-        width: 280, // Increased width
-        height: 200, // Increased height
+        width: 320, // Increased width
+        height: 220, // Increased height
         backgroundColor: '#FDF5E6',
-        borderRadius: 8,
-        padding: 12,
+        borderRadius: 12, // Slightly more rounded
+        padding: 16, // More padding
         justifyContent: 'space-between',
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.25,
-        shadowRadius: 3.84,
-        elevation: 5,
+        shadowOffset: { width: 0, height: 4 }, // Deeper shadow
+        shadowOpacity: 0.3,
+        shadowRadius: 5,
+        elevation: 8,
         borderWidth: 1,
         borderColor: '#D2B48C',
     },
     miniScenarioText: {
         fontFamily: theme.fonts.main,
-        fontSize: 12, // Slightly larger text
-        color: '#333',
-        lineHeight: 18,
+        fontSize: 14, // Larger text
+        color: '#222', // Darker text for contrast
+        lineHeight: 22, // Better line height
         textAlign: 'right', // RTL
     },
     miniScenarioMeta: {

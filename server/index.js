@@ -85,7 +85,7 @@ function getRoleTeam(roleId) {
 
 function generateRoomCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
-    let code;
+    let code = '';
     do {
         code = '';
         for (let i = 0; i < 4; i++) {
@@ -93,6 +93,84 @@ function generateRoomCode() {
         }
     } while (rooms[code]);
     return code;
+}
+
+/**
+ * بناء كائن المعرفة المحدودة لكل بوت — يعكس ما يعرفه فعلياً في اللعبة
+ */
+function buildBotKnowledge(bot, room) {
+    if (!bot || !room) return {};
+    return {
+        myId: bot.id,
+        myRole: bot.role,
+        myTeam: getRoleInfo(bot.role)?.team,
+        // العقل المدبر فقط يعرف فريقه
+        knownCrimeTeam: (bot.role === 'MASTERMIND' && bot.specialInfo?.crimeTeam)
+            ? bot.specialInfo.crimeTeam.map(p => p.id)
+            : [],
+        // الوزير يعرف المحقق والمستفيد
+        knownDetectiveId: (bot.role === 'MINISTER' && bot.specialInfo?.detective)
+            ? bot.specialInfo.detective.id : null,
+        knownBeneficiaryId: (bot.role === 'MINISTER' && bot.specialInfo?.beneficiary)
+            ? bot.specialInfo.beneficiary.id : null,
+        // نتيجة التحقيق إذا كان محقق واستخدم قدرته
+        investigationResult: bot.investigationResult || null,
+    };
+}
+
+/**
+ * تنفيذ قدرات البوتات بعد انتهاء مرحلة الكتابة وقبل التصويت
+ */
+function executeBotAbilities(roomCode) {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    const bots = room.players.filter(p => p.isBot && !p.eliminated);
+    const validTargets = room.players.filter(p => !p.eliminated);
+
+    bots.forEach(bot => {
+        // 1. المحقق: يفحص لاعباً عشوائياً (لا يعرف من هو الجاني)
+        if (bot.role === 'DETECTIVE' && !bot.abilityUsed) {
+            const targets = validTargets.filter(p => p.id !== bot.id);
+            if (targets.length > 0) {
+                const target = targets[Math.floor(Math.random() * targets.length)];
+                const targetTeam = getRoleInfo(target.role)?.team;
+                
+                bot.investigationResult = { 
+                    targetId: target.id, 
+                    targetName: target.name, 
+                    targetTeam 
+                };
+                bot.abilityUsed = true;
+                console.log(`🤖 [BOT] Detective ${bot.name} investigated ${target.name} (${targetTeam})`);
+            }
+        } 
+        
+        // 2. المخرب: يخرب بشكل عشوائي أو يستهدف المحقق إذا عرفه (نادر)
+        else if (bot.role === 'SABOTEUR' && !bot.abilityUsed) {
+            const targets = validTargets.filter(p => p.id !== bot.id && getRoleInfo(p.role)?.team !== 'CRIME');
+            if (targets.length > 0) {
+                const target = targets[Math.floor(Math.random() * targets.length)];
+                
+                // تطبيق التخريب الفعلي — ينعكس على نتيجة تحقيق المحقق
+                target.sabotagedBy = bot.id;
+                target.sabotageType = 'INVESTIGATION_FLIP';
+                
+                bot.abilityUsed = true;
+                console.log(`🤖 [BOT] Saboteur ${bot.name} sabotaged ${target.name}`);
+            }
+        }
+        
+        // 3. العراف: يكشف القصة الحقيقية (بنسبة 50% لعدم كشف نفسه فوراً)
+        else if (bot.role === 'SEER' && !bot.abilityUsed) {
+            if (Math.random() > 0.5) {
+                // استبدال إجابة العراف بالقصة الحقيقية
+                room.answers[bot.id] = `(وحي العراف): ${room.currentScenario.solution}`;
+                bot.abilityUsed = true;
+                console.log(`🤖 [BOT] Seer ${bot.name} used revelation`);
+            }
+        }
+    });
 }
 
 function checkDraftingComplete(roomCode) {
@@ -116,69 +194,6 @@ function checkDraftingComplete(roomCode) {
 // 🤖 BOT ABILITIES & KNOWLEDGE
 // ============================================
 
-/**
- * بناء كائن المعرفة المحدودة لكل بوت — يعكس ما يعرفه فعلياً في اللعبة
- */
-function buildBotKnowledge(bot, room) {
-    return {
-        myId: bot.id,
-        myRole: bot.role,
-        myTeam: getRoleInfo(bot.role)?.team,
-        knownCrimeTeam: (bot.role === ROLE_TYPES.MASTERMIND && bot.specialInfo?.crimeTeam)
-            ? bot.specialInfo.crimeTeam.map(p => p.id)
-            : [],
-        knownDetectiveId: (bot.role === ROLE_TYPES.MINISTER && bot.specialInfo?.detective)
-            ? bot.specialInfo.detective.id : null,
-        knownBeneficiaryId: (bot.role === ROLE_TYPES.MINISTER && bot.specialInfo?.beneficiary)
-            ? bot.specialInfo.beneficiary.id : null,
-        investigationResult: bot.investigationResult || null,
-    };
-}
-
-/**
- * تنفيذ قدرات البوتات بعد انتهاء مرحلة الكتابة
- */
-function executeBotAbilities(roomCode) {
-    const room = rooms[roomCode];
-    if (!room) return;
-
-    const bots = room.players.filter(p => p.isBot && !p.eliminated);
-
-    bots.forEach(bot => {
-        if (bot.abilityUsed) return;
-
-        if (bot.role === ROLE_TYPES.DETECTIVE) {
-            // المحقق: يفحص لاعباً عشوائياً (لا يعرف من هو الجاني)
-            const targets = room.players.filter(p => p.id !== bot.id && !p.eliminated);
-            if (targets.length > 0) {
-                const target = targets[Math.floor(Math.random() * targets.length)];
-                const targetTeam = getRoleInfo(target.role)?.team;
-                bot.investigatedTarget = target.id;
-                bot.investigationResult = { targetId: target.id, targetName: target.name, targetTeam };
-                bot.abilityUsed = true;
-                console.log(`🔍 Bot Detective ${bot.name} investigated ${target.name} (${targetTeam})`);
-            }
-        } else if (bot.role === ROLE_TYPES.SABOTEUR) {
-            // المخرب: يخرب المحقق إذا كان الماستر مايند أخبره، وإلا عشوائي
-            let targetId = null;
-            if (bot.specialInfo?.detectiveId) {
-                targetId = bot.specialInfo.detectiveId;
-            } else {
-                const targets = room.players.filter(p => p.id !== bot.id && !p.eliminated);
-                if (targets.length > 0) targetId = targets[Math.floor(Math.random() * targets.length)].id;
-            }
-            if (targetId) {
-                const target = room.players.find(p => p.id === targetId);
-                if (target) {
-                    bot.sabotageTarget = targetId;
-                    target.sabotagedBy = bot.id;
-                    bot.abilityUsed = true;
-                    console.log(`💣 Bot Saboteur ${bot.name} sabotaged ${target.name}`);
-                }
-            }
-        }
-    });
-}
 
 function startDraftingPhase(roomCode) {
     const room = rooms[roomCode];
@@ -257,8 +272,18 @@ async function simulateBotDrafting(roomCode, bot) {
     try {
         // ⚡ العراف: يرسل القصة الحقيقية مباشرة (قدرة الوحي)
         if (bot.role === ROLE_TYPES.SEER) {
-            const realStory = room.currentScenario.fullStory || room.currentScenario.story;
-            const answerText = Array.isArray(realStory) ? realStory.join('\n') : (realStory || '');
+            let answerText;
+            if (room.gameMode === 'BLITZ' && room.currentScenario.template && room.currentScenario.blanks) {
+                // في وضع الفراغات: يملأ الفراغات بالإجابات الصحيحة
+                let filled = room.currentScenario.template;
+                room.currentScenario.blanks.forEach(blank => {
+                    filled = filled.replace('_____', blank);
+                });
+                answerText = filled;
+            } else {
+                const realStory = room.currentScenario.fullStory || room.currentScenario.story;
+                answerText = Array.isArray(realStory) ? realStory.join('\n') : (realStory || '');
+            }
             setTimeout(() => {
                 if (!rooms[roomCode] || rooms[roomCode].state !== 'DRAFTING') return;
                 room.answers[bot.id] = answerText;
@@ -355,9 +380,10 @@ function startQualityVoting(roomCode) {
 
                 // 🤖 Smart Bot Quality Vote
                 const botKnowledge = buildBotKnowledge(p, room);
-                const playersPublic = room.players.map(pl => ({ id: pl.id, name: pl.name })); // just for ID mapping
+                // ⛔ استبعاد اللاعبين المستبعدين من قائمة المرشحين
+                const playersPublic = room.players.filter(pl => !pl.eliminated).map(pl => ({ id: pl.id, name: pl.name }));
                 const answers = {};
-                room.players.forEach(pl => { answers[pl.id] = room.answers[pl.id] || ''; });
+                room.players.filter(pl => !pl.eliminated).forEach(pl => { answers[pl.id] = room.answers[pl.id] || ''; });
                 
                 let qualityVoteIndex = generateSmartQualityVote(
                     botKnowledge,
@@ -594,13 +620,15 @@ function startCulpritVoting(roomCode) {
     room.state = 'CULPRIT_VOTING';
     room.culpritVotes = {}; // ✅ Reset votes to prevent carry-over/double counting
 
-    // إرسال السيناريوهات مع الأسماء
-    const scenariosWithAuthors = room.players.map((p, index) => ({
-        index: index,
-        playerId: p.id,
-        playerName: p.name,
-        answer: room.answers[p.id] || "لم يكتب شيئاً..."
-    }));
+    // إرسال السيناريوهات مع الأسماء — فقط اللاعبين النشطين (غير المستبعدين)
+    const scenariosWithAuthors = room.players
+        .filter(p => !p.eliminated)
+        .map((p, index) => ({
+            index: index,
+            playerId: p.id,
+            playerName: p.name,
+            answer: room.answers[p.id] || "لم يكتب شيئاً..."
+        }));
 
     io.to(roomCode).emit('culpritVotingStarted', {
         scenarios: scenariosWithAuthors
@@ -614,9 +642,10 @@ function startCulpritVoting(roomCode) {
                 if (room.culpritVotes[p.id] !== undefined) return;
 
                 const botKnowledge = buildBotKnowledge(p, room);
-                const playersPublic = room.players.map(pl => ({ id: pl.id, name: pl.name }));
+                // ⛔ استبعاد اللاعبين المستبعدين من قائمة المرشحين
+                const playersPublic = room.players.filter(pl => !pl.eliminated).map(pl => ({ id: pl.id, name: pl.name }));
                 const answers = {};
-                room.players.forEach(pl => { answers[pl.id] = room.answers[pl.id] || ''; });
+                room.players.filter(pl => !pl.eliminated).forEach(pl => { answers[pl.id] = room.answers[pl.id] || ''; });
 
                 const culpritVoteId = generateSmartCulpritVote(
                     botKnowledge,
@@ -683,13 +712,86 @@ function handleVotingResult(roomCode) {
 
     // Handle Tie
     if (candidates.length > 1) {
-        // Random pick for now to avoid stuck game loop
-        const randomIdx = Math.floor(Math.random() * candidates.length);
-        const selectedId = candidates[randomIdx];
-        resolveElimination(roomCode, selectedId);
+        // Logic: 
+        // 1. If first tie -> Reset votes and Re-vote (emit 'revote')
+        // 2. If second tie (consecutive) -> Crime Team Wins
+
+        if (!room.consecutiveTies) room.consecutiveTies = 0;
+        
+        if (room.consecutiveTies >= 1) {
+            // Second consecutive tie -> Crime Wins
+            endRound(roomCode, { 
+                winner: TEAMS.CRIME, 
+                reason: 'تعادل التصويت للمرة الثانية! يفوز فريق الجريمة.',
+                victim: null 
+            });
+            room.consecutiveTies = 0; // Reset
+            return;
+        }
+
+        // First Tie -> Revote
+        room.consecutiveTies++;
+        room.culpritVotes = {}; // Reset votes
+        
+        io.to(roomCode).emit('voteTie', {
+            candidates: candidates.map(id => {
+                const p = room.players.find(pl => pl.id === id);
+                return p ? p.name : 'Unknown';
+            }),
+            message: 'تعادل في الأصوات! سيتم إعادة التصويت.'
+        });
+        
+        // Restart bot votes if needed
+        room.players.forEach(p => {
+            if (p.isBot) {
+                setTimeout(() => {
+                    // Simple bot revote logic: just pick one of the candidates randomly
+                    // Or use same smart logic but restrict to candidates?
+                    // For now, full smart logic again is fine, they might change mind
+                    
+                    // Actually, let's keep it simple: Bot logic triggers in startCulpritVoting
+                    // We need to re-trigger bot voting.
+                    // But startCulpritVoting resets everything.
+                    // Let's just call startCulpritVoting again?
+                    // No, that sends 'culpritVotingStarted' again.
+                    // Client needs to handle 'voteTie' by clearing selection and allowing vote again.
+                    
+                    // Trigger bot vote again
+                    const botKnowledge = buildBotKnowledge(p, room);
+                    // ⛔ استبعاد اللاعبين المستبعدين
+                    const playersPublic = room.players.filter(pl => !pl.eliminated).map(pl => ({ id: pl.id, name: pl.name }));
+                    const answers = {};
+                    room.players.filter(pl => !pl.eliminated).forEach(pl => { answers[pl.id] = room.answers[pl.id] || ''; });
+    
+                    const culpritVoteId = generateSmartCulpritVote(
+                        botKnowledge,
+                        playersPublic,
+                        answers,
+                        room.currentScenario
+                    );
+                    
+                    room.culpritVotes[p.id] = culpritVoteId;
+                    
+                    io.to(room.hostId).emit('voteReceived', {
+                        phase: 'CULPRIT',
+                        playerId: p.id,
+                        playerName: p.name,
+                        choice: culpritVoteId,
+                        totalVotes: Object.keys(room.culpritVotes).length,
+                        totalPlayers: room.players.length
+                    });
+                    
+                    checkCulpritVotingComplete(roomCode);
+                }, 3000 + Math.random() * 5000);
+            }
+        });
+
         return;
     }
     
+    // Reset tie counter on successful result
+    room.consecutiveTies = 0;
+
     if (candidates.length === 0) {
         // Should not happen, but safe fallback
          endRound(roomCode, { winner: 'DRAW', reason: 'لم يصوت أحد!' });
@@ -776,6 +878,9 @@ function endRound(roomCode, result) {
         return roleInfo && roleInfo.team === TEAMS.JUSTICE;
     });
 
+    // Check if we should reveal roles
+    const shouldRevealRoles = result && result.winner !== 'CONTINUE' && result.winner !== 'DRAW';
+
     const results = room.players.map(p => {
         let playerBreakdown = breakdown[p.id];
         if (!playerBreakdown || !Array.isArray(playerBreakdown) || playerBreakdown.length === 0) {
@@ -783,35 +888,41 @@ function endRound(roomCode, result) {
         }
 
         const roleInfo = getRoleInfo(p.role);
+        const isEliminated = result && result.eliminatedPlayer && result.eliminatedPlayer.name === p.name;
+        
+        // Reveal role if game over OR if this specific player was eliminated
+        const revealThisPlayer = shouldRevealRoles || isEliminated;
 
         return {
             name: p.name,
-            role: getRoleName(p.role),
-            roleId: p.role,
-            team: roleInfo ? roleInfo.team : TEAMS.JUSTICE,
-            teamName: roleInfo && roleInfo.team === TEAMS.CRIME ? 'فريق الجريمة' : 'فريق العدالة',
+            role: revealThisPlayer ? getRoleName(p.role) : '؟؟؟', // Mask Role
+            roleId: revealThisPlayer ? p.role : null,            // Mask ID
+            team: revealThisPlayer ? (roleInfo ? roleInfo.team : TEAMS.JUSTICE) : null,
+            teamName: revealThisPlayer ? (roleInfo && roleInfo.team === TEAMS.CRIME ? 'فريق الجريمة' : 'فريق العدالة') : '؟؟؟',
             roundScore: roundScores[p.id] || 0,
             totalScore: p.score,
             breakdown: playerBreakdown,
-            // Reveal info if they were the eliminated one or it's the culprit
-            isEliminated: result && result.eliminatedPlayer && result.eliminatedPlayer.name === p.name,
-            isCulprit: p.role === ROLE_TYPES.CULPRIT
+            isEliminated: isEliminated,
+            isCulprit: p.role === ROLE_TYPES.CULPRIT // Used for visual cues, maybe mask too?
         };
     }).sort((a, b) => b.totalScore - a.totalScore);
 
     // Send Results
     const resultPayload = { 
         winner: result ? result.winner : null,
-        scores: results, // Renamed from results to scores to match Client
+        scores: results,
         teamScores,
         crimeTeamWon,
         investigationTeamWon,
         culpritCaught,
-        crimeTeam: crimeMembers.map(p => ({ id: p.id, name: p.name, score: p.score, roleName: getRoleName(p.role) })), // Renamed to crimeTeam
-        justiceTeam: investigationMembers.map(p => ({ id: p.id, name: p.name, score: p.score, roleName: getRoleName(p.role) })), // Renamed to justiceTeam
+        crimeTeam: crimeMembers.map(p => ({ id: p.id, name: p.name, score: p.score, roleName: getRoleName(p.role) })),
+        justiceTeam: investigationMembers.map(p => ({ id: p.id, name: p.name, score: p.score, roleName: getRoleName(p.role) })),
         reason: result ? result.reason : null,
         victim: result ? result.victim : null,
-        eliminatedPlayer: result ? result.eliminatedPlayer : null
+        eliminatedPlayer: result ? result.eliminatedPlayer : null,
+        round: room.currentRound,
+        totalRounds: room.totalRounds,
+        isLastRound: room.currentRound >= room.totalRounds
     };
     
     room.lastRoundResult = resultPayload; // Store for reconnection
@@ -847,6 +958,14 @@ io.on('connection', (socket) => {
         socket.join(roomCode);
         socket.emit('roomCreated', roomCode);
         console.log(`Room created: ${roomCode} by ${socket.id}`);
+
+        // Auto-cleanup: delete unused lobby rooms after 30 minutes
+        setTimeout(() => {
+            if (rooms[roomCode] && rooms[roomCode].state === 'LOBBY') {
+                delete rooms[roomCode];
+                console.log(`🧹 Unused lobby room ${roomCode} auto-cleaned`);
+            }
+        }, 30 * 60 * 1000);
     });
 
     // Host reconnect — يُحدّث hostId عند إعادة اتصال الهوست
@@ -1049,7 +1168,7 @@ io.on('connection', (socket) => {
             if (desiredRole) {
                 console.log(`🎓 Training Mode Join: ${playerName} wants to be ${desiredRole}`);
                 room.isTutorial = true;
-                room.totalRounds = 1;
+                room.totalRounds = 3; // التدريب يستمر 3 جولات
                 player.role = desiredRole;
                 player.preferredRole = desiredRole; // Persist preference
 
@@ -1218,8 +1337,8 @@ io.on('connection', (socket) => {
                 ROLE_TYPES.WITNESS,     // 2. الشاهد
                 ROLE_TYPES.DETECTIVE,   // 3. المحقق
                 ROLE_TYPES.SABOTEUR,    // 4. المخرب
-                ROLE_TYPES.BENEFICIARY, // 5. المستفيد (قبل الوزير)
-                ROLE_TYPES.MINISTER,    // 6. الوزير
+                ROLE_TYPES.MINISTER,    // 5. الوزير (كان المستفيد)
+                ROLE_TYPES.BENEFICIARY, // 6. المستفيد (كان الوزير)
                 ROLE_TYPES.SEER,        // 7. العراف
                 ROLE_TYPES.MASTERMIND   // 8. العقل المدبر
             ];
@@ -1312,7 +1431,7 @@ io.on('connection', (socket) => {
             players: [],
             state: 'LOBBY',
             currentRound: 0,
-            totalRounds: 1,
+            totalRounds: 3, // التدريب يستمر 3 جولات
             usedScenarios: [],
             isTutorial: true,
             hostCode: roomCode
@@ -1401,7 +1520,7 @@ io.on('connection', (socket) => {
             room.usedScenarios = [];
             room.players.forEach(p => p.score = 0);
             room.isTutorial = isTutorial || false;
-            room.totalRounds = (isTutorial) ? 1 : room.totalRounds;
+            room.totalRounds = (isTutorial) ? 3 : room.totalRounds;
             room.tutorialData = null;
         }
 
@@ -1433,6 +1552,7 @@ io.on('connection', (socket) => {
         room.culpritVotes = {};
         room.submissionTimes = {};
         room.roundOutcome = null;
+        room.consecutiveTies = 0;
         
         // 🔄 Notify Players about New Round
         io.to(roomCode).emit('newRoundStarted', {
@@ -1552,6 +1672,27 @@ io.on('connection', (socket) => {
             }
 
             let specialInfo = null;
+
+            if (role === ROLE_TYPES.MASTERMIND) {
+                specialInfo = {
+                    crimeTeam: crimeTeam.map(p => ({
+                        id: p.id,
+                        name: p.name,
+                        role: p.role,
+                        roleName: getRoleName(p.role)
+                    }))
+                };
+            } else if (role === ROLE_TYPES.MINISTER) {
+                specialInfo = {
+                    detective: detective ? { id: detective.id, name: detective.name } : null,
+                    beneficiary: beneficiary ? { id: beneficiary.id, name: beneficiary.name } : null
+                };
+            }
+
+            // Save specialInfo for bots to use later
+            if (player.isBot) {
+                player.specialInfo = specialInfo;
+            }
 
             // Culprit gets full story
             if (role === ROLE_TYPES.CULPRIT) {
@@ -1673,7 +1814,10 @@ io.on('connection', (socket) => {
 
         // Clean up room after 5 minutes (grace period for reconnection/result viewing)
         setTimeout(() => {
-            delete rooms[roomCode];
+            if (rooms[roomCode]) {
+                if (rooms[roomCode].timer) clearInterval(rooms[roomCode].timer);
+                delete rooms[roomCode];
+            }
             console.log(`🧹 Room ${roomCode} cleaned up from memory`);
         }, 5 * 60 * 1000);
     }
@@ -1688,51 +1832,8 @@ io.on('connection', (socket) => {
     // ============================================
     // 🛡️ V4 ABILITIES HANDLERS
     // ============================================
-    socket.on('saboteurSabotage', ({ roomCode, targetId }) => {
-        const room = rooms[roomCode];
-        if (!room) return;
-        const player = room.players.find(p => p.id === socket.id);
-        if (player && player.role === ROLE_TYPES.SABOTEUR) {
-            const target = room.players.find(p => p.id === targetId);
-            if (target) {
-                player.sabotageTarget = targetId; // Track who Saboteur targeted for Scoring
-                target.sabotagedBy = player.id;
-                player.abilityUsed = true;
-                console.log(`Saboteur ${player.name} sabotaged ${target.name}`);
-            }
-        }
-    });
-
-    socket.on('detectiveCheck', ({ roomCode, targetId }) => {
-        const room = rooms[roomCode];
-        if (!room) return;
-        const player = room.players.find(p => p.id === socket.id);
-        if (player && player.role === ROLE_TYPES.DETECTIVE) {
-            const target = room.players.find(p => p.id === targetId);
-            if (target) {
-                player.investigatedTarget = targetId;
-                player.abilityUsed = true;
-                console.log(`Detective ${player.name} checked ${target.name}`);
-            }
-        }
-    });
-
-    socket.on('seerReveal', ({ roomCode }) => {
-        const room = rooms[roomCode];
-        if (!room) return;
-        const player = room.players.find(p => p.id === socket.id);
-        if (player && player.role === ROLE_TYPES.SEER) {
-            // Auto-submit real story
-            const realStory = room.currentScenario.fullStory || room.currentScenario.story; // Fallback
-            // Ensure we handle arrays or strings correctly
-            const answerText = Array.isArray(realStory) ? realStory.join('\n') : realStory;
-            
-            room.answers[socket.id] = answerText;
-            io.to(room.hostId).emit('playerSubmitted', { playerId: player.id, playerName: player.name });
-            checkDraftingComplete(roomCode);
-            console.log(`Seer ${player.name} used Revelation`);
-        }
-    });
+    // Legacy handlers (saboteurSabotage, detectiveCheck, seerReveal) removed —
+    // client uses 'useAbility' exclusively.
 
     // ============================================
     // 💰 V4 OFFERS MECHANISM
@@ -1954,34 +2055,17 @@ io.on('connection', (socket) => {
              player.abilityUsed = true;
 
         } else if (player.role === ROLE_TYPES.SABOTEUR && abilityType === 'SABOTAGE') {
-             // 🧨 Saboteur Ability
+             // 🧨 Saboteur Ability — نفس التأثير في كلا الوضعين (Classic + Blitz)
              const targetPlayer = room.players.find(p => p.id === targetId);
              if (!targetPlayer) return;
              
              targetPlayer.sabotagedBy = player.id;
+             targetPlayer.sabotageType = 'INVESTIGATION_FLIP';
              
-             if (room.gameMode === 'BLITZ') {
-                 // Blitz Sabotage: Word Swap
-                 targetPlayer.sabotageType = 'WORD_SWAP';
-                 targetPlayer.tricksterWord = room.currentScenario.tricksterWord || "بطيخة";
-                 
-                 // If target already submitted, apply immediately
-                 if (room.answers[targetId]) {
-                     applyBlitzSabotage(room, targetId);
-                 }
-
-                 socket.emit('abilityResult', {
-                     type: 'SABOTAGE',
-                     message: `تم تخريب سيناريو ${targetPlayer.name} بإضافة كلمة دخيلة!`
-                 });
-             } else {
-                 // Classic Sabotage: Investigation Flip
-                 targetPlayer.sabotageType = 'INVESTIGATION_FLIP';
-                 socket.emit('abilityResult', {
-                     type: 'SABOTAGE',
-                     message: `تم تخريب سجل ${targetPlayer.name}. سيظهر عكس حقيقته للمحقق.`
-                 });
-             }
+             socket.emit('abilityResult', {
+                 type: 'SABOTAGE',
+                 message: `تم تخريب سجل ${targetPlayer.name}. سيظهر عكس حقيقته للمحقق.`
+             });
              
              player.abilityUsed = true;
         }
@@ -2107,7 +2191,7 @@ io.on('connection', (socket) => {
     });
 
     // Host requests next round
-    socket.on('nextRound', ({ roomCode: providedCode } = {}) => {
+    socket.on('nextRound', async ({ roomCode: providedCode } = {}) => {
         let roomCode = null;
 
         // Priority 1: استخدم roomCode المُرسل من العميل مباشرة (أكثر موثوقية)
@@ -2133,7 +2217,7 @@ io.on('connection', (socket) => {
 
         if (roomCode) {
             // ✅ دائماً أضف الـ socket للغرفة لضمان استلام الأحداث
-            socket.join(roomCode);
+            await socket.join(roomCode);
             const room = rooms[roomCode];
             if (room.roundOutcome === 'CONTINUE') {
                 room.roundOutcome = null; 

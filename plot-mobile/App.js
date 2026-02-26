@@ -8,7 +8,6 @@ import {
   Alert,
   AppState,
   TouchableOpacity,
-  ActivityIndicator,
   StatusBar as RNStatusBar
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
@@ -514,6 +513,15 @@ function App() {
         setScreen(SCREENS.CULPRIT_VOTING);
       }
     });
+
+    socket.on('voteTie', (data) => {
+      console.log('⚖️ Vote Tie:', data);
+      // إعادة تعيين التصويت للسماح بإعادة التصويت
+      setHasVoted(false);
+      setSelectedCulprit(null);
+      setLiveVotes([]);
+      alert(data.message || 'تعادل في الأصوات! أعد التصويت.');
+    });
     
     socket.on('voteReceived', (data) => {
       console.log('📊 Vote received:', data);
@@ -523,6 +531,15 @@ function App() {
     socket.on('roundResults', (data) => {
       console.log('🏆 Round results');
       setRoundResults(data);
+      // تحديث رقم الجولة والمجموع من الخادم مباشرة
+      if (data.round) setCurrentRound(data.round);
+      if (data.totalRounds) setTotalRounds(data.totalRounds);
+      if (data.scores && playerName) {
+        const myResult = data.scores.find(s => s.name === playerName);
+        if (myResult !== undefined) {
+          setRoleData(prev => prev ? { ...prev, totalScore: myResult.totalScore } : prev);
+        }
+      }
       if (userRole === 'HOST') {
         setScreen(SCREENS.HOST_RESULTS);
       } else {
@@ -591,6 +608,24 @@ function App() {
       setConnecting(false);
       Alert.alert('خطأ في الاتصال', 'فشل الاتصال بالخادم. تأكد من تشغيل الخادم.');
     });
+
+    socket.on('gameEnded', () => {
+      console.log('🏁 Game ended — returning to main page');
+      if (socket) socket.disconnect();
+      setSocket(null);
+      socketRef.current = null;
+      setScreen(SCREENS.ROLE_SELECT);
+      setUserRole(null);
+      setPlayerName('');
+      setRoomCode('');
+      setGeneratedRoomCode('');
+      setPlayers([]);
+      setRoleData(null);
+      setRoundResults(null);
+      setAnswer('');
+      setIsSubmitted(false);
+      setHasVoted(false);
+    });
     
     return () => {
       socket.off('roomCreated');
@@ -603,6 +638,7 @@ function App() {
       socket.off('playerSubmitted');
       socket.off('qualityVotingStarted');
       socket.off('culpritVotingStarted');
+      socket.off('voteTie');
       socket.off('voteReceived');
       socket.off('roundResults');
       socket.off('abilityResult');
@@ -619,6 +655,7 @@ function App() {
       socket.off('hostHint');
       socket.off('error');
       socket.off('connect_error');
+      socket.off('gameEnded');
     };
   }, [socket, userRole]);
   
@@ -798,6 +835,7 @@ function App() {
     SCREENS.PLAYER_DRAMATIC_REVEAL, SCREENS.DISCUSSION,
     SCREENS.CULPRIT_VOTING, SCREENS.WAITING,
   ];
+  // eslint-disable-next-line no-unused-vars
   const showReconnectBtn = userRole === 'PLAYER' && RECONNECT_SCREENS.includes(screen);
 
 
@@ -947,7 +985,7 @@ function App() {
             roomCode={generatedRoomCode}
             roundResults={roundResults}
             onContinue={handleContinue}
-            isLastRound={currentRound >= totalRounds}
+            isLastRound={roundResults?.isLastRound ?? (currentRound >= totalRounds)}
           />
         );
       
@@ -978,6 +1016,8 @@ function App() {
           <GameScreen 
             roleData={roleData}
             onReady={handleRoleReady}
+            onRefresh={handleManualReconnect}
+            roomCode={roomCode}
           />
         );
       
@@ -996,6 +1036,7 @@ function App() {
             socket={socket}
             roomCode={roomCode}
             gameMode={gameMode}
+            onRefresh={handleManualReconnect}
           />
         );
       
@@ -1008,11 +1049,13 @@ function App() {
             selectedScenario={selectedScenario}
             roleData={roleData}
             myAnswer={answer}
+            onRefresh={handleManualReconnect}
+            roomCode={roomCode}
           />
         );
       
       case SCREENS.PLAYER_DRAMATIC_REVEAL:
-        return <PlayerDramaticRevealScreen roleData={roleData} currentReveal={currentReveal} />;
+        return <PlayerDramaticRevealScreen roleData={roleData} currentReveal={currentReveal} onRefresh={handleManualReconnect} roomCode={roomCode} />;
         
       case SCREENS.DISCUSSION:
         return (
@@ -1023,6 +1066,8 @@ function App() {
              scenarios={revealedScenarios}
              roleData={roleData}
              hint={lastHint} // Pass hint
+             roomCode={roomCode}
+             onRefresh={handleManualReconnect}
            />
         );
       
@@ -1035,14 +1080,16 @@ function App() {
             selectedCulprit={selectedCulprit}
             roleData={roleData}
             myPlayerId={socket?.id}
+            onRefresh={handleManualReconnect}
+            roomCode={roomCode}
           />
         );
       
       case SCREENS.WAITING:
         if (roundResults) {
-            return <PlayerResultsScreen results={roundResults} roleData={roleData} />;
+            return <PlayerResultsScreen results={roundResults} roleData={roleData} onRefresh={handleManualReconnect} roomCode={roomCode} />;
         }
-        return <WaitingRevealScreen roleData={roleData} />;
+        return <WaitingRevealScreen roleData={roleData} onRefresh={handleManualReconnect} roomCode={roomCode} />;
       
       case SCREENS.END:
         return (
@@ -1052,55 +1099,7 @@ function App() {
           />
         );
       
-      // شاشات المضيف الإضافية
-      case SCREENS.HOST_DRAFTING:
-        return (
-          <HostGameScreen
-            players={players}
-            waitingFor={waitingFor}
-          />
-        );
-
-      case SCREENS.HOST_DRAMATIC_REVEAL:
-        return (
-          <HostDramaticRevealScreen
-            revealedScenarios={revealedScenarios}
-            currentReveal={currentReveal}
-          />
-        );
-
-      case SCREENS.HOST_DISCUSSION:
-        return (
-          <DiscussionScreen
-            roomCode={generatedRoomCode}
-            isHost={true}
-            players={players}
-            speakingPlayerId={speakingPlayerId}
-            onSelectSpeaker={handleSelectSpeaker}
-            onEndDiscussion={handleEndDiscussion}
-            scenarios={revealedScenarios}
-          />
-        );
-      
-      case SCREENS.HOST_QUALITY_VOTING:
-        return (
-          <HostVotingScreen
-            votingType="quality"
-            scenarios={scenarios}
-            liveVotes={liveVotes}
-            players={players}
-          />
-        );
-      
-      case SCREENS.HOST_CULPRIT_VOTING:
-        return (
-          <HostVotingScreen
-            votingType="culprit"
-            scenarios={scenarios}
-            liveVotes={liveVotes}
-            players={players}
-          />
-        );
+      // Duplicate cases removed
 
       case SCREENS.HOST_END:
         return (
@@ -1126,19 +1125,6 @@ function App() {
         {/* إخفاء شريط الحالة على الجوال لشاشة كاملة */}
         <StatusBar style="light" hidden={Platform.OS !== 'web'} />
         {renderScreen()}
-        {/* زر إعادة الاتصال اليدوي — يظهر فقط للاعب في منتصف اللعبة */}
-        {showReconnectBtn && (
-          <TouchableOpacity
-            style={styles.reconnectBtn}
-            onPress={handleManualReconnect}
-            disabled={reconnecting}
-          >
-            {reconnecting
-              ? <ActivityIndicator size="small" color="#fff" />
-              : <Text style={styles.reconnectBtnText}>↻</Text>
-            }
-          </TouchableOpacity>
-        )}
       </View>
     </GlobalRTLWrapper>
   );
@@ -1164,21 +1150,10 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
   },
   reconnectBtn: {
-    position: 'absolute',
-    bottom: 20,
-    left: 16,
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(0,0,0,0.35)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 999,
+    // moved to header — kept for reference only
   },
   reconnectBtnText: {
-    color: '#fff',
-    fontSize: 20,
-    fontWeight: 'bold',
+    // moved to header — kept for reference only
   },
 });
 

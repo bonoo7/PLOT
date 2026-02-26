@@ -288,6 +288,10 @@ function generateBotBlankFill(role, scenario) {
     }
     
     fullAnswer += parts[parts.length - 1];
+
+    // Cap length to match AI output limits
+    if (fullAnswer.length > 400) fullAnswer = fullAnswer.substring(0, 397) + '...';
+
     return fullAnswer;
 }
 

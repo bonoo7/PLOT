@@ -21,7 +21,7 @@ import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 /**
  * GameScreen - Role Reveal V3
  */
-export const GameScreen = ({ roleData, onReady }) => {
+export const GameScreen = ({ roleData, onReady, onRefresh, roomCode }) => {
   const { isDesktop } = useResponsiveLayout();
 
   if (!roleData) {
@@ -75,7 +75,7 @@ export const GameScreen = ({ roleData, onReady }) => {
   };
 
   return (
-    <MinimalLayout roleData={roleData}>
+    <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={onRefresh}>
       <View style={[styles.container, { maxWidth: isDesktop ? 900 : 600 }]}>
         
         {/* Top Section: Role Identity */}
@@ -141,7 +141,8 @@ export const DraftingScreen = ({
   players,
   socket,
   roomCode,
-  gameMode
+  gameMode,
+  onRefresh
 }) => {
   const { isDesktop } = useResponsiveLayout();
   const [witnessKeywords, setWitnessKeywords] = useState([]);
@@ -363,7 +364,7 @@ export const DraftingScreen = ({
   };
 
   return (
-    <MinimalLayout roleData={roleData}>
+    <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={onRefresh}>
       <View style={[styles.container, { maxWidth: isDesktop ? 1000 : 700 }]}>
         
         <MinimalNotification 
@@ -488,12 +489,6 @@ export const DraftingScreen = ({
           </View>
           
           <MinimalHeader title="كتابة التقرير" />
-
-          {roleData?.score > 0 && (
-             <View style={styles.balanceBadge}>
-                 <Text style={styles.balanceText}>💰 {roleData.score}</Text>
-             </View>
-          )}
         </View>
 
         <View style={styles.splitLayout}>

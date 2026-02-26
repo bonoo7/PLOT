@@ -17,7 +17,9 @@ export const QualityVotingScreen = ({
   hasVoted = false,
   selectedScenario = null,
   roleData,
-  myAnswer
+  myAnswer,
+  onRefresh,
+  roomCode
 }) => {
   const { isDesktop } = useResponsiveLayout();
   const [selected, setSelected] = useState(selectedScenario);
@@ -27,7 +29,7 @@ export const QualityVotingScreen = ({
   };
 
   return (
-    <MinimalLayout roleData={roleData}>
+    <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={onRefresh}>
       <View style={[styles.container, { maxWidth: isDesktop ? 1000 : 700 }]}>
         <MinimalHeader title="التقييم" subtitle="اختر أفضل سيناريو" />
 
@@ -97,7 +99,9 @@ export const CulpritVotingScreen = ({
   hasVoted = false, 
   selectedCulprit = null,
   roleData,
-  myPlayerId
+  myPlayerId,
+  onRefresh,
+  roomCode
 }) => {
   const { isDesktop } = useResponsiveLayout();
   const [selected, setSelected] = useState(selectedCulprit);
@@ -107,7 +111,7 @@ export const CulpritVotingScreen = ({
   };
 
   return (
-    <MinimalLayout roleData={roleData}>
+    <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={onRefresh}>
       <View style={[styles.container, { maxWidth: isDesktop ? 1000 : 700 }]}>
         <View style={styles.dangerHeader}>
            <MinimalHeader title="من الجاني؟" subtitle="اكشف الحقيقة" />
@@ -305,15 +309,168 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255,0,0,0.3)',
     paddingBottom: spacing.s,
-  }
+  },
+  centerContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: spacing.m,
+    gap: spacing.m,
+  },
+  waitingTitle: {
+    fontSize: 48,
+  },
+  waitingText: {
+    fontFamily: theme.fonts.main,
+    fontSize: fonts.medium,
+    color: '#AAA',
+    marginTop: 20,
+  },
+  resultCard: {
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    borderWidth: 2,
+    padding: spacing.l,
+    borderRadius: borderRadius.medium,
+  },
+  dramaTitle: {
+    fontSize: 48,
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  dramaText: {
+    color: '#FF4444',
+    fontSize: fonts.xlarge,
+    fontFamily: theme.fonts.bold,
+    textAlign: 'center',
+  },
+  eliminatedBox: {
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    padding: spacing.m,
+    borderRadius: borderRadius.small,
+    alignItems: 'center',
+    width: '100%',
+    marginVertical: spacing.m,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  eliminatedLabel: {
+    color: '#AAA',
+    fontSize: 12,
+    marginBottom: 4,
+    fontFamily: theme.fonts.main,
+  },
+  eliminatedName: {
+    color: '#FFF',
+    fontSize: 20,
+    fontWeight: 'bold',
+    fontFamily: theme.fonts.bold,
+  },
+  eliminatedRole: {
+    color: '#FFD700',
+    fontSize: 14,
+    marginTop: 4,
+    fontFamily: theme.fonts.main,
+  },
+  reasonText: {
+    color: '#EEE',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 22,
+    fontFamily: theme.fonts.main,
+  },
+  votesCard: {
+    width: '100%',
+    maxWidth: 400,
+    padding: spacing.m,
+  },
+  votesTitle: {
+    color: '#DAA520',
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  votesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    justifyContent: 'center',
+  },
+  voteItem: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  voteCount: {
+    color: '#FFD700',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  voteName: {
+    color: '#FFF',
+    fontSize: 12,
+  },
+  resultBox: {
+    padding: spacing.m,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    borderRadius: borderRadius.medium,
+    width: '100%',
+  },
+  resultText: {
+    color: '#FFF',
+    fontSize: fonts.medium,
+    textAlign: 'center',
+  },
+
+  // ── PlayerResultsScreen styles ──
+  playerResCard: {
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    borderWidth: 2,
+    padding: spacing.xl,
+    gap: spacing.s,
+  },
+  playerResEmoji: { fontSize: 52, marginBottom: 4 },
+  playerResTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: fonts.large,
+    textAlign: 'center',
+  },
+  playerResDivider: {
+    width: '60%',
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginVertical: spacing.m,
+  },
+  playerResHint: { fontSize: 32 },
+  playerResMsg: {
+    fontFamily: theme.fonts.bold,
+    fontSize: fonts.medium,
+    color: '#FFF',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  playerResSubMsg: {
+    fontFamily: theme.fonts.main,
+    fontSize: fonts.small,
+    color: '#AAA',
+    textAlign: 'center',
+  },
 });
 
 /**
  * WaitingRevealScreen - V3
  */
-export const WaitingRevealScreen = ({ message = "انتظر قليلاً...", roleData }) => {
+export const WaitingRevealScreen = ({ message = "انتظر قليلاً...", roleData, onRefresh, roomCode }) => {
     return (
-      <MinimalLayout roleData={roleData}>
+      <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={onRefresh}>
         <View style={styles.centerContainer}>
             <Text style={styles.waitingTitle}>⏳</Text>
             <Text style={styles.waitingText}>{message}</Text>
@@ -343,10 +500,10 @@ export const EndScreen = ({ results, onRestart }) => {
 /**
  * PlayerDramaticRevealScreen - V3
  */
-export const PlayerDramaticRevealScreen = ({ roleData, currentReveal }) => {
+export const PlayerDramaticRevealScreen = ({ roleData, currentReveal, onRefresh, roomCode }) => {
     if (currentReveal?.type === 'HINT') {
         return (
-            <MinimalLayout roleData={roleData}>
+            <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={onRefresh}>
                  <View style={styles.centerContainer}>
                      <Text style={styles.dramaTitle}>🔍</Text>
                      <Text style={styles.dramaText}>تلميح هام!</Text>
@@ -361,7 +518,7 @@ export const PlayerDramaticRevealScreen = ({ roleData, currentReveal }) => {
     }
 
     return (
-        <MinimalLayout roleData={roleData}>
+        <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={onRefresh}>
              <View style={styles.centerContainer}>
                  <Text style={styles.dramaTitle}>⚠️</Text>
                  <Text style={styles.dramaText}>كشف الحقائق...</Text>
@@ -386,104 +543,22 @@ export const PlayerDramaticRevealScreen = ({ roleData, currentReveal }) => {
 };
 
 /**
- * PlayerResultsScreen - V3
+ * PlayerResultsScreen - V4
+ * يوجّه اللاعب لشاشة المضيف فقط
  */
-export const PlayerResultsScreen = ({ results, roleData }) => {
-    if (!results) return <WaitingRevealScreen message="جاري حساب النتائج..." roleData={roleData} />;
-
-    const { winner, reason, eliminatedPlayer, scores } = results;
-    
-    // Detailed Eliminated Info
-    const detailedEliminated = scores?.find(p => p.isEliminated);
-    const eliminatedTeam = detailedEliminated ? detailedEliminated.teamName : '';
-    const eliminatedRole = detailedEliminated ? detailedEliminated.role : '';
-
-    // Determine Color & Title
-    let bgColor = '#444';
-    let title = 'نهاية الجولة';
-    let emoji = '🏁';
-    
-    if (winner === 'JUSTICE') {
-        bgColor = '#1E90FF';
-        title = 'فاز فريق العدالة!';
-        emoji = '⚖️';
-    } else if (winner === 'CRIME') {
-        bgColor = '#8B0000';
-        title = 'فاز فريق الجريمة!';
-        emoji = '🕵️‍♂️';
-    } else if (winner === 'CONTINUE') {
-        bgColor = '#FFA500'; // Orange
-        title = 'اللعبة مستمرة...';
-        emoji = '🔄';
-    }
+export const PlayerResultsScreen = ({ results, roleData, onRefresh, roomCode }) => {
+    if (!results) return <WaitingRevealScreen message="جاري حساب النتائج..." roleData={roleData} onRefresh={onRefresh} roomCode={roomCode} />;
 
     return (
-        <MinimalLayout roleData={roleData}>
-             <View style={styles.centerContainer}>
-                 <View style={[styles.resultBox, { backgroundColor: bgColor }]}>
-                     <Text style={styles.dramaTitle}>{emoji}</Text>
-                     <Text style={[styles.dramaText, { color: '#FFF' }]}>{title}</Text>
-                     
-                     {eliminatedPlayer && (
-                         <View style={{ marginTop: 20, padding: 10, backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 8, alignItems: 'center' }}>
-                             <Text style={[styles.waitingText, { fontWeight: 'bold' }]}>
-                                 تم استبعاد: {eliminatedPlayer.name}
-                             </Text>
-                             
-                             <View style={{flexDirection: 'row', gap: 5, marginTop: 5}}>
-                                <Text style={{ color: '#FFD700', fontWeight: 'bold' }}>{eliminatedTeam}</Text>
-                                {detailedEliminated && detailedEliminated.isCulprit && (
-                                    <Text style={{ color: '#FF6347' }}>- {eliminatedRole}</Text>
-                                )}
-                             </View>
-                         </View>
-                     )}
-
-                     <Text style={[styles.waitingText, { marginTop: 15, textAlign: 'center', fontSize: 14 }]}>{reason}</Text>
-                 </View>
-                 
-                 <Text style={styles.waitingText}>انتظر تعليمات المضيف...</Text>
-             </View>
+        <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={onRefresh}>
+            <View style={styles.centerContainer}>
+                <MinimalCard style={styles.playerResCard}>
+                    <Text style={styles.playerResHint}>📺</Text>
+                    <Text style={styles.playerResMsg}>انظر إلى شاشة المضيف</Text>
+                    <Text style={styles.playerResSubMsg}>لرؤية نتائج الجولة وترتيب النقاط</Text>
+                </MinimalCard>
+                <Text style={styles.waitingText}>انتظر تعليمات المضيف...</Text>
+            </View>
         </MinimalLayout>
     );
 };
-
-// Add these new styles to the StyleSheet
-const extraStyles = {
-    centerContainer: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-        gap: spacing.l,
-    },
-    waitingTitle: {
-        fontSize: 48,
-    },
-    waitingText: {
-        fontFamily: theme.fonts.main,
-        fontSize: fonts.large,
-        color: '#EBE1D2',
-    },
-    resultBox: {
-        padding: spacing.xl,
-        backgroundColor: 'rgba(0,0,0,0.3)',
-        borderRadius: borderRadius.medium,
-        width: '100%',
-        alignItems: 'center',
-    },
-    resultText: {
-        color: '#FFF',
-        fontSize: fonts.large,
-        fontFamily: theme.fonts.bold,
-    },
-    dramaTitle: {
-        fontSize: 64,
-    },
-    dramaText: {
-        color: '#FF4444',
-        fontSize: fonts.xlarge,
-        fontFamily: theme.fonts.bold,
-    },
-};
-
-Object.assign(styles, extraStyles);

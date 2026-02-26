@@ -135,13 +135,23 @@ function getRolesForPlayerCount(count) {
     // 8. Mastermind (العقل المدبر)
 
     // Define the strict order of roles to be added one by one
+    // Order requested:
+    // 1. الجاني (Culprit)
+    // 2. الشاهد (Witness)
+    // 3. المحقق (Detective)
+    // 4. المخرب (Saboteur)
+    // 5. المستفيد (Beneficiary)
+    // 6. الوزير (Minister)
+    // 7. العراف (Seer)
+    // 8. العقل المدبر (Mastermind)
+
     const priorityList = [
         ROLE_TYPES.CULPRIT,     // 1. الجاني
         ROLE_TYPES.WITNESS,     // 2. الشاهد
         ROLE_TYPES.DETECTIVE,   // 3. المحقق
         ROLE_TYPES.SABOTEUR,    // 4. المخرب
-        ROLE_TYPES.MINISTER,    // 5. الوزير
-        ROLE_TYPES.BENEFICIARY, // 6. المستفيد
+        ROLE_TYPES.BENEFICIARY, // 5. المستفيد
+        ROLE_TYPES.MINISTER,    // 6. الوزير
         ROLE_TYPES.SEER,        // 7. العراف
         ROLE_TYPES.MASTERMIND   // 8. العقل المدبر
     ];

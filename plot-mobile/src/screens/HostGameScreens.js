@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import MinimalLayout from '../components/minimal/MinimalLayout';
 import MinimalHeader from '../components/minimal/MinimalHeader';
 import MinimalCard from '../components/minimal/MinimalCard';
@@ -207,146 +207,139 @@ export const HostVotingScreen = ({
 };
 
 /**
- * HostResultsScreen - V3
+ * HostResultsScreen - V4 Clean Minimal
  */
 export const HostResultsScreen = ({ 
   roundResults = null,
   onContinue,
-  isLastRound = false,
+  isLastRound: isLastRoundProp = false,
   roomCode
 }) => {
-  const { isDesktop } = useResponsiveLayout();
   const [revealStep, setRevealStep] = React.useState(0);
+  const [expandedPlayer, setExpandedPlayer] = React.useState(null);
   
-  // Reset sequence when new results arrive
   React.useEffect(() => {
     if (roundResults) {
         setRevealStep(0);
-        // Sequence:
-        // 0: Initial (Empty/Loading)
-        // 1: Show "Most Voted" Name (Delay 1s)
-        // 2: Reveal Role/Team (Delay 3s)
-        // 3: Show Full Results Banner (Delay 6s)
-        
+        setExpandedPlayer(null);
         const t1 = setTimeout(() => setRevealStep(1), 500);
-        const t2 = setTimeout(() => setRevealStep(2), 3500);
-        const t3 = setTimeout(() => setRevealStep(3), 7500);
-        
-        return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
+        const t2 = setTimeout(() => setRevealStep(2), 3000);
+        return () => { clearTimeout(t1); clearTimeout(t2); };
     }
   }, [roundResults]);
 
   if (!roundResults) return null;
 
-  const { winner, reason, eliminatedPlayer, crimeTeam, justiceTeam, scores } = roundResults;
-  
-  // Find the eliminated player details from the scores array if available
+  const { winner, reason, eliminatedPlayer, scores, round, totalRounds: totalR } = roundResults;
   const detailedEliminated = scores?.find(p => p.isEliminated);
-  const eliminatedTeam = detailedEliminated ? detailedEliminated.teamName : '';
-  const eliminatedRole = detailedEliminated ? detailedEliminated.role : '';
 
-  const getTeamColor = (team) => team === 'CRIME' ? '#8B0000' : '#1E90FF'; // Red vs Blue
-  const getTeamName = (team) => team === 'CRIME' ? 'فريق الجريمة' : 'فريق العدالة';
+  // حساب isLastRound من بيانات الخادم مباشرة (أكثر موثوقية)
+  const isLastRound = roundResults.isLastRound != null
+    ? roundResults.isLastRound
+    : (round != null && totalR != null ? round >= totalR : isLastRoundProp);
+
+  const isContinue = winner === 'CONTINUE';
+  const isCrime    = winner === 'CRIME';
+  const bannerBg   = isContinue ? '#7B6010' : isCrime ? '#6B0000' : '#10346B';
+  const winnerText = isContinue ? '⚖️ اللعبة مستمرة' : isCrime ? '🔴 فاز فريق الجريمة' : '🔵 فاز فريق العدالة';
+  const btnTitle   = isContinue ? 'متابعة النقاش ←' : (isLastRound ? 'إنهاء اللعبة' : 'جولة جديدة ←');
 
   return (
     <MinimalLayout roomCode={roomCode}>
-      <View style={[styles.container, { maxWidth: 1000 }]}>
-         <MinimalHeader title="نتائج الجولة" />
-         
-         <ScrollView style={styles.scrollList}>
-            {/* 1️⃣ Suspense Phase: Eliminated Player Reveal */}
-            {eliminatedPlayer && (
-                <View style={styles.eliminatedBox}>
-                    <Text style={styles.eliminatedLabel}>أكثر شخص تم التصويت عليه هو...</Text>
-                    
-                    {revealStep >= 1 && (
-                        <Text style={[styles.eliminatedName, { fontSize: 40 }]}>{eliminatedPlayer.name}</Text>
-                    )}
-                    
-                    {revealStep >= 2 && (
-                        <View style={styles.eliminatedRevealRow}>
-                            <Text style={styles.eliminatedTeam}>{eliminatedTeam}</Text>
-                            {detailedEliminated && detailedEliminated.isCulprit && (
-                                <Text style={styles.eliminatedRole}> - {eliminatedRole}</Text>
-                            )}
+      <View style={styles.resContainer}>
+        <MinimalHeader
+          title="نتائج الجولة"
+          subtitle={round && totalR ? `الجولة ${round} من ${totalR}` : undefined}
+        />
+
+        <ScrollView contentContainerStyle={styles.resScroll} showsVerticalScrollIndicator={false}>
+
+          {/* ── خطوة 1: المستبعد ── */}
+          {eliminatedPlayer && (
+            <MinimalCard style={styles.resEliminatedCard}>
+              <Text style={styles.resSmallLabel}>تم استبعاد</Text>
+              {revealStep >= 1 ? (
+                <Text style={styles.resEliminatedName}>{eliminatedPlayer.name}</Text>
+              ) : (
+                <Text style={styles.resEliminatedName}>···</Text>
+              )}
+              {revealStep >= 1 && detailedEliminated?.role && detailedEliminated.role !== '؟؟؟' && (
+                <Text style={[styles.resRoleTag, { color: detailedEliminated.isCulprit ? '#e74c3c' : '#3498db' }]}>
+                  {detailedEliminated.role}
+                </Text>
+              )}
+            </MinimalCard>
+          )}
+
+          {/* ── خطوة 2: النتيجة الكاملة ── */}
+          {revealStep >= 2 && (
+            <>
+              {/* لافتة الفائز */}
+              <View style={[styles.resBanner, { backgroundColor: bannerBg }]}>
+                <Text style={styles.resBannerTitle}>{winnerText}</Text>
+                {reason ? <Text style={styles.resBannerReason}>{reason}</Text> : null}
+              </View>
+
+              {/* ترتيب النقاط مع طريقة الكسب */}
+              <MinimalCard style={styles.resScoresCard}>
+                <Text style={styles.resScoresTitle}>ترتيب النقاط</Text>
+                {scores?.map((p, i) => {
+                  const isCrimePlayer  = p.team === 'CRIME';
+                  const isJusticePlayer = p.team === 'JUSTICE';
+                  const teamColor = isCrimePlayer ? '#c0392b' : isJusticePlayer ? '#2980b9' : '#888';
+                  const showRole  = p.role && p.role !== '؟؟؟';
+                  const isExpanded = expandedPlayer === i;
+                  const hasBreakdown = p.breakdown && p.breakdown.length > 0;
+                  return (
+                    <View key={i}>
+                      <TouchableOpacity
+                        style={[styles.resScoreRow, i === 0 && styles.resScoreRowFirst]}
+                        onPress={() => hasBreakdown && setExpandedPlayer(isExpanded ? null : i)}
+                        activeOpacity={hasBreakdown ? 0.7 : 1}
+                      >
+                        <Text style={styles.resScoreRank}>#{i + 1}</Text>
+                        <View style={[styles.resTeamStripe, { backgroundColor: teamColor }]} />
+                        <View style={{ flex: 1 }}>
+                          <Text style={styles.resScoreName}>{p.name}</Text>
+                          {showRole && (
+                            <Text style={[styles.resScoreRole, { color: teamColor }]}>{p.role}</Text>
+                          )}
                         </View>
-                    )}
-                </View>
-            )}
-
-            {/* 2️⃣ Final Result Phase */}
-            {revealStep >= 3 && (
-                <>
-                    {/* Main Result Banner */}
-                    <View style={[
-                        styles.resultBanner, 
-                        { backgroundColor: winner === 'CONTINUE' ? '#FFA500' : getTeamColor(winner) }
-                    ]}>
-                        <Text style={styles.resultBannerTitle}>
-                            {winner === 'CONTINUE' ? 'اللعبة مستمرة!' : `فاز ${getTeamName(winner)}!`}
-                        </Text>
-                        <Text style={styles.resultBannerReason}>{reason}</Text>
+                        <View style={styles.resScoreRight}>
+                          {p.roundScore !== undefined && (
+                            <Text style={[styles.resRoundDelta, { color: p.roundScore > 0 ? '#27ae60' : '#999' }]}>
+                              {p.roundScore > 0 ? `+${p.roundScore}` : p.roundScore}
+                            </Text>
+                          )}
+                          <Text style={[styles.resScoreVal, i === 0 && { color: '#DAA520' }]}>
+                            {p.totalScore}
+                          </Text>
+                          {hasBreakdown && (
+                            <Text style={styles.resExpandIcon}>{isExpanded ? '▲' : '▼'}</Text>
+                          )}
+                        </View>
+                      </TouchableOpacity>
+                      {/* تفاصيل طريقة كسب النقاط */}
+                      {isExpanded && hasBreakdown && (
+                        <View style={styles.resBreakdown}>
+                          {p.breakdown.map((line, j) => (
+                            <Text key={j} style={styles.resBreakdownLine}>• {line}</Text>
+                          ))}
+                        </View>
+                      )}
                     </View>
+                  );
+                })}
+              </MinimalCard>
+            </>
+          )}
+        </ScrollView>
 
-                    {/* Team Rosters (Reveal) */}
-                    <View style={styles.teamsContainer}>
-                        <MinimalCard style={[styles.teamCard, { borderColor: '#8B0000', borderWidth: 1 }]}>
-                            <Text style={[styles.teamHeader, { color: '#8B0000' }]}>فريق الجريمة 🕵️‍♂️</Text>
-                            {crimeTeam?.length > 0 ? crimeTeam.map(p => (
-                                <View key={p.id} style={styles.playerResultRow}>
-                                    <Text style={styles.playerResultName}>{p.name}</Text>
-                                    <Text style={styles.playerResultRole}>{p.roleName}</Text>
-                                </View>
-                            )) : <Text style={styles.noPlayersText}>لا يوجد لاعبين</Text>}
-                        </MinimalCard>
-                        
-                        <MinimalCard style={[styles.teamCard, { borderColor: '#1E90FF', borderWidth: 1 }]}>
-                            <Text style={[styles.teamHeader, { color: '#1E90FF' }]}>فريق العدالة ⚖️</Text>
-                            {justiceTeam?.length > 0 ? justiceTeam.map(p => (
-                                <View key={p.id} style={styles.playerResultRow}>
-                                    <Text style={styles.playerResultName}>{p.name}</Text>
-                                    <Text style={styles.playerResultRole}>{p.roleName}</Text>
-                                </View>
-                            )) : <Text style={styles.noPlayersText}>لا يوجد لاعبين</Text>}
-                        </MinimalCard>
-                    </View>
-
-                    {/* Standings Table with detailed score breakdown */}
-                    <View style={styles.standingsContainer}>
-                         <Text style={styles.sectionHeader}>تفاصيل النقاط</Text>
-                         {scores?.map((player, index) => (
-                           <View key={index} style={styles.scoreRowDetailed}>
-                              <View style={styles.scoreRowHeader}>
-                                  <Text style={styles.rank}>#{index + 1}</Text>
-                                  <View style={{flex: 1}}>
-                                      <Text style={styles.standingName}>{player.name}</Text>
-                                      <Text style={styles.standingRole}>{player.role}</Text>
-                                  </View>
-                                  <Text style={styles.standingScore}>{player.totalScore}</Text>
-                              </View>
-                              {/* Breakdown badges */}
-                              <View style={styles.breakdownRow}>
-                                  {player.breakdown?.map((item, i) => (
-                                      <View key={i} style={styles.scoreBadge}>
-                                          <Text style={styles.scoreBadgeText}>{item}</Text>
-                                      </View>
-                                  ))}
-                              </View>
-                           </View>
-                         ))}
-                    </View>
-                </>
-            )}
-         </ScrollView>
-
-         {revealStep >= 3 && (
-             <View style={styles.footer}>
-                <MinimalButton 
-                  title={winner === 'CONTINUE' ? "إكمال اللعبة (نقاش)" : (isLastRound ? "إنهاء اللعبة" : "جولة جديدة")} 
-                  onPress={onContinue} 
-                />
-             </View>
-         )}
+        {revealStep >= 2 && (
+          <View style={styles.resFooter}>
+            <MinimalButton title={btnTitle} onPress={onContinue} size="large" />
+          </View>
+        )}
       </View>
     </MinimalLayout>
   );
@@ -815,5 +808,124 @@ const styles = StyleSheet.create({
       fontSize: 28,
       fontFamily: theme.fonts.bold,
       textAlign: 'center',
-  }
+  },
+
+  // ── HostResultsScreen Minimal Styles ──
+  resContainer: {
+    flex: 1,
+    width: '100%',
+    maxWidth: 900,
+    gap: spacing.s,
+    paddingBottom: spacing.m,
+  },
+  resScroll: {
+    paddingHorizontal: spacing.m,
+    paddingBottom: spacing.xl,
+    gap: spacing.m,
+  },
+  resEliminatedCard: {
+    alignItems: 'center',
+    padding: spacing.l,
+    borderWidth: 2,
+    borderColor: 'rgba(218,165,32,0.5)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  resSmallLabel: { color: '#AAA', fontSize: fonts.small, marginBottom: 4 },
+  resEliminatedName: {
+    color: '#FFF',
+    fontSize: 36,
+    fontFamily: theme.fonts.bold,
+    textAlign: 'center',
+  },
+  resRoleTag: {
+    fontSize: fonts.small,
+    marginTop: 6,
+    fontFamily: theme.fonts.bold,
+  },
+  resBanner: {
+    borderRadius: borderRadius.medium,
+    padding: spacing.m,
+    alignItems: 'center',
+    marginTop: spacing.s,
+  },
+  resBannerTitle: {
+    color: '#FFF',
+    fontSize: fonts.large,
+    fontFamily: theme.fonts.bold,
+    textAlign: 'center',
+  },
+  resBannerReason: {
+    color: 'rgba(255,255,255,0.8)',
+    fontSize: fonts.small,
+    marginTop: 4,
+    textAlign: 'center',
+  },
+  resTeamsRow: {
+    flexDirection: 'row',
+    gap: spacing.m,
+    flexWrap: 'wrap',
+  },
+  resTeamCard: {
+    flex: 1,
+    minWidth: 200,
+    borderWidth: 1,
+    padding: spacing.m,
+  },
+  resTeamTitle: {
+    fontFamily: theme.fonts.bold,
+    fontSize: fonts.medium,
+    marginBottom: spacing.s,
+    textAlign: 'center',
+  },
+  resPlayerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0,0,0,0.06)',
+  },
+  resPlayerName: { fontFamily: theme.fonts.main, color: '#333', flex: 1 },
+  resPlayerRole: { fontFamily: theme.fonts.bold, color: '#666', fontSize: fonts.small },
+  resScoresCard: { padding: spacing.m },
+  resScoresTitle: {
+    fontFamily: theme.fonts.bold,
+    color: '#8B4513',
+    fontSize: fonts.medium,
+    marginBottom: spacing.s,
+    textAlign: 'center',
+  },
+  resScoreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: '#EEE',
+    gap: spacing.s,
+  },
+  resScoreRowFirst: { backgroundColor: 'rgba(218,165,32,0.07)', borderRadius: 6 },
+  resScoreRank: { color: '#AAA', width: 28, fontSize: fonts.small, textAlign: 'center' },
+  resTeamStripe: { width: 4, borderRadius: 2, alignSelf: 'stretch', marginRight: 8 },
+  resScoreName:{ fontFamily: theme.fonts.bold, color: '#333', fontSize: fonts.medium },
+  resScoreRole: { color: '#999', fontSize: fonts.tiny },
+  resScoreVal: { fontFamily: theme.fonts.bold, color: '#555', fontSize: fonts.large, minWidth: 36, textAlign: 'right' },
+  resScoreRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  resRoundDelta: { fontSize: fonts.small, fontFamily: theme.fonts.bold },
+  resExpandIcon: { color: '#AAA', fontSize: 10, width: 12 },
+  resBreakdown: {
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    paddingHorizontal: spacing.m,
+    paddingVertical: spacing.s,
+    marginBottom: 4,
+    borderRadius: borderRadius.small,
+  },
+  resBreakdownLine: {
+    color: '#666',
+    fontSize: fonts.small,
+    fontFamily: theme.fonts.main,
+    marginBottom: 2,
+  },
+  resFooter: {
+    paddingHorizontal: spacing.m,
+    paddingBottom: spacing.m,
+  },
 });

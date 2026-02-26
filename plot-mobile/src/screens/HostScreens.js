@@ -71,6 +71,7 @@ export const HostLobbyScreen = ({
   const needsMore = 4 - players.length;
 
   // Essential Roles Order (matching server/roles.js logic)
+  // UPDATED ORDER: Culprit -> Witness -> Detective -> Saboteur -> Minister -> Beneficiary -> Seer -> Mastermind
   const ROLE_ORDER = [
     { code: 'CULPRIT', name: 'الجاني 🎭' },
     { code: 'WITNESS', name: 'الشاهد 👁️' },
@@ -123,21 +124,21 @@ export const HostLobbyScreen = ({
           <View style={styles.settingsHeader}>
             <Text style={styles.sectionTitle}>نمط اللعب:</Text>
             <Text style={styles.modeDescription}>
-              {gameMode === 'CLASSIC' ? 'كتابة سيناريو كامل' : 'إكمال الفراغات بكلمات'}
+              {gameMode === 'BLITZ' ? 'إكمال الفراغات بكلمات (Default)' : 'كتابة سيناريو كامل'}
             </Text>
           </View>
           <View style={styles.togglesRow}>
              <MinimalButton 
-               title="كتابة كاملة ✍️" 
-               onPress={() => onUpdateSettings && onUpdateSettings({ gameMode: 'CLASSIC' })}
-               variant={gameMode === 'CLASSIC' ? 'primary' : 'outline'}
+               title="إكمال الفراغ 🧩" 
+               onPress={() => onUpdateSettings && onUpdateSettings({ gameMode: 'BLITZ' })}
+               variant={gameMode === 'BLITZ' ? 'primary' : 'outline'}
                size="small"
                style={styles.modeBtn}
              />
              <MinimalButton 
-               title="إكمال الفراغ 🧩" 
-               onPress={() => onUpdateSettings && onUpdateSettings({ gameMode: 'BLITZ' })}
-               variant={gameMode === 'BLITZ' ? 'primary' : 'outline'}
+               title="كتابة كاملة ✍️" 
+               onPress={() => onUpdateSettings && onUpdateSettings({ gameMode: 'CLASSIC' })}
+               variant={gameMode === 'CLASSIC' ? 'primary' : 'outline'}
                size="small"
                style={styles.modeBtn}
              />
