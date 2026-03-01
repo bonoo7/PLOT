@@ -45,6 +45,7 @@ export const ROUTES = {
     CULPRIT_VOTING: 'CulpritVoting',
     WAITING: 'Waiting',
     END: 'End',
+    SHOWCASE: 'Showcase',
 };
 
 // --- Socket Context Setup ---
@@ -99,6 +100,7 @@ export const useGameSocket = (navigationRef) => {
         setSelectedCulprit,
         clearRoundState,
         resetGame,
+        setThemeMode,
     } = useGameStore();
 
     const navigate = (routeName, params) => {

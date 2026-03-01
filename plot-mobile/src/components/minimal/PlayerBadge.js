@@ -1,6 +1,7 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image } from 'react-native';
-import { theme } from '../../styles/theme';
+import { View, Text, StyleSheet } from 'react-native';
+import { getTheme } from '../../constants/theme';
+import { useGameStore } from '../../store/useGameStore';
 import { spacing, fonts, borderRadius } from '../../styles/responsive';
 
 /**
@@ -17,23 +18,32 @@ export const PlayerBadge = ({
   size = 'medium', // small, medium, large
   style
 }) => {
+  const themeMode = useGameStore(state => state.themeMode);
+  const t = getTheme(themeMode);
+
   const getBackgroundColor = () => {
-    if (isEliminated) return '#666'; // Dark gray/faded
-    if (isActive) return '#D4AF37'; // Dull gold/amber for active speaker
-    if (isSelf) return '#D2B48C'; // Tan paper
-    return '#EBE1D2'; // Manila paper default
+    if (isEliminated) return themeMode === 'dark' ? '#333' : '#999';
+    if (isActive) return '#D4AF37'; // Dull gold for active speaker
+    if (isSelf) return t.inputBg;
+    return t.cardBg;
   };
 
   const getBorderColor = () => {
-    if (isActive) return '#8B7355'; // Darker brown
-    if (isSelf) return '#5D4037';
-    return '#C1A173'; // Manila border
+    if (isActive) return '#8B7355';
+    if (isSelf) return t.textMuted;
+    return t.cardBorder;
+  };
+
+  const getTextColor = () => {
+    if (isEliminated) return '#000'; // Make dead players' text dark for readability on gray
+    if (isActive) return '#1A1A1A'; // Dark text on gold
+    return t.text;
   };
 
   const containerStyle = {
     backgroundColor: getBackgroundColor(),
     borderColor: getBorderColor(),
-    borderWidth: isActive || isSelf ? 2 : 1,
+    borderWidth: 2, // Cartoonish thick border
     paddingVertical: size === 'small' ? 4 : size === 'large' ? 12 : 8,
     paddingHorizontal: size === 'small' ? 8 : size === 'large' ? 16 : 12,
     borderRadius: borderRadius.small,
@@ -42,15 +52,20 @@ export const PlayerBadge = ({
     justifyContent: 'space-between',
     minWidth: size === 'small' ? 80 : 120,
     opacity: isEliminated ? 0.6 : 1,
+    shadowColor: t.shadow,
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 4,
     ...style
   };
 
   const textStyle = {
-    fontFamily: theme.fonts.main,
+    fontFamily: 'Courier', // Typewriter font
+    fontWeight: 'bold',
     fontSize: size === 'small' ? fonts.tiny : size === 'large' ? fonts.medium : fonts.small,
-    color: theme.colors.text,
-    fontWeight: isSelf || isActive ? 'bold' : 'normal',
-    textAlign: 'left' // RTL handled by parent or GlobalRTL
+    color: getTextColor(),
+    textAlign: 'left'
   };
 
   return (
@@ -59,12 +74,12 @@ export const PlayerBadge = ({
         <Text style={textStyle} numberOfLines={1}>
           {name}
         </Text>
-        {role && <Text style={{ fontSize: 10, color: '#666' }}>({role})</Text>}
+        {role && <Text style={{ fontSize: 10, color: t.textMuted }}>({role})</Text>}
       </View>
 
       {score !== undefined && (
-        <View style={styles.scoreBadge}>
-          <Text style={styles.scoreText}>{score}</Text>
+        <View style={[styles.scoreBadge, { backgroundColor: t.text, borderColor: t.background }]}>
+          <Text style={[styles.scoreText, { color: t.background }]}>{score}</Text>
         </View>
       )}
     </View>
@@ -73,19 +88,16 @@ export const PlayerBadge = ({
 
 const styles = StyleSheet.create({
   scoreBadge: {
-    backgroundColor: '#2A2A2A', // Typewriter black
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 2,
     marginLeft: 8,
     borderWidth: 1,
-    borderColor: '#000'
   },
   scoreText: {
-    color: '#F4E4C1', // Vintage off-white
     fontSize: 10,
     fontWeight: 'bold',
-    fontFamily: theme.fonts.bold
+    fontFamily: 'Courier'
   }
 });
 

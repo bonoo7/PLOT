@@ -9,12 +9,17 @@ import {
 } from 'react-native';
 import { theme } from '../styles/theme';
 import { fonts, spacing, borderRadius } from '../styles/responsive';
+import { getTheme } from '../constants/theme';
+import { useGameStore } from '../store/useGameStore';
 
 /**
  * InvestigationNote - نتيجة تحقيق المحقق كنوتة Noir
  * تظهر كورقة مختومة بأسلوب المحقق البيروقراطي
  */
 export const InvestigationNote = ({ visible, targetName, result, isSabotaged, onDismiss }) => {
+    const themeMode = useGameStore(state => state.themeMode);
+    const t = getTheme(themeMode);
+
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const slideAnim = useRef(new Animated.Value(-60)).current;
     const stampScale = useRef(new Animated.Value(3)).current;
@@ -49,32 +54,32 @@ export const InvestigationNote = ({ visible, targetName, result, isSabotaged, on
     return (
         <Modal visible={visible} transparent animationType="none">
             <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
-                <Animated.View style={[styles.noteContainer, { transform: [{ translateY: slideAnim }] }]}>
+                <Animated.View style={[styles.noteContainer, { backgroundColor: t.cardBg, borderColor: t.cardBorder, transform: [{ translateY: slideAnim }] }]}>
                     {/* رأس النوتة */}
-                    <View style={styles.noteHeader}>
-                        <Text style={styles.noteHeaderText}>◈ تقرير سري — مكتب التحقيقات ◈</Text>
+                    <View style={[styles.noteHeader, { backgroundColor: t.background }]}>
+                        <Text style={[styles.noteHeaderText, { color: t.text }]}>◈ تقرير سري — مكتب التحقيقات ◈</Text>
                     </View>
 
                     {/* محتوى النوتة */}
                     <View style={styles.noteBody}>
-                        <Text style={styles.caseLabel}>الملف رقم: #{Math.floor(Math.random() * 9000) + 1000}</Text>
-                        <View style={styles.divider} />
+                        <Text style={[styles.caseLabel, { color: t.textMuted }]}>الملف رقم: #{Math.floor(Math.random() * 9000) + 1000}</Text>
+                        <View style={[styles.divider, { backgroundColor: t.cardBorder }]} />
 
-                        <Text style={styles.noteText}>
+                        <Text style={[styles.noteText, { color: t.text }]}>
                             بعد مراجعة السجلات وتحليل الأدلة المتاحة،
                         </Text>
-                        <Text style={styles.noteText}>
+                        <Text style={[styles.noteText, { color: t.text }]}>
                             تبيّن أن المشتبه به:
                         </Text>
 
-                        <View style={styles.targetBox}>
-                            <Text style={styles.targetName}>「 {targetName} 」</Text>
+                        <View style={[styles.targetBox, { borderColor: t.cardBorder }]}>
+                            <Text style={[styles.targetName, { color: t.text, fontFamily: 'Courier', fontWeight: 'bold' }]}>「 {targetName} 」</Text>
                         </View>
 
-                        <Text style={styles.noteText}>ينتمي إلى:</Text>
+                        <Text style={[styles.noteText, { color: t.text }]}>ينتمي إلى:</Text>
 
-                        <View style={[styles.resultBox, isCrime ? styles.resultCrime : styles.resultJustice]}>
-                            <Text style={[styles.resultText, isCrime ? styles.resultTextCrime : styles.resultTextJustice]}>
+                        <View style={[styles.resultBox, { borderColor: isCrime ? t.accent : t.accentSecondary, backgroundColor: isCrime ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)' }]}>
+                            <Text style={[styles.resultText, { color: isCrime ? t.accent : t.accentSecondary }]}>
                                 {result}
                             </Text>
                         </View>
@@ -98,16 +103,16 @@ export const InvestigationNote = ({ visible, targetName, result, isSabotaged, on
                             }
                         ]}
                     >
-                        <View style={[styles.stamp, isCrime ? styles.stampRed : styles.stampGreen]}>
-                            <Text style={styles.stampText}>
+                        <View style={[styles.stamp, { borderColor: isCrime ? t.accent : t.accentSecondary, backgroundColor: isCrime ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)' }]}>
+                            <Text style={[styles.stampText, { color: isCrime ? t.accent : t.accentSecondary }]}>
                                 {isCrime ? 'مشبوه\nجنائي' : 'مشبوه\nنظيف'}
                             </Text>
                         </View>
                     </Animated.View>
 
                     {/* زر الإغلاق */}
-                    <TouchableOpacity style={styles.dismissBtn} onPress={onDismiss}>
-                        <Text style={styles.dismissText}>— تم الاطلاع —</Text>
+                    <TouchableOpacity style={[styles.dismissBtn, { borderTopColor: t.cardBorder }]} onPress={onDismiss}>
+                        <Text style={[styles.dismissText, { color: t.text }]}>— تم الاطلاع —</Text>
                     </TouchableOpacity>
                 </Animated.View>
             </Animated.View>

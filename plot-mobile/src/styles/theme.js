@@ -1,86 +1,72 @@
+/**
+ * theme.js - Compatibility shim
+ * All new code should import from `src/constants/theme.js` instead.
+ * This file re-exports from the new theme system while keeping backward-compat
+ * for older screens still importing `{ theme }` from this path.
+ */
 import { Platform } from 'react-native';
 import { spacing, fonts, shadows as responsiveShadows } from './responsive';
+import { getTheme, themes, roleImages } from '../constants/theme';
 
-/**
- * الهوية البصرية: "ملفات المكتب السري" (Bureaucratic Noir)
- * مستوحاة من أرشيف وكالة استخبارات قديمة في الستينيات
- * الجو: Papers, Please × The Incredibles × Team Fortress 2
- */
+// Re-export new API for any file that imports from here
+export { getTheme, themes, roleImages };
+
+// Backward-compat `theme` object – mirrors the OLD shape so nothing breaks
 export const theme = {
   colors: {
-    // الألوان الأساسية (من الهوية البصرية)
-    background: '#F5F5DC',          // بيج ورق قديم
-    paper: '#FFFEF7',               // ورق أفتح للبطاقات
-    text: '#2F4F4F',                // رمادي فحمي
-    textSecondary: '#555555',       // رمادي أفتح
-    
-    // ألوان التميز (Accent Colors)
-    stamp: '#B22222',               // أحمر باهت للأختام "سري للغاية"
-    stickyNote: '#E1AD01',          // أصفر خردل للملاحظات
-    
-    // ألوان إضافية
-    redacted: '#000000',            // أسود للنصوص المحجوبة
-    coffee: '#8B7355',              // بني بقع القهوة
-    paperclip: '#B8B8B8',           // رمادي فضي للمشابك
-    
-    // ألوان الحالات
-    primary: '#2D5F2E', // ✅ Added primary
-    secondary: '#E1AD01', // ✅ Added secondary
-    success: '#2D5F2E',
+    background: '#F4EBD0',
+    paper: '#FFFEF7',
+    text: '#111111',
+    textSecondary: '#4F4F4F',
+    stamp: '#D9381E',
+    stickyNote: '#E1AD01',
+    redacted: '#000000',
+    coffee: '#8B7355',
+    paperclip: '#B8B8B8',
+    primary: '#2E7D32',
+    secondary: '#E1AD01',
+    success: '#2E7D32',
     warning: '#E1AD01',
-    error: '#B22222',
+    error: '#D9381E',
     info: '#4682B4',
-    
-    // ألوان محايدة
     white: '#FFFFFF',
     black: '#000000',
-    
-    // ألوان شفافة
     overlay: 'rgba(0, 0, 0, 0.7)',
     overlayLight: 'rgba(0, 0, 0, 0.4)',
-    
-    // ألوان الفرق (للأدوار)
-    teamGood: '#2D5F2E',
-    teamEvil: '#8B0000',
+    teamGood: '#2E7D32',
+    teamEvil: '#D9381E',
     teamNeutral: '#555555',
+    accentYellow: '#E1AD01',
   },
-  
-  // صور الأدوار
-  roleImages: {
-    MASTERMIND: require('../../assets/Mastermind.png'),
-    MINISTER: require('../../assets/Minister.png'),
-    SABOTEUR: require('../../assets/Saboteur.png'),
-    SEER: require('../../assets/Seer.png'),
-    WITNESS: require('../../assets/Witness.png'),
-    BENEFICIARY: require('../../assets/Beneficiary.png'),
-    CULPRIT: require('../../assets/Culprit.png'),
-    DETECTIVE: require('../../assets/Detective.png'),
-  },
-  
+
+  // New-style role images (cartoonish, from assets/roles/)
+  roleImages,
+
   fonts: {
-    // Courier New للمحاكاة الآلة الكاتبة (من الهوية البصرية)
     main: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
     bold: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
     heading: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
     sizes: fonts,
   },
-  
+
   spacing,
-  
+
   transitions: {
     fast: 150,
     normal: 250,
     slow: 400,
   },
-  
+
   shadows: responsiveShadows,
-  
-  // تأثيرات خاصة (من الهوية البصرية)
+
   effects: {
-    typewriter: true,          // تأثير الآلة الكاتبة
-    coffeeStains: true,        // بقع القهوة
-    paperclips: true,          // مشابك الورق
-    stamps: true,              // الأختام
-    redactedText: true,        // النصوص المحجوبة
+    typewriter: true,
+    coffeeStains: true,
+    paperclips: true,
+    stamps: true,
+    redactedText: true,
   },
 };
+
+
+

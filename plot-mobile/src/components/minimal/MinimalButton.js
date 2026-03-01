@@ -1,13 +1,14 @@
 import React from 'react';
 import { TouchableOpacity, Text, StyleSheet, ActivityIndicator } from 'react-native';
-import { theme } from '../../styles/theme';
+import { getTheme } from '../../constants/theme';
+import { useGameStore } from '../../store/useGameStore';
 import { spacing, fonts, borderRadius } from '../../styles/responsive';
 
 /**
  * MinimalButton - Action buttons.
  * Features:
- * - Compact height
- * - Clear typography
+ * - Dynamic Theme Support (Dark / Light Noir)
+ * - Cartoonish borders and shadows
  */
 const MinimalButton = ({
   title,
@@ -19,25 +20,61 @@ const MinimalButton = ({
   style,
   textStyle
 }) => {
+  const themeMode = useGameStore(state => state.themeMode);
+  const t = getTheme(themeMode);
+
+  // Dynamic variant styles
+  const getVariantStyle = () => {
+    switch (variant) {
+      case 'primary':
+        return { backgroundColor: t.text, borderColor: t.background, shadowColor: t.shadow };
+      case 'secondary':
+        return { backgroundColor: t.cardBg, borderColor: t.cardBorder, shadowColor: t.shadow };
+      case 'danger':
+        return { backgroundColor: t.accent, borderColor: '#5A0000', shadowColor: t.shadow };
+      case 'outline':
+        return { backgroundColor: 'transparent', borderColor: t.text };
+      case 'ghost':
+        return { backgroundColor: 'transparent', borderWidth: 0 };
+      default:
+        return { backgroundColor: t.text, borderColor: t.background, shadowColor: t.shadow };
+    }
+  };
+
+  const getTextStyle = () => {
+    switch (variant) {
+      case 'primary':
+      case 'danger':
+        return { color: t.background };
+      case 'secondary':
+      case 'outline':
+      case 'ghost':
+        return { color: t.text };
+      default:
+        return { color: t.background };
+    }
+  };
+
   return (
     <TouchableOpacity
       style={[
         styles.button,
-        styles[`button_${variant}`],
+        getVariantStyle(),
         styles[`button_${size}`],
+        variant !== 'ghost' && variant !== 'outline' && styles.solidButton,
         disabled && styles.buttonDisabled,
         style
       ]}
       onPress={onPress}
       disabled={disabled || loading}
-      activeOpacity={0.8}
+      activeOpacity={0.7}
     >
       {loading ? (
-        <ActivityIndicator color={variant === 'outline' ? theme.colors.text : '#FFF'} />
+        <ActivityIndicator color={variant === 'outline' || variant === 'ghost' ? t.text : t.background} />
       ) : (
         <Text style={[
           styles.text,
-          styles[`text_${variant}`],
+          getTextStyle(),
           styles[`text_${size}`],
           disabled && styles.textDisabled,
           textStyle
@@ -55,43 +92,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexDirection: 'row',
+    borderWidth: 2, // Cartoonish stroke
   },
-
-  // Variants
-  button_primary: {
-    backgroundColor: '#2A2A2A', // Dark typewriter key color
-    borderWidth: 2,
-    borderColor: '#444', // Key rim
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.8,
-    shadowRadius: 2,
+  solidButton: {
+    shadowOffset: { width: 0, height: 4 }, // Hard shadow
+    shadowOpacity: 1,
+    shadowRadius: 0,
     elevation: 5,
   },
-  button_secondary: {
-    backgroundColor: '#8B7355', // Wood/Brown color
-    borderWidth: 2,
-    borderColor: '#5D4037',
-  },
-  button_danger: {
-    backgroundColor: '#8B0000', // Crimson Red
-    borderWidth: 2,
-    borderColor: '#5A0000',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.6,
-    shadowRadius: 2,
-  },
-  button_outline: {
-    backgroundColor: 'transparent',
-    borderWidth: 2,
-    borderColor: '#2A2A2A',
-  },
-  button_ghost: {
-    backgroundColor: 'transparent',
-    borderWidth: 0,
-  },
-
   // Sizes
   button_small: {
     paddingVertical: spacing.xs,
@@ -108,42 +116,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.l,
     minHeight: 56,
   },
-
   // Disabled
   buttonDisabled: {
     opacity: 0.5,
   },
-
   // Text
   text: {
-    fontFamily: theme.fonts.bold,
+    fontFamily: 'Courier', // Will fall back to system but gives typewriter feel
+    fontWeight: 'bold',
     textAlign: 'center',
   },
-  text_primary: {
-    color: '#F4E4C1', // Vintage off-white typewriter font
-  },
-  text_secondary: {
-    color: '#F4E4C1',
-  },
-  text_danger: {
-    color: '#FFF',
-  },
-  text_outline: {
-    color: theme.colors.text,
-  },
-  text_ghost: {
-    color: theme.colors.textSecondary,
-  },
-
-  // Text Sizes
   text_small: {
-    fontSize: fonts.tiny,
+    fontSize: 12,
   },
   text_medium: {
-    fontSize: fonts.small,
+    fontSize: 14,
   },
   text_large: {
-    fontSize: fonts.medium,
+    fontSize: 16,
   },
   textDisabled: {
     color: '#999',

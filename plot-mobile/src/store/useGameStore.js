@@ -9,6 +9,9 @@ export const useGameStore = create((set) => ({
     players: [],
     socketId: null,
 
+    // UI State
+    themeMode: 'light', // 'light' or 'dark'
+
     // Game Settings/Info
     gameMode: 'BLITZ', // CLASSIC or BLITZ — الوضع الافتراضي هو Blitz
     currentRound: 1,
@@ -47,6 +50,7 @@ export const useGameStore = create((set) => ({
     selectedTrainingRole: null,
 
     // Actions
+    setThemeMode: (mode) => set({ themeMode: mode }),
     setRoomCode: (code) => set({ roomCode: code }),
     setGeneratedRoomCode: (code) => set({ generatedRoomCode: code }),
     setPlayerName: (name) => set({ playerName: name }),

@@ -145,18 +145,21 @@ export const DiscussionScreen = ({ isHost = false }) => {
                                                     {s.voters && s.voters.length > 0 && (
                                                         <View style={styles.votersContainer}>
                                                             <Text style={styles.votersLabel}>المصوتون:</Text>
-                                                            <View style={styles.votersList}>
+                                                            <View style={[styles.votersList, { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.s, marginTop: spacing.s }]}>
                                                                 {s.voters.map((v, idx) => (
-                                                                    <View key={idx} style={styles.voterBadge}>
-                                                                        <Text style={styles.voterName}>{typeof v === 'object' ? v.name : v}</Text>
-                                                                    </View>
+                                                                    <PlayerBadge key={idx} name={typeof v === 'object' ? v.name : v} size="small" />
                                                                 ))}
                                                             </View>
                                                         </View>
                                                     )}
 
-                                                    <View style={styles.miniScenarioMeta}>
-                                                        <Text style={styles.miniScenarioAuthor}>✍️ {s.author}</Text>
+                                                    <View style={[styles.miniScenarioMeta, { flexDirection: 'column', gap: spacing.s, alignItems: 'flex-start' }]}>
+                                                        {s.author && (
+                                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s }}>
+                                                                <Text style={{ fontSize: 12 }}>الكاتب:</Text>
+                                                                <PlayerBadge name={s.author} size="small" />
+                                                            </View>
+                                                        )}
                                                         <Text style={styles.miniScenarioVotes}>⭐ {s.voteCount || 0}</Text>
                                                     </View>
                                                 </View>

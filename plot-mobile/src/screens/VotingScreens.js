@@ -7,6 +7,7 @@ import MinimalLayout from '../components/minimal/MinimalLayout';
 import MinimalHeader from '../components/minimal/MinimalHeader';
 import MinimalCard from '../components/minimal/MinimalCard';
 import MinimalButton from '../components/minimal/MinimalButton';
+import { PlayerBadge } from '../components/minimal/PlayerBadge';
 import { theme } from '../styles/theme';
 import { spacing, fonts, borderRadius, moderateScale } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
@@ -173,8 +174,10 @@ export const CulpritVotingScreen = () => {
                 >
                   <View style={styles.cardHeader}>
                     <View style={styles.authorBadge}>
-                      <Text style={styles.authorIcon}>👤</Text>
-                      <Text style={styles.authorName}>{scenario.playerName || scenario.author || 'مجهول'}</Text>
+                      <PlayerBadge
+                        name={scenario.playerName || scenario.author || 'مجهول'}
+                        size="small"
+                      />
                     </View>
                     {selected === index && !hasVoted && <Text style={styles.checkMarkDanger}>🎯</Text>}
                   </View>
@@ -570,21 +573,34 @@ export const PlayerDramaticRevealScreen = () => {
       <View style={styles.centerContainer}>
         <Text style={styles.dramaTitle}>⚠️</Text>
         <Text style={styles.dramaText}>كشف الحقائق...</Text>
-        {currentReveal?.text && (
-          <Text style={[styles.waitingText, { textAlign: 'center', marginTop: 10, maxWidth: '80%' }]}>
-            "{currentReveal.text}"
-          </Text>
-        )}
-        {currentReveal?.voteCount !== undefined && (
-          <Text style={[styles.dramaText, { color: '#FFF', fontSize: 24 }]}>
-            {currentReveal.voteCount} صوت
-          </Text>
-        )}
-        {currentReveal?.author && (
-          <Text style={[styles.dramaText, { color: '#DAA520', fontSize: 32 }]}>
-            {currentReveal.author}
-          </Text>
-        )}
+
+        <View style={{ width: '100%', alignItems: 'center', marginTop: spacing.l }}>
+          {currentReveal?.author && (
+            <View style={{ marginVertical: spacing.s }}>
+              <PlayerBadge name={currentReveal.author} size="large" />
+            </View>
+          )}
+
+          {currentReveal?.text && (
+            <MinimalCard style={{ width: '100%', maxWidth: 500, padding: spacing.l, alignItems: 'center', borderColor: currentReveal?.author ? theme.colors.primary : '#D2B48C', borderWidth: 2 }}>
+              <Text style={{ fontSize: fonts.medium, fontFamily: theme.fonts.main, textAlign: 'center', lineHeight: 28, color: '#333' }}>
+                "{currentReveal.text}"
+              </Text>
+            </MinimalCard>
+          )}
+
+          {currentReveal?.voters && (
+            <View style={{ marginTop: spacing.s, alignItems: 'center' }}>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.m, justifyContent: 'center', marginTop: spacing.s }}>
+                {currentReveal.voters.length > 0 ? (
+                  currentReveal.voters.map((v, i) => <PlayerBadge key={i} name={v} size="medium" />)
+                ) : (
+                  <Text style={{ color: '#555' }}>لا أحد</Text>
+                )}
+              </View>
+            </View>
+          )}
+        </View>
       </View>
     </MinimalLayout>
   );

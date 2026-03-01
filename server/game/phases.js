@@ -409,7 +409,7 @@ function startDramaticReveal(roomCode) {
     let currentDelay = 0;
 
     scenariosWithVotes.forEach((scenario, idx) => {
-        // Step 1: عرض السيناريو (3 ثواني)
+        // Step 1: عرض السيناريو (2 ثانية)
         setTimeout(() => {
             ioInstance.to(roomCode).emit('revealStep', {
                 step: 'SCENARIO',
@@ -421,9 +421,9 @@ function startDramaticReveal(roomCode) {
                 }
             });
         }, currentDelay);
-        currentDelay += 3000;
+        currentDelay += 2000;
 
-        // Step 2: عرض الأصوات (2.5 ثانية)
+        // Step 2: عرض الأصوات (1.5 ثانية)
         setTimeout(() => {
             ioInstance.to(roomCode).emit('revealStep', {
                 step: 'VOTERS',
@@ -434,7 +434,7 @@ function startDramaticReveal(roomCode) {
                 }
             });
         }, currentDelay);
-        currentDelay += 2500;
+        currentDelay += 1500;
 
         // Step 3: كشف الكاتب (2 ثانية)
         setTimeout(() => {
@@ -463,7 +463,7 @@ function startDramaticReveal(roomCode) {
                 }
             });
         }, currentDelay);
-        currentDelay += 3000;
+        currentDelay += 2000;
     }
 
     // 🔍 عرض التلميح الدرامي (Dramatic Hint)
@@ -476,7 +476,7 @@ function startDramaticReveal(roomCode) {
                 }
             });
         }, currentDelay);
-        currentDelay += 5000; // 5 seconds duration
+        currentDelay += 4000; // 4 seconds duration
     }
 
     // بعد انتهاء العرض: الانتقال مباشرة إلى التصويت على الجاني

@@ -12,6 +12,7 @@ import { DiscussionScreen } from '../screens/DiscussionScreen';
 import { LoginScreen, LobbyScreen } from '../screens/PlayerScreens';
 import { GameScreen, DraftingScreen } from '../screens/GameScreens';
 import { QualityVotingScreen, CulpritVotingScreen, WaitingRevealScreen, EndScreen, PlayerDramaticRevealScreen, PlayerResultsScreen } from '../screens/VotingScreens';
+import { ShowcaseScreen } from '../screens/ShowcaseScreen';
 
 import { useGameStore } from '../store/useGameStore';
 
@@ -72,6 +73,7 @@ export const AppNavigator = () => {
             </Stack.Screen>
 
             <Stack.Screen name={ROUTES.END} component={EndScreen} />
+            <Stack.Screen name={ROUTES.SHOWCASE} component={ShowcaseScreen} />
         </Stack.Navigator>
     );
 };

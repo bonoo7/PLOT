@@ -10,6 +10,7 @@ import {
   MinimalButton,
   MinimalInput
 } from '../components/minimal';
+import { PlayerBadge } from '../components/minimal/PlayerBadge';
 import { theme } from '../styles/theme';
 import { spacing, fonts, borderRadius } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
@@ -120,11 +121,10 @@ export const LobbyScreen = () => {
               <Text style={styles.emptyText}>لا يوجد لاعبون...</Text>
             </View>
           ) : (
-            <View style={styles.playersGrid}>
+            <View style={[styles.playersGrid, { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.m, justifyContent: 'center' }]}>
               {players.map((player, index) => (
-                <View key={player.id || index} style={styles.playerItem}>
-                  <Text style={styles.playerNumber}>#{index + 1}</Text>
-                  <Text style={styles.playerName} numberOfLines={1}>{player.name}</Text>
+                <View key={player.id || index} style={{ margin: spacing.xs }}>
+                  <PlayerBadge name={player.name} size="medium" />
                 </View>
               ))}
             </View>

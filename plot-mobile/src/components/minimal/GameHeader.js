@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Image, Modal, ScrollView, Platform } from 'react-native';
 import { theme } from '../../styles/theme';
+import { getTheme } from '../../constants/theme';
+import { useGameStore } from '../../store/useGameStore';
 import { spacing, fonts, borderRadius } from '../../styles/responsive';
 import { useResponsiveLayout } from '../../hooks/useResponsiveLayout';
 
@@ -13,33 +15,45 @@ const getRoleLabel = (role) => ROLE_LABELS[role] || role;
 
 /**
  * GameHeader - A unified, sticky header card for the game.
- * Shows: Room Code, Score, Role (Icon + Name), Refresh Button.
+ * Shows: Room Code, Score, Role (Icon + Name), Refresh Button, Theme Toggle.
  */
 const GameHeader = ({ roleData, roomCode, onRefresh }) => {
     const { isDesktop } = useResponsiveLayout();
     const [showRoleModal, setShowRoleModal] = useState(false);
+    const themeMode = useGameStore(state => state.themeMode);
+    const setThemeMode = useGameStore(state => state.setThemeMode);
+    const t = getTheme(themeMode);
 
     if (!roleData) return null;
 
+    const toggleTheme = () => {
+        setThemeMode(themeMode === 'light' ? 'dark' : 'light');
+    };
+
     return (
         <View style={[styles.headerContainer, isDesktop && styles.headerDesktop]}>
-            <View style={styles.card}>
-                {/* Left: Refresh & Room Code */}
+            <View style={[styles.card, { backgroundColor: t.cardBg, borderColor: t.cardBorder }]}>
+                {/* Left: Refresh & Theme Toggle & Room Code */}
                 <View style={styles.leftSection}>
                     <TouchableOpacity style={styles.refreshButton} onPress={onRefresh}>
-                        <Text style={styles.refreshIcon}>↻</Text>
+                        <Text style={[styles.refreshIcon, { color: t.text }]}>↻</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.refreshButton} onPress={toggleTheme}>
+                        <Text style={[styles.refreshIcon, { color: t.text }]}>
+                            {themeMode === 'light' ? '🌙' : '☀️'}
+                        </Text>
                     </TouchableOpacity>
                     {roomCode && (
                         <View style={styles.codeContainer}>
-                            <Text style={styles.codeLabel}>CODE</Text>
-                            <Text style={styles.codeValue}>{roomCode}</Text>
+                            <Text style={[styles.codeLabel, { color: t.textMuted }]}>CODE</Text>
+                            <Text style={[styles.codeValue, { color: t.text }]}>{roomCode}</Text>
                         </View>
                     )}
                 </View>
 
                 {/* Center: Role Name (Desktop) or spacer */}
                 {isDesktop && (
-                    <Text style={styles.centerTitle}>{roleData.roleName}</Text>
+                    <Text style={[styles.centerTitle, { color: t.text }]}>{roleData.roleName}</Text>
                 )}
 
                 {/* Right: Score & Role Icon */}
@@ -51,14 +65,14 @@ const GameHeader = ({ roleData, roomCode, onRefresh }) => {
                         <Text style={styles.scoreIcon}>💰</Text>
                     </View>
 
-                    <TouchableOpacity 
+                    <TouchableOpacity
                         style={styles.roleIconContainer}
                         onPress={() => setShowRoleModal(true)}
                         activeOpacity={0.8}
                     >
-                         {theme.roleImages && theme.roleImages[roleData.role] ? (
-                            <Image 
-                                source={theme.roleImages[roleData.role]} 
+                        {theme.roleImages && theme.roleImages[roleData.role] ? (
+                            <Image
+                                source={theme.roleImages[roleData.role]}
                                 style={styles.roleImage}
                                 resizeMode="contain"
                             />
@@ -84,12 +98,12 @@ const GameHeader = ({ roleData, roomCode, onRefresh }) => {
                                 <Text style={styles.closeButton}>✕</Text>
                             </TouchableOpacity>
                         </View>
-                        
+
                         <ScrollView style={styles.modalBody}>
-                             {theme.roleImages && theme.roleImages[roleData.role] && (
+                            {theme.roleImages && theme.roleImages[roleData.role] && (
                                 <View style={{ alignItems: 'center', marginBottom: spacing.m }}>
-                                    <Image 
-                                        source={theme.roleImages[roleData.role]} 
+                                    <Image
+                                        source={theme.roleImages[roleData.role]}
                                         style={styles.modalRoleImageBig}
                                         resizeMode="contain"
                                     />
@@ -97,7 +111,7 @@ const GameHeader = ({ roleData, roomCode, onRefresh }) => {
                             )}
                             <Text style={styles.modalLabel}>مهمتك:</Text>
                             <Text style={styles.modalText}>{roleData.description}</Text>
-                            
+
                             {roleData.specialInfo && (
                                 <>
                                     <View style={styles.divider} />
@@ -111,7 +125,7 @@ const GameHeader = ({ roleData, roomCode, onRefresh }) => {
                                             return <>
                                                 <Text style={styles.modalText}>فريق الجريمة:</Text>
                                                 {si.crimeTeam?.map((m, i) => (
-                                                    <Text key={i} style={[styles.modalText, {color:'#c0392b', marginRight: 8}]}>
+                                                    <Text key={i} style={[styles.modalText, { color: '#c0392b', marginRight: 8 }]}>
                                                         • {m.name} ({getRoleLabel(m.role)})
                                                     </Text>
                                                 ))}
@@ -246,7 +260,7 @@ const styles = StyleSheet.create({
     roleEmoji: {
         fontSize: 24,
     },
-    
+
     // Modal Styles
     modalOverlay: {
         flex: 1,

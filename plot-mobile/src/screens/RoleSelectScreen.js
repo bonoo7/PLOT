@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import MinimalLayout from '../components/minimal/MinimalLayout';
 import MinimalHeader from '../components/minimal/MinimalHeader';
+import MinimalButton from '../components/minimal/MinimalButton';
 import { theme } from '../styles/theme';
 import { spacing, fonts, borderRadius } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
@@ -17,9 +18,15 @@ export const RoleSelectScreen = () => {
   const { isDesktop, isLandscape } = useResponsiveLayout();
   const navigation = useNavigation();
   const setUserRole = useGameStore((state) => state.setUserRole);
+  const themeMode = useGameStore(state => state.themeMode);
+  const setThemeMode = useGameStore(state => state.setThemeMode);
 
   // Determine layout direction based on screen size/orientation
   const isHorizontalLayout = isDesktop || isLandscape;
+
+  const toggleTheme = () => {
+    setThemeMode(themeMode === 'light' ? 'dark' : 'light');
+  };
 
   const handleSelectHost = () => {
     setUserRole('HOST');
@@ -94,11 +101,27 @@ export const RoleSelectScreen = () => {
             color="#E0F7FA"
             borderColor="#006064"
           />
+          {/* Component Showcase Card */}
+          <RoleCard
+            title="اختبار المكونات"
+            description="معاينة الواجهة"
+            onPress={() => navigation.navigate(ROUTES.SHOWCASE)}
+            color="#E0E0E0"
+            borderColor="#9E9E9E"
+          />
         </View>
 
-        {/* Footer Info */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>عدد اللاعبين: 4 - 8</Text>
+        {/* Footer Info & Theme Toggle */}
+        <View style={styles.footerRow}>
+          <View style={styles.footer}>
+            <Text style={styles.footerText}>عدد اللاعبين: 4 - 8</Text>
+          </View>
+          <MinimalButton
+            title={themeMode === 'light' ? "🌙 داكن" : "☀️ فاتح"}
+            onPress={toggleTheme}
+            variant="secondary"
+            size="small"
+          />
         </View>
       </ScrollView>
     </MinimalLayout>
@@ -142,8 +165,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  footer: {
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.m,
     marginTop: spacing.m,
+  },
+  footer: {
     padding: spacing.s,
     backgroundColor: 'rgba(0,0,0,0.3)',
     borderRadius: borderRadius.medium,

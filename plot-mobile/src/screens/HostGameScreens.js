@@ -7,6 +7,7 @@ import MinimalLayout from '../components/minimal/MinimalLayout';
 import MinimalHeader from '../components/minimal/MinimalHeader';
 import MinimalCard from '../components/minimal/MinimalCard';
 import MinimalButton from '../components/minimal/MinimalButton';
+import { PlayerBadge } from '../components/minimal/PlayerBadge';
 import { theme } from '../styles/theme';
 import { spacing, fonts, borderRadius, moderateScale } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
@@ -170,13 +171,13 @@ export const HostVotingScreen = ({ route }) => {
               <View style={styles.progressBarBg}>
                 <View style={[styles.progressBarFill, { width: totalPlayers > 0 ? `${(votedCount / totalPlayers) * 100}%` : '0%', backgroundColor: theme.colors.primary }]} />
               </View>
-              <View style={styles.votersList}>
+              <View style={[styles.votersList, { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.s, marginTop: spacing.s }]}>
                 {players.map(p => {
                   const hasVoted = liveVotes.some(v => v.playerId === p.id);
                   return (
-                    <Text key={p.id} style={[styles.miniVoter, hasVoted && styles.miniVoterDone]}>
-                      {p.name} {hasVoted ? '✓' : ''}
-                    </Text>
+                    <View key={p.id} style={{ opacity: hasVoted ? 1 : 0.4 }}>
+                      <PlayerBadge name={p.name} size="small" />
+                    </View>
                   );
                 })}
               </View>
@@ -194,7 +195,11 @@ export const HostVotingScreen = ({ route }) => {
                 return (
                   <View key={index} style={styles.resultBarContainer}>
                     <View style={styles.resultBarLabelRow}>
-                      <Text style={styles.resultLabel}>{label}</Text>
+                      {votingType === 'culprit' && scenario.playerName ? (
+                        <PlayerBadge name={scenario.playerName} size="small" />
+                      ) : (
+                        <Text style={styles.resultLabel}>{label}</Text>
+                      )}
                       <Text style={styles.resultCount}>{votes}</Text>
                     </View>
                     <View style={styles.resultBarBg}>
@@ -278,7 +283,9 @@ export const HostResultsScreen = () => {
             <MinimalCard style={styles.resEliminatedCard}>
               <Text style={styles.resSmallLabel}>تم استبعاد</Text>
               {revealStep >= 1 ? (
-                <Text style={styles.resEliminatedName}>{eliminatedPlayer.name}</Text>
+                <View style={{ marginVertical: spacing.s }}>
+                  <PlayerBadge name={eliminatedPlayer.name} size="large" />
+                </View>
               ) : (
                 <Text style={styles.resEliminatedName}>···</Text>
               )}
@@ -318,8 +325,8 @@ export const HostResultsScreen = () => {
                       >
                         <Text style={styles.resScoreRank}>#{i + 1}</Text>
                         <View style={[styles.resTeamStripe, { backgroundColor: teamColor }]} />
-                        <View style={{ flex: 1 }}>
-                          <Text style={styles.resScoreName}>{p.name}</Text>
+                        <View style={{ flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                          <PlayerBadge name={p.name} size="small" />
                           {showRole && (
                             <Text style={[styles.resScoreRole, { color: teamColor }]}>{p.role}</Text>
                           )}
@@ -401,35 +408,34 @@ export const HostDramaticRevealScreen = () => {
         <MinimalHeader title="كشف النتائج" />
 
         {currentReveal ? (
-          <MinimalCard style={[styles.revealCard, showAuthor && styles.revealCardComplete]}>
-            {/* 1. Scenario Text */}
-            <Text style={styles.revealText}>"{currentReveal.text}"</Text>
+          <View style={{ width: '100%', alignItems: 'center' }}>
+            {/* 3. Author (Reveal Step 3 - Prominent at the top outside the card) */}
+            {showAuthor && (
+              <View style={[styles.authorSection, { marginTop: 0, marginBottom: spacing.m }]}>
+                <PlayerBadge name={currentReveal.author} size="large" />
+              </View>
+            )}
 
-            {/* 2. Voters (Reveal Step 2) */}
+            <MinimalCard style={[styles.revealCard, showAuthor && styles.revealCardComplete]}>
+              {/* 1. Scenario Text */}
+              <Text style={styles.revealText}>"{currentReveal.text}"</Text>
+            </MinimalCard>
+
+            {/* 2. Voters (Reveal Step 2 - Badges outside bottom) */}
             {showVoters && (
-              <View style={styles.votersSection}>
-                <Text style={styles.votersLabel}>صوّت له:</Text>
-                <View style={styles.votersListHorizontal}>
+              <View style={[styles.votersSection, { backgroundColor: 'transparent', padding: 0 }]}>
+                <View style={[styles.votersListHorizontal, { gap: spacing.m, marginTop: spacing.s }]}>
                   {currentReveal.voters.length > 0 ? (
                     currentReveal.voters.map((v, i) => (
-                      <Text key={i} style={styles.voterTag}>{v}</Text>
+                      <PlayerBadge key={i} name={v} size="medium" />
                     ))
                   ) : (
                     <Text style={styles.noVotesText}>لا أحد</Text>
                   )}
                 </View>
-                <Text style={styles.voteCountBig}>{currentReveal.voteCount} صوت</Text>
               </View>
             )}
-
-            {/* 3. Author (Reveal Step 3 - Prominent) */}
-            {showAuthor && (
-              <View style={styles.authorSection}>
-                <Text style={styles.authorLabel}>الكاتب هو...</Text>
-                <Text style={styles.authorNameBig}>{currentReveal.author}</Text>
-              </View>
-            )}
-          </MinimalCard>
+          </View>
         ) : (
           <Text style={styles.waitingText}>جاري التحضير...</Text>
         )}
@@ -439,7 +445,9 @@ export const HostDramaticRevealScreen = () => {
           {revealedScenarios.map((s, i) => (
             <View key={i} style={styles.miniRevealCard}>
               <Text numberOfLines={2} style={styles.miniRevealText}>{s.text}</Text>
-              <Text style={styles.miniRevealAuthor}>{s.author}</Text>
+              <View style={{ marginVertical: spacing.xs }}>
+                <PlayerBadge name={s.author} size="small" />
+              </View>
               {/* Show Voters */}
               <View style={styles.miniVotersList}>
                 <Text style={styles.miniVotersLabel}>أصوات ({s.voteCount}):</Text>
