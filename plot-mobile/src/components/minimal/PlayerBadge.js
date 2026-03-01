@@ -3,6 +3,7 @@ import { View, Text, StyleSheet } from 'react-native';
 import { getTheme } from '../../constants/theme';
 import { useGameStore } from '../../store/useGameStore';
 import { spacing, fonts, borderRadius } from '../../styles/responsive';
+import { Avatar } from '../avatar/Avatar';
 
 /**
  * PlayerBadge - A reusable component for displaying player names.
@@ -16,10 +17,14 @@ export const PlayerBadge = ({
   isActive = false, // e.g. speaking
   isEliminated = false,
   size = 'medium', // small, medium, large
-  style
+  style,
+  avatar // Optional avatar config
 }) => {
   const themeMode = useGameStore(state => state.themeMode);
+  const players = useGameStore(state => state.players);
   const t = getTheme(themeMode);
+
+  const playerAvatar = avatar || players.find(p => p.name === name)?.avatar;
 
   const getBackgroundColor = () => {
     if (isEliminated) return themeMode === 'dark' ? '#333' : '#999';
@@ -71,6 +76,14 @@ export const PlayerBadge = ({
   return (
     <View style={containerStyle}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+        {playerAvatar && (
+          <Avatar
+            config={playerAvatar}
+            size={size === 'small' ? 24 : size === 'large' ? 40 : 32}
+            isSpeaking={isActive}
+            disableAnimation={isEliminated}
+          />
+        )}
         <Text style={textStyle} numberOfLines={1}>
           {name}
         </Text>

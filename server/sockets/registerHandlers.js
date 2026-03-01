@@ -1,9 +1,27 @@
 const { rooms } = require('../state');
 const scenarios = require('../scenarios');
-const { TEAMS, ROLE_TYPES, ROLES, getRoleInfo, getRolesForPlayerCount, getTeamMembers } = require('../roles');
+const { TEAMS, ROLE_TYPES, ROLES, getRoleInfo, getTeamMembers, getRolesForPlayerCount } = require('../roles');
 const { getRoleName, getRoleDescription, getRoleGoal, getRoleTeam, generateRoomCode, buildBotKnowledge } = require('../utils/serverUtils');
 const phases = require('../game/phases');
 const { handleSendOffer, handleMastermindForward, handleOfferResponse } = require('../logic/offers');
+
+// Helper to generate a random avatar configuration matching the React Native component bounds
+const generateRandomBotAvatar = () => {
+    const avatarColors = [
+        '#FDF5E6', '#FFF8DC', '#FFC0CB', '#FF69B4', '#FF4500', '#FFD700',
+        '#ADFF2F', '#00FF7F', '#00CED1', '#1E90FF', '#9370DB', '#8A2BE2',
+        '#A0522D', '#696969'
+    ];
+    return {
+        base: Math.floor(Math.random() * 6),
+        eyes: Math.floor(Math.random() * 7),
+        hair: Math.floor(Math.random() * 7),
+        hat: Math.floor(Math.random() * 6),
+        mouth: Math.floor(Math.random() * 8),
+        accessory: Math.floor(Math.random() * 7),
+        color: avatarColors[Math.floor(Math.random() * avatarColors.length)],
+    };
+};
 
 function registerHandlers(io) {
     io.on('connection', (socket) => {
@@ -34,13 +52,13 @@ function registerHandlers(io) {
             socket.join(roomCode);
             // ✅ إرسال gameMode مع الكود حتى تعكس الواجهة الوضع الصحيح فوراً
             socket.emit('roomCreated', { roomCode, gameMode: 'BLITZ' });
-            console.log(`Room created: ${roomCode} by ${socket.id}`);
+            console.log(`Room created: ${roomCode} by ${socket.id} `);
 
             // Auto-cleanup: delete unused lobby rooms after 30 minutes
             setTimeout(() => {
                 if (rooms[roomCode] && rooms[roomCode].state === 'LOBBY') {
                     delete rooms[roomCode];
-                    console.log(`🧹 Unused lobby room ${roomCode} auto-cleaned`);
+                    console.log(`🧹 Unused lobby room ${roomCode} auto - cleaned`);
                 }
             }, 30 * 60 * 1000);
         });
@@ -51,7 +69,7 @@ function registerHandlers(io) {
             if (room) {
                 room.hostId = socket.id;
                 socket.join(roomCode.toUpperCase());
-                console.log(`Host rejoined room ${roomCode}`);
+                console.log(`Host rejoined room ${roomCode} `);
             }
         });
 
@@ -75,7 +93,7 @@ function registerHandlers(io) {
         });
 
         // Player joins a room
-        socket.on('joinRoom', ({ roomCode, playerName, desiredRole }) => {
+        socket.on('joinRoom', ({ roomCode, playerName, desiredRole, avatar }) => {
             const room = rooms[roomCode.toUpperCase()];
 
             if (room) {
@@ -97,7 +115,7 @@ function registerHandlers(io) {
                         isReconnect: room.state !== 'LOBBY' && room.state !== 'END' // ← لا تُعيد لـ LOBBY إذا اللعبة جارية
                     });
 
-                    console.log(`${playerName} reconnected to room ${roomCode}`);
+                    console.log(`${playerName} reconnected to room ${roomCode} `);
 
                     // If game is running, send current state
                     if (room.state !== 'LOBBY' && room.state !== 'END') {
@@ -118,24 +136,24 @@ function registerHandlers(io) {
                             // Populate role specific info based on role type
                             if (existingPlayer.role === ROLE_TYPES.WITNESS) {
                                 // Witness sees keywords for 2 seconds typically, on reconnect we can show them again or history
-                                infoContent = `الكلمات المفتاحية: ${scenario.keywords.join(' - ')}`;
+                                infoContent = `الكلمات المفتاحية: ${scenario.keywords.join(' - ')} `;
                             } else if (existingPlayer.role === ROLE_TYPES.DETECTIVE) {
-                                infoContent = `عنوان القضية: ${scenario.title}`;
+                                infoContent = `عنوان القضية: ${scenario.title} `;
                             } else if (existingPlayer.role === ROLE_TYPES.SEER) {
                                 infoContent = `لديك القدرة على كشف القصة`;
                             } else if (existingPlayer.role === ROLE_TYPES.CULPRIT) {
-                                infoContent = `القصة الكاملة: ${scenario.story}`;
+                                infoContent = `القصة الكاملة: ${scenario.story} `;
                             } else if (existingPlayer.role === ROLE_TYPES.MASTERMIND) {
                                 const crimeMembers = room.players.filter(p => {
                                     const r = getRoleInfo(p.role);
                                     return r && r.team === TEAMS.CRIME && p.id !== existingPlayer.id;
                                 }).map(p => `${p.name} (${getRoleName(p.role)})`);
-                                infoContent = `أعضاء فريقك: ${crimeMembers.join(', ')}`;
+                                infoContent = `أعضاء فريقك: ${crimeMembers.join(', ')} `;
                             } else if (existingPlayer.role === ROLE_TYPES.MINISTER) {
                                 const keyRoles = room.players.filter(p =>
                                     p.role === ROLE_TYPES.DETECTIVE || p.role === ROLE_TYPES.BENEFICIARY
                                 ).map(p => `${p.name} (${getRoleName(p.role)})`);
-                                infoContent = `الأدوار المكشوفة لك: ${keyRoles.join(', ')}`;
+                                infoContent = `الأدوار المكشوفة لك: ${keyRoles.join(', ')} `;
                             } else if (existingPlayer.role === ROLE_TYPES.SABOTEUR) {
                                 infoContent = "مهمتك تخريب تحقيقات المحقق.";
                             } else if (existingPlayer.role === ROLE_TYPES.BENEFICIARY) {
@@ -238,12 +256,13 @@ function registerHandlers(io) {
                     score: 0,
                     role: null, // Will be set later or if desiredRole is present
                     isLeader: isLeader,
-                    connected: true
+                    connected: true,
+                    avatar: avatar || null
                 };
 
                 // ✅ Handle Training Mode Join Logic
                 if (desiredRole) {
-                    console.log(`🎓 Training Mode Join: ${playerName} wants to be ${desiredRole}`);
+                    console.log(`🎓 Training Mode Join: ${playerName} wants to be ${desiredRole} `);
                     room.isTutorial = true;
                     room.totalRounds = 3; // التدريب يستمر 3 جولات
                     player.role = desiredRole;
@@ -280,20 +299,20 @@ function registerHandlers(io) {
                         botCount++;
                         const botRole = availableRoles[i];
                         const botRoleName = ROLE_NAMES_AR[botRole] || botRole;
-                        const botId = `bot_${Date.now()}_${botCount}`;
+                        const botId = `bot_${Date.now()}_${botCount} `;
                         room.players.push({
                             id: botId,
                             name: `Bot ${botCount} 🤖 (${botRoleName})`,
                             score: 0,
                             role: botRole,        // الدور محدد مسبقاً
-                            preferredRole: botRole,
                             isLeader: false,
                             connected: true,
-                            isBot: true
+                            isBot: true,
+                            avatar: generateRandomBotAvatar()
                         });
                     }
 
-                    console.log(`✅ Training Mode: Added ${botCount} bots. Total players: ${room.players.length}`);
+                    console.log(`✅ Training Mode: Added ${botCount} bots.Total players: ${room.players.length} `);
                 } else {
                     room.players.push(player);
                     socket.join(roomCode.toUpperCase());
@@ -310,7 +329,7 @@ function registerHandlers(io) {
                 // Notify host (and everyone in room) about new player
                 io.to(roomCode.toUpperCase()).emit('playerJoined', room.players);
 
-                console.log(`${playerName} joined room ${roomCode} ${desiredRole ? '(Training Mode)' : ''}`);
+                console.log(`${playerName} joined room ${roomCode} ${desiredRole ? '(Training Mode)' : ''} `);
 
                 // Late Join Logic
                 if (room.state !== 'LOBBY' && room.state !== 'END') {
@@ -361,7 +380,7 @@ function registerHandlers(io) {
             // Add ONE bot if space available (Max 8)
             if (room.players.length < 8) {
                 const botCount = room.players.filter(p => p.isBot).length + 1;
-                const botId = `bot_${Date.now()}_${botCount}`;
+                const botId = `bot_${Date.now()}_${botCount} `;
 
                 // Determine preferred role for this bot based on current count and existing preferences
                 // 1. Get ideal role distribution for (current count + 1)
@@ -492,18 +511,19 @@ function registerHandlers(io) {
 
                 room.players.push({
                     id: botId,
-                    name: `Bot ${botCount} 🤖 ${assignedRoleName}`,
+                    name: `Bot ${botCount} 🤖 ${assignedRoleName} `,
                     score: 0,
                     role: assignedRole, // Set as role (will be preferredRole in logic)
                     preferredRole: assignedRole, // Lock it
                     isLeader: false,
                     connected: true,
-                    isBot: true
+                    isBot: true,
+                    avatar: generateRandomBotAvatar()
                 });
 
                 // Notify everyone
                 io.to(roomCode).emit('playerJoined', room.players);
-                console.log(`🤖 Added 1 bot (${assignedRole}) to room ${roomCode}`);
+                console.log(`🤖 Added 1 bot(${assignedRole}) to room ${roomCode} `);
             } else {
                 socket.emit('error', 'العدد مكتمل (الحد الأقصى 8)');
             }
@@ -702,7 +722,7 @@ function registerHandlers(io) {
                     socket.emit('fillBlitzBlanks', { blanks: revealedBlanks });
                     socket.emit('abilityResult', {
                         type: 'REVELATION_SUCCESS',
-                        message: `🔮 تم إرسال تقريرك تلقائياً بعد الوحي! (الفراغ الأول: 70%، الثاني: 50%، وهكذا...)`
+                        message: `🔮 تم إرسال تقريرك تلقائياً بعد الوحي!(الفراغ الأول: 70 %، الثاني: 50 %، وهكذا...)`
                     });
 
                     io.to(room.hostId).emit('playerSubmitted', { playerId: player.id, playerName: player.name });
@@ -939,7 +959,7 @@ function registerHandlers(io) {
                 }
             }
 
-            console.log(`[nextRound] room=${roomCode} socket=${socket.id.substring(0, 8)} provided=${providedCode}`);
+            console.log(`[nextRound] room = ${roomCode} socket = ${socket.id.substring(0, 8)} provided = ${providedCode} `);
 
             if (roomCode) {
                 // ✅ دائماً أضف الـ socket للغرفة لضمان استلام الأحداث
@@ -953,7 +973,7 @@ function registerHandlers(io) {
                     phases.startNewRound(roomCode);
                 }
             } else {
-                console.warn(`[nextRound] Room not found! socket=${socket.id}`);
+                console.warn(`[nextRound] Room not found! socket = ${socket.id} `);
             }
         });
 

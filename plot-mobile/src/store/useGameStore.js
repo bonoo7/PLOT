@@ -8,6 +8,7 @@ export const useGameStore = create((set) => ({
     userRole: null, // 'HOST' | 'PLAYER' | null
     players: [],
     socketId: null,
+    myAvatar: null,
 
     // UI State
     themeMode: 'light', // 'light' or 'dark'
@@ -57,6 +58,7 @@ export const useGameStore = create((set) => ({
     setUserRole: (role) => set({ userRole: role }),
     setPlayers: (players) => set({ players }),
     setSocketId: (id) => set({ socketId: id }),
+    setMyAvatar: (avatar) => set({ myAvatar: avatar }),
 
     setGameMode: (mode) => set({ gameMode: mode }),
     setCurrentRound: (round) => set({ currentRound: round }),

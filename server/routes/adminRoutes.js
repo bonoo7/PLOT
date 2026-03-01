@@ -49,26 +49,26 @@ function registerAdminRoutes(app) {
 <button class="refresh" onclick="location.reload()">⟳ تحديث</button>
 
 <div class="stats">
-  <div class="stat"><div class="stat-val">\${roomList.length}</div><div class="stat-lbl">غرف نشطة</div></div>
-  <div class="stat"><div class="stat-val">\${roomList.reduce((s,r)=>s+r.humans,0)}</div><div class="stat-lbl">لاعبون بشريون</div></div>
-  <div class="stat"><div class="stat-val">\${roomList.reduce((s,r)=>s+r.bots,0)}</div><div class="stat-lbl">بوتات</div></div>
-  <div class="stat"><div class="stat-val">\${roomList.filter(r=>r.state!=='LOBBY'&&r.state!=='END').length}</div><div class="stat-lbl">ألعاب جارية</div></div>
+  <div class="stat"><div class="stat-val">${roomList.length}</div><div class="stat-lbl">غرف نشطة</div></div>
+  <div class="stat"><div class="stat-val">${roomList.reduce((s, r) => s + r.humans, 0)}</div><div class="stat-lbl">لاعبون بشريون</div></div>
+  <div class="stat"><div class="stat-val">${roomList.reduce((s, r) => s + r.bots, 0)}</div><div class="stat-lbl">بوتات</div></div>
+  <div class="stat"><div class="stat-val">${roomList.filter(r => r.state !== 'LOBBY' && r.state !== 'END').length}</div><div class="stat-lbl">ألعاب جارية</div></div>
 </div>
 
-\${roomList.length === 0 ? '<div class="empty">لا توجد غرف نشطة حالياً</div>' : \`
+${roomList.length === 0 ? '<div class="empty">لا توجد غرف نشطة حالياً</div>' : `
 <table>
 <tr><th>الكود</th><th>الوضع</th><th>الحالة</th><th>الجولة</th><th>لاعبون</th><th>بوتات</th></tr>
-\${roomList.map(r=>\`<tr>
-<td><b>\${r.code}</b>\${r.isTutorial?'<span class="tutorial">(تدريب)</span>':''}</td>
-<td>\${r.gameMode}</td>
-<td><span class="state \${r.state}">\${r.state}</span></td>
-<td>\${r.round}/\${r.totalRounds}</td>
-<td>\${r.humans}</td>
-<td>\${r.bots}</td>
-</tr>\`).join('')}
-</table>\`}
+${roomList.map(r => `<tr>
+<td><b>${r.code}</b>${r.isTutorial ? '<span class="tutorial">(تدريب)</span>' : ''}</td>
+<td>${r.gameMode}</td>
+<td><span class="state ${r.state}">${r.state}</span></td>
+<td>${r.round}/${r.totalRounds}</td>
+<td>${r.humans}</td>
+<td>${r.bots}</td>
+</tr>`).join('')}
+</table>`}
 
-<p style="color:#444;font-size:0.75em;margin-top:24px">آخر تحديث: \${new Date().toLocaleTimeString('ar-SA')}</p>
+<p style="color:#444;font-size:0.75em;margin-top:24px">آخر تحديث: ${new Date().toLocaleTimeString('ar-SA')}</p>
 </body></html>`;
 
         res.send(html);

@@ -107,7 +107,9 @@ export const HostDraftingScreen = () => {
                 return (
                   <View key={player.id || index} style={styles.playerRow}>
                     <Text style={styles.playerIndex}>#{index + 1}</Text>
-                    <Text style={styles.playerName}>{player.name}</Text>
+                    <View style={{ flex: 1, marginHorizontal: spacing.s, alignItems: 'flex-start' }}>
+                      <PlayerBadge name={player.name} size="small" />
+                    </View>
                     <Text style={hasSubmitted ? styles.statusDone : styles.statusWait}>
                       {hasSubmitted ? 'تم ✅' : '...'}
                     </Text>

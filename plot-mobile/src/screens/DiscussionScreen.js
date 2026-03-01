@@ -100,8 +100,9 @@ export const DiscussionScreen = ({ isHost = false }) => {
                                     <View style={styles.micIconContainer}>
                                         <Text style={styles.micIcon}>🎤</Text>
                                     </View>
-                                    <Text style={styles.speakingLabel}>المتحدث الحالي</Text>
-                                    <Text style={styles.speakingName}>{speakingPlayer.name}</Text>
+                                    <View style={{ marginVertical: spacing.s }}>
+                                        <PlayerBadge name={speakingPlayer.name} size="large" isActive={true} />
+                                    </View>
                                     <View style={styles.soundWave}>
                                         <View style={[styles.bar, { height: 20 }]} />
                                         <View style={[styles.bar, { height: 40 }]} />

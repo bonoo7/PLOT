@@ -11,6 +11,8 @@ import {
   MinimalInput
 } from '../components/minimal';
 import { PlayerBadge } from '../components/minimal/PlayerBadge';
+import { Avatar } from '../components/avatar/Avatar';
+import { AvatarEditor } from '../components/avatar/AvatarEditor';
 import { theme } from '../styles/theme';
 import { spacing, fonts, borderRadius } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
@@ -28,12 +30,16 @@ export const LoginScreen = () => {
   const setConnecting = useGameStore((state) => state.setConnecting);
   const { socket } = useSocket();
 
+  const myAvatar = useGameStore((state) => state.myAvatar);
+  const setMyAvatar = useGameStore((state) => state.setMyAvatar);
+  const [showAvatarEditor, React_useState] = React.useState(false);
+
   const canJoin = playerName.trim().length >= 2 && roomCode.trim().length >= 4;
 
   const handleJoinRoom = () => {
     if (socket) {
       setConnecting(true);
-      socket.emit('joinRoom', { roomCode, playerName, isHost: false });
+      socket.emit('joinRoom', { roomCode, playerName, avatar: myAvatar, isHost: false });
     }
   };
 
@@ -45,35 +51,51 @@ export const LoginScreen = () => {
           subtitle="أدخل بيانات الدخول"
         />
 
-        <MinimalCard style={styles.formCard}>
-          <MinimalInput
-            label="الاسم الحركي"
-            value={playerName}
-            onChangeText={setPlayerName}
-            placeholder="مثال: الظل"
-            maxLength={30}
-            editable={!connecting}
-            style={styles.input}
-          />
+        <MinimalCard style={[styles.formCard, { padding: spacing.m }]}>
+          <View style={{ alignItems: 'center', marginBottom: spacing.s }}>
+            <Avatar config={myAvatar} size={80} />
+            <MinimalButton
+              title="تخصيص الشخصية"
+              onPress={() => React_useState(true)}
+              variant="secondary"
+              size="small"
+              style={{ marginTop: spacing.xs, alignSelf: 'center' }}
+            />
+          </View>
 
-          <MinimalInput
-            label="رمز الغرفة"
-            value={roomCode}
-            onChangeText={(text) => setRoomCode(text.toUpperCase())}
-            placeholder="XXXX"
-            maxLength={6}
-            autoCapitalize="characters"
-            editable={!connecting}
-            style={styles.input}
-          />
+          <View style={{ flexDirection: 'row', gap: spacing.s }}>
+            <View style={{ flex: 1 }}>
+              <MinimalInput
+                label="الاسم الحركي"
+                value={playerName}
+                onChangeText={setPlayerName}
+                placeholder="الاسم"
+                maxLength={30}
+                editable={!connecting}
+                style={{ marginBottom: spacing.s }}
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <MinimalInput
+                label="رمز الغرفة"
+                value={roomCode}
+                onChangeText={(text) => setRoomCode(text.toUpperCase())}
+                placeholder="XXXX"
+                maxLength={6}
+                autoCapitalize="characters"
+                editable={!connecting}
+                style={{ marginBottom: spacing.s }}
+              />
+            </View>
+          </View>
 
           <MinimalButton
-            title={connecting ? "جاري الاتصال..." : "دخول"}
+            title={connecting ? "جاري الاتصال..." : "دخول الغرفة"}
             onPress={handleJoinRoom}
             disabled={!canJoin || connecting}
             loading={connecting}
             size="medium"
-            style={styles.actionButton}
+            style={[styles.actionButton, { marginTop: spacing.xs }]}
           />
         </MinimalCard>
 
@@ -86,6 +108,16 @@ export const LoginScreen = () => {
           textStyle={styles.backButtonText}
         />
       </View>
+
+      <AvatarEditor
+        visible={showAvatarEditor}
+        initialConfig={myAvatar}
+        onSave={(config) => {
+          setMyAvatar(config);
+          React_useState(false);
+        }}
+        onCancel={() => React_useState(false)}
+      />
     </MinimalLayout>
   );
 };

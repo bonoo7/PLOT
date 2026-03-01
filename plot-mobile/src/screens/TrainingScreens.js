@@ -10,6 +10,8 @@ import MinimalButton from '../components/minimal/MinimalButton';
 import { theme } from '../styles/theme';
 import { spacing, fonts, borderRadius } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
+import { Avatar } from '../components/avatar/Avatar';
+import { AvatarEditor } from '../components/avatar/AvatarEditor';
 
 /**
  * TrainingRoleSelectScreen - V3
@@ -105,6 +107,9 @@ export const TrainingJoinScreen = () => {
   const connecting = useGameStore((state) => state.connecting);
   const setConnecting = useGameStore((state) => state.setConnecting);
   const setUserRole = useGameStore((state) => state.setUserRole);
+  const myAvatar = useGameStore((state) => state.myAvatar);
+  const setMyAvatar = useGameStore((state) => state.setMyAvatar);
+  const [showAvatarEditor, React_useState] = React.useState(false);
 
   const [roomCode, setRoomCode] = React.useState('');
 
@@ -126,11 +131,12 @@ export const TrainingJoinScreen = () => {
     setUserRole('PLAYER');
 
     // ✅ الانضمام للغرفة مع الدور المحدد
-    // الخادم سيضيف 3 بوتات تلقائياً بترتيب الأدوار (مع تجاهل دور اللاعب)
+    // Khadam adds bots automatically
     socket.emit('joinRoom', {
       roomCode: roomCode.trim().toUpperCase(),
       playerName: playerName.trim(),
-      desiredRole: selectedRole,  // الخادم يُعيّن هذا الدور للاعب ويُضيف البوتات
+      desiredRole: selectedRole,
+      avatar: myAvatar
     });
   };
 
@@ -155,33 +161,48 @@ export const TrainingJoinScreen = () => {
       <View style={[styles.container, { maxWidth: 500 }]}>
         <MinimalHeader title="تدريب فردي" subtitle="انضم للغرفة" />
 
-        <MinimalCard>
-          {/* Role Display */}
-          <Text style={styles.label}>دورك المختار</Text>
-          <View style={styles.selectedRoleBox}>
-            <Text style={styles.roleIconLarge}>{roleInfo.icon}</Text>
-            <Text style={styles.selectedRoleText}>{roleInfo.nameAr}</Text>
+        <MinimalCard style={{ padding: spacing.m }}>
+          {/* Avatar & Role Display */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: spacing.m }}>
+
+            <View style={{ alignItems: 'center', flex: 1 }}>
+              <Avatar config={myAvatar} size={80} />
+              <MinimalButton
+                title="تخصيص الشخصية 🔄"
+                onPress={() => React_useState(true)}
+                variant="secondary"
+                size="small"
+                style={{ marginTop: spacing.xs }}
+              />
+            </View>
+
+            <View style={{ alignItems: 'center', flex: 1 }}>
+              <Text style={[styles.label, { marginBottom: 4 }]}>دورك المختار</Text>
+              <View style={[styles.selectedRoleBox, { marginBottom: 0, padding: spacing.xs }]}>
+                <Text style={styles.selectedRoleText}>{roleInfo.nameAr}</Text>
+              </View>
+            </View>
           </View>
 
-          {/* Name Input */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>اسمك</Text>
-            <MinimalTextInput
-              value={playerName}
-              onChangeText={setPlayerName}
-              placeholder="أدخل اسمك"
-            />
-          </View>
-
-          {/* Room Code Input */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>كود الغرفة</Text>
-            <MinimalTextInput
-              value={roomCode}
-              onChangeText={(t) => setRoomCode(t.toUpperCase())}
-              placeholder="مثال: ABCD"
-              maxLength={6}
-            />
+          {/* Inputs */}
+          <View style={{ flexDirection: 'row', gap: spacing.s }}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>اسمك</Text>
+              <MinimalTextInput
+                value={playerName}
+                onChangeText={setPlayerName}
+                placeholder="الاسم"
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.label}>كود الغرفة</Text>
+              <MinimalTextInput
+                value={roomCode}
+                onChangeText={(t) => setRoomCode(t.toUpperCase())}
+                placeholder="XXXX"
+                maxLength={6}
+              />
+            </View>
           </View>
         </MinimalCard>
 
@@ -193,7 +214,7 @@ export const TrainingJoinScreen = () => {
 
         <View style={styles.buttonGroup}>
           <MinimalButton
-            title={connecting ? 'جاري الانضمام...' : 'انضم للتدريب 🚀'}
+            title={connecting ? 'جاري الانضمام...' : 'انضم للتدريب'}
             onPress={handleJoinTraining}
             disabled={connecting || !playerName.trim() || roomCode.trim().length < 4}
             loading={connecting}
@@ -205,6 +226,16 @@ export const TrainingJoinScreen = () => {
           />
         </View>
       </View>
+
+      <AvatarEditor
+        visible={showAvatarEditor}
+        initialConfig={myAvatar}
+        onSave={(config) => {
+          setMyAvatar(config);
+          React_useState(false);
+        }}
+        onCancel={() => React_useState(false)}
+      />
     </MinimalLayout>
   );
 };
@@ -269,14 +300,15 @@ const styles = StyleSheet.create({
   label: { color: '#8B4513', marginBottom: spacing.xs, fontFamily: theme.fonts.bold },
   selectedRoleBox: {
     backgroundColor: 'rgba(0,0,0,0.05)',
-    padding: spacing.m,
+    padding: spacing.s,
     borderRadius: borderRadius.small,
     alignItems: 'center',
     marginBottom: spacing.m,
-    width: '100%'
+    width: '100%',
+    borderWidth: 1,
+    borderColor: '#CCC'
   },
-  selectedRoleText: { fontSize: fonts.large, fontFamily: theme.fonts.bold, color: theme.colors.primary },
-  roleIconLarge: { fontSize: 48, marginBottom: spacing.xs },
+  selectedRoleText: { fontSize: fonts.medium, fontFamily: theme.fonts.bold, color: theme.colors.primary },
   inputGroup: { width: '100%', marginBottom: spacing.m },
   // Custom Input Styles
   textInput: {
