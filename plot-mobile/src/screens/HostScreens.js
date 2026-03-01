@@ -1,10 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet, Share } from 'react-native';
-import { 
-  MinimalLayout, 
-  MinimalHeader, 
-  MinimalCard, 
-  MinimalButton 
+import { useNavigation } from '@react-navigation/native';
+import { useGameStore } from '../store/useGameStore';
+import { useSocket, ROUTES } from '../hooks/useGameSocket';
+
+import {
+  MinimalLayout,
+  MinimalHeader,
+  MinimalCard,
+  MinimalButton
 } from '../components/minimal';
 import { theme } from '../styles/theme';
 import { spacing, fonts, borderRadius } from '../styles/responsive';
@@ -13,12 +17,28 @@ import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 /**
  * HostSetupScreen - Minimalist V3
  */
-export const HostSetupScreen = ({ onCreateRoom, connecting, onBack }) => {
+export const HostSetupScreen = () => {
+  const navigation = useNavigation();
+  const connecting = useGameStore((state) => state.connecting);
+  const setConnecting = useGameStore((state) => state.setConnecting);
+  const playerName = useGameStore((state) => state.playerName);
+  const { socket } = useSocket();
+
+  const handleCreateRoom = () => {
+    if (socket) {
+      setConnecting(true);
+      socket.emit('createRoom', {
+        playerName: playerName || 'المضيف', // Fallback in case host name isn't set yet 
+        isHost: true
+      });
+    }
+  };
+
   return (
     <MinimalLayout>
       <View style={styles.centerBox}>
         <MinimalHeader title="مركز القيادة" subtitle="إعداد غرفة جديدة" />
-        
+
         <MinimalCard style={styles.setupCard}>
           <Text style={styles.infoTitle}>معلومات المهمة:</Text>
           <View style={styles.infoRow}>
@@ -27,28 +47,26 @@ export const HostSetupScreen = ({ onCreateRoom, connecting, onBack }) => {
           <View style={styles.infoRow}>
             <Text style={styles.infoText}>• الوقت: 30 - 45 دقيقة</Text>
           </View>
-          
+
           <View style={styles.spacer} />
 
           <MinimalButton
             title={connecting ? "جاري الإنشاء..." : "إنشاء غرفة"}
-            onPress={onCreateRoom}
+            onPress={handleCreateRoom}
             disabled={connecting}
             loading={connecting}
             size="medium"
           />
         </MinimalCard>
 
-        {onBack && (
-          <MinimalButton
-            title="رجوع"
-            onPress={onBack}
-            variant="ghost"
-            size="small"
-            style={styles.backButton}
-            textStyle={styles.backButtonText}
-          />
-        )}
+        <MinimalButton
+          title="رجوع"
+          onPress={() => navigation.goBack()}
+          variant="ghost"
+          size="small"
+          style={styles.backButton}
+          textStyle={styles.backButtonText}
+        />
       </View>
     </MinimalLayout>
   );
@@ -57,21 +75,21 @@ export const HostSetupScreen = ({ onCreateRoom, connecting, onBack }) => {
 /**
  * HostLobbyScreen - Minimalist V3
  */
-export const HostLobbyScreen = ({ 
-  roomCode, 
-  players = [], 
-  onStartGame,
-  onFillBots,
-  onBack,
-  gameMode = 'CLASSIC',
-  onUpdateSettings
-}) => {
+export const HostLobbyScreen = () => {
   const { isDesktop } = useResponsiveLayout();
+  const navigation = useNavigation();
+  const { socket } = useSocket();
+
+  // ✅ تأمين: String() يمنع عرض object في JSX حتى لو حدث خطأ في الـ store
+  const rawCode = useGameStore((state) => state.generatedRoomCode || state.roomCode);
+  const roomCode = typeof rawCode === 'string' ? rawCode : (rawCode?.roomCode || '');
+  const players = useGameStore((state) => state.players);
+  const gameMode = useGameStore((state) => state.gameMode);
+  const resetGame = useGameStore((state) => state.resetGame);
+
   const canStart = players.length >= 4 && players.length <= 8;
   const needsMore = 4 - players.length;
 
-  // Essential Roles Order (matching server/roles.js logic)
-  // UPDATED ORDER: Culprit -> Witness -> Detective -> Saboteur -> Minister -> Beneficiary -> Seer -> Mastermind
   const ROLE_ORDER = [
     { code: 'CULPRIT', name: 'الجاني 🎭' },
     { code: 'WITNESS', name: 'الشاهد 👁️' },
@@ -83,7 +101,6 @@ export const HostLobbyScreen = ({
     { code: 'MASTERMIND', name: 'العقل المدبر 🧠' }
   ];
 
-  // Calculate next role
   const nextRoleIndex = players.length;
   const nextRole = nextRoleIndex < ROLE_ORDER.length ? ROLE_ORDER[nextRoleIndex] : { name: 'مواطن 👤' };
 
@@ -97,29 +114,44 @@ export const HostLobbyScreen = ({
     }
   };
 
+  const handleStartGame = () => {
+    if (socket) socket.emit('startGame');
+  };
+
+  const handleFillBots = () => {
+    if (socket) socket.emit('fillBots');
+  };
+
+  const handleUpdateSettings = (settings) => {
+    if (socket) socket.emit('updateGameSettings', { roomCode, settings });
+  };
+
+  const handleCloseRoom = () => {
+    resetGame();
+    navigation.navigate(ROUTES.ROLE_SELECT);
+  };
+
   return (
     <MinimalLayout>
       <View style={[styles.lobbyContainer, { maxWidth: isDesktop ? 1000 : 600 }]}>
-        {/* Header Section */}
         <View style={styles.headerSection}>
           <MinimalHeader title="غرفة العمليات" />
-          
+
           <View style={styles.codeSection}>
-             <View style={styles.codeBadge}>
-                <Text style={styles.codeLabel}>CODE</Text>
-                <Text style={styles.codeText}>{roomCode}</Text>
-             </View>
-             <MinimalButton 
-               title="مشاركة" 
-               onPress={handleShare} 
-               variant="secondary" 
-               size="small"
-               style={styles.shareBtn} 
-             />
+            <View style={styles.codeBadge}>
+              <Text style={styles.codeLabel}>CODE</Text>
+              <Text style={styles.codeText}>{roomCode}</Text>
+            </View>
+            <MinimalButton
+              title="مشاركة"
+              onPress={handleShare}
+              variant="secondary"
+              size="small"
+              style={styles.shareBtn}
+            />
           </View>
         </View>
 
-        {/* Game Mode Selector */}
         <MinimalCard style={styles.settingsCard}>
           <View style={styles.settingsHeader}>
             <Text style={styles.sectionTitle}>نمط اللعب:</Text>
@@ -128,24 +160,23 @@ export const HostLobbyScreen = ({
             </Text>
           </View>
           <View style={styles.togglesRow}>
-             <MinimalButton 
-               title="إكمال الفراغ 🧩" 
-               onPress={() => onUpdateSettings && onUpdateSettings({ gameMode: 'BLITZ' })}
-               variant={gameMode === 'BLITZ' ? 'primary' : 'outline'}
-               size="small"
-               style={styles.modeBtn}
-             />
-             <MinimalButton 
-               title="كتابة كاملة ✍️" 
-               onPress={() => onUpdateSettings && onUpdateSettings({ gameMode: 'CLASSIC' })}
-               variant={gameMode === 'CLASSIC' ? 'primary' : 'outline'}
-               size="small"
-               style={styles.modeBtn}
-             />
+            <MinimalButton
+              title="إكمال الفراغ 🧩"
+              onPress={() => handleUpdateSettings({ gameMode: 'BLITZ' })}
+              variant={gameMode === 'BLITZ' ? 'primary' : 'outline'}
+              size="small"
+              style={styles.modeBtn}
+            />
+            <MinimalButton
+              title="كتابة كاملة ✍️"
+              onPress={() => handleUpdateSettings({ gameMode: 'CLASSIC' })}
+              variant={gameMode === 'CLASSIC' ? 'primary' : 'outline'}
+              size="small"
+              style={styles.modeBtn}
+            />
           </View>
         </MinimalCard>
 
-        {/* Players Area */}
         <MinimalCard flex style={styles.playersCard}>
           <View style={styles.cardHeader}>
             <Text style={styles.sectionTitle}>العملاء المتصلون ({players.length}/8)</Text>
@@ -172,31 +203,30 @@ export const HostLobbyScreen = ({
           )}
         </MinimalCard>
 
-        {/* Actions Footer */}
         <View style={styles.actionsFooter}>
           <View style={styles.mainActions}>
-             {players.length < 8 && (
-                <MinimalButton 
-                  title={`+ بوت (${nextRole.name})`} 
-                  onPress={onFillBots} 
-                  variant="secondary"
-                  size="medium"
-                  style={styles.botBtn}
-                />
-             )}
-             <MinimalButton
-               title={canStart ? "بدء المهمة 🚀" : "بانتظار اكتمال العدد"}
-               onPress={onStartGame}
-               disabled={!canStart}
-               variant={canStart ? "primary" : "outline"}
-               size="medium"
-               style={styles.startBtn}
-             />
+            {players.length < 8 && (
+              <MinimalButton
+                title={`+ بوت (${nextRole.name})`}
+                onPress={handleFillBots}
+                variant="secondary"
+                size="medium"
+                style={styles.botBtn}
+              />
+            )}
+            <MinimalButton
+              title={canStart ? "بدء المهمة 🚀" : "بانتظار اكتمال العدد"}
+              onPress={handleStartGame}
+              disabled={!canStart}
+              variant={canStart ? "primary" : "outline"}
+              size="medium"
+              style={styles.startBtn}
+            />
           </View>
-          
+
           <MinimalButton
             title="إغلاق الغرفة"
-            onPress={onBack}
+            onPress={handleCloseRoom}
             variant="ghost"
             size="small"
             textStyle={styles.closeBtnText}
@@ -243,7 +273,7 @@ const styles = StyleSheet.create({
     color: '#E8DCC8',
     opacity: 0.8,
   },
-  
+
   // Lobby Styles
   lobbyContainer: {
     flex: 1,
@@ -284,7 +314,7 @@ const styles = StyleSheet.create({
   shareBtn: {
     height: 44,
   },
-  
+
   // Settings
   settingsCard: {
     padding: spacing.m,
@@ -374,7 +404,7 @@ const styles = StyleSheet.create({
     color: theme.colors.textSecondary,
     fontStyle: 'italic',
   },
-  
+
   // Footer
   actionsFooter: {
     gap: spacing.s,

@@ -11,16 +11,21 @@
     "build:web": "expo export --platform web --output-dir ../server/public"
   },
   "dependencies": {
+    "@react-navigation/native": "^7.1.31",
+    "@react-navigation/native-stack": "^7.14.2",
     "@types/react": "~19.1.10",
-    "expo": "~54.0.29",
+    "expo": "~54.0.33",
     "expo-navigation-bar": "~5.0.10",
     "expo-status-bar": "~3.0.9",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
+    "react-native-safe-area-context": "~5.6.0",
+    "react-native-screens": "~4.16.0",
     "react-native-web": "^0.21.0",
     "socket.io-client": "^4.8.1",
-    "typescript": "~5.9.2"
+    "typescript": "~5.9.2",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@babel/core": "^7.20.0",

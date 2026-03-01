@@ -343,29 +343,29 @@
     },
     "Bot 1 🤖 (الجاني)": {
       "name": "Bot 1 🤖 (الجاني)",
-      "gamesPlayed": 5,
-      "wins": 0,
-      "totalScore": 15500,
+      "gamesPlayed": 6,
+      "wins": 1,
+      "totalScore": 24000,
       "rolesPlayed": {
-        "CULPRIT": 5
+        "CULPRIT": 6
       }
     },
     "Bot 2 🤖 (الشاهد)": {
       "name": "Bot 2 🤖 (الشاهد)",
-      "gamesPlayed": 5,
+      "gamesPlayed": 6,
       "wins": 5,
-      "totalScore": 25250,
+      "totalScore": 28650,
       "rolesPlayed": {
-        "WITNESS": 5
+        "WITNESS": 6
       }
     },
     "Bot 3 🤖 (المحقق)": {
       "name": "Bot 3 🤖 (المحقق)",
-      "gamesPlayed": 5,
+      "gamesPlayed": 6,
       "wins": 0,
-      "totalScore": 22000,
+      "totalScore": 24600,
       "rolesPlayed": {
-        "DETECTIVE": 5
+        "DETECTIVE": 6
       }
     },
     "Ah": {
@@ -427,6 +427,15 @@
       "gamesPlayed": 1,
       "wins": 0,
       "totalScore": 5600,
+      "rolesPlayed": {
+        "SABOTEUR": 1
+      }
+    },
+    "Bot 4 🤖 (المخرب)": {
+      "name": "Bot 4 🤖 (المخرب)",
+      "gamesPlayed": 1,
+      "wins": 0,
+      "totalScore": 7000,
       "rolesPlayed": {
         "SABOTEUR": 1
       }
@@ -2919,6 +2928,32 @@
         }
       ],
       "timestamp": "2026-02-26T19:30:35.134Z"
+    },
+    {
+      "roomCode": "WFAR",
+      "players": [
+        {
+          "name": "Bot 1 🤖 (الجاني)",
+          "score": 8500,
+          "role": "CULPRIT"
+        },
+        {
+          "name": "Bot 2 🤖 (الشاهد)",
+          "score": 3400,
+          "role": "WITNESS"
+        },
+        {
+          "name": "Bot 3 🤖 (المحقق)",
+          "score": 2600,
+          "role": "DETECTIVE"
+        },
+        {
+          "name": "Bot 4 🤖 (المخرب)",
+          "score": 7000,
+          "role": "SABOTEUR"
+        }
+      ],
+      "timestamp": "2026-02-27T04:30:56.862Z"
     }
   ]
 }

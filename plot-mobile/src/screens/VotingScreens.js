@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useGameStore } from '../store/useGameStore';
+import { useSocket } from '../hooks/useGameSocket';
+
 import MinimalLayout from '../components/minimal/MinimalLayout';
 import MinimalHeader from '../components/minimal/MinimalHeader';
 import MinimalCard from '../components/minimal/MinimalCard';
@@ -11,63 +14,75 @@ import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 /**
  * QualityVotingScreen - V3
  */
-export const QualityVotingScreen = ({ 
-  scenarios = [], 
-  onVote, 
-  hasVoted = false,
-  selectedScenario = null,
-  roleData,
-  myAnswer,
-  onRefresh,
-  roomCode
-}) => {
+export const QualityVotingScreen = () => {
   const { isDesktop } = useResponsiveLayout();
+  const { socket } = useSocket();
+
+  const scenarios = useGameStore((state) => state.scenarios) || [];
+  const hasVoted = useGameStore((state) => state.hasVoted);
+  const selectedScenario = useGameStore((state) => state.selectedScenario);
+  const roleData = useGameStore((state) => state.roleData);
+  const myAnswer = useGameStore((state) => state.answer);
+  const roomCode = useGameStore((state) => state.roomCode);
+  const playerName = useGameStore((state) => state.playerName);
+
+  const setHasVoted = useGameStore((state) => state.setHasVoted);
+  const setSelectedScenario = useGameStore((state) => state.setSelectedScenario);
+
   const [selected, setSelected] = useState(selectedScenario);
 
   const handleVote = () => {
-    if (selected !== null) onVote(selected);
+    if (selected !== null && socket) {
+      setHasVoted(true);
+      setSelectedScenario(selected);
+      socket.emit('submitQualityVote', { roomCode, scenarioIndex: selected });
+    }
+  };
+
+  const handleRefresh = () => {
+    // Refresh logic if needed in minimal layout
   };
 
   return (
-    <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={onRefresh}>
+    <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={handleRefresh}>
       <View style={[styles.container, { maxWidth: isDesktop ? 1000 : 700 }]}>
         <MinimalHeader title="التقييم" subtitle="اختر أفضل سيناريو" />
 
         {/* Scenarios Grid/List - Using ScrollView here as lists can be long, 
             but kept minimal visuals */}
         <View style={styles.listContainer}>
-           <ScrollView 
-             showsVerticalScrollIndicator={true}
-             contentContainerStyle={styles.gridContent}
-           >
-             {scenarios.map((scenario, index) => {
-               const isSelf = scenario.answer === myAnswer;
-               return (
-                 <TouchableOpacity
-                   key={index}
-                   style={[
-                     styles.voteCard,
-                     selected === index && styles.voteCardSelected,
-                     hasVoted && styles.voteCardDisabled,
-                     isSelf && styles.voteCardSelf,
-                     isDesktop && styles.voteCardDesktop
-                   ]}
-                   onPress={() => !hasVoted && !isSelf && setSelected(index)}
-                   activeOpacity={0.8}
-                   disabled={hasVoted || isSelf}
-                 >
-                   <View style={styles.cardHeader}>
-                     <Text style={styles.cardIndex}>#{index + 1}</Text>
-                     {selected === index && !hasVoted && <Text style={styles.checkMark}>✓</Text>}
-                   </View>
-                   <Text style={styles.scenarioText}>
-                     {scenario.answer || scenario.text || '...'}
-                   </Text>
-                   {isSelf && <Text style={styles.selfVoteLabel}>تصويتك</Text>}
-                 </TouchableOpacity>
-               );
-             })}
-           </ScrollView>
+          <ScrollView
+            showsVerticalScrollIndicator={true}
+            contentContainerStyle={styles.gridContent}
+          >
+            {scenarios.map((scenario, index) => {
+              const isSelf = scenario.answer === myAnswer;
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.voteCard,
+                    selected === index && styles.voteCardSelected,
+                    hasVoted && styles.voteCardDisabled,
+                    isSelf && styles.voteCardSelf,
+                    isDesktop && styles.voteCardDesktop
+                  ]}
+                  onPress={() => !hasVoted && !isSelf && setSelected(index)}
+                  activeOpacity={0.8}
+                  disabled={hasVoted || isSelf}
+                >
+                  <View style={styles.cardHeader}>
+                    <Text style={styles.cardIndex}>#{index + 1}</Text>
+                    {selected === index && !hasVoted && <Text style={styles.checkMark}>✓</Text>}
+                  </View>
+                  <Text style={styles.scenarioText}>
+                    {scenario.answer || scenario.text || '...'}
+                  </Text>
+                  {isSelf && <Text style={styles.selfVoteLabel}>تصويتك</Text>}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
 
         <View style={styles.footer}>
@@ -93,66 +108,84 @@ export const QualityVotingScreen = ({
 /**
  * CulpritVotingScreen - V3
  */
-export const CulpritVotingScreen = ({ 
-  scenarios = [], 
-  onVote, 
-  hasVoted = false, 
-  selectedCulprit = null,
-  roleData,
-  myPlayerId,
-  onRefresh,
-  roomCode
-}) => {
+export const CulpritVotingScreen = () => {
   const { isDesktop } = useResponsiveLayout();
+  const { socket } = useSocket();
+
+  const scenarios = useGameStore((state) => state.scenarios) || [];
+  const hasVoted = useGameStore((state) => state.hasVoted);
+  const selectedCulprit = useGameStore((state) => state.selectedCulprit);
+  const roleData = useGameStore((state) => state.roleData);
+  const myPlayerId = socket?.id;
+  const roomCode = useGameStore((state) => state.roomCode);
+  const playerName = useGameStore((state) => state.playerName);
+
+  const setHasVoted = useGameStore((state) => state.setHasVoted);
+  const setSelectedCulprit = useGameStore((state) => state.setSelectedCulprit);
+
   const [selected, setSelected] = useState(selectedCulprit);
 
   const handleVote = () => {
-    if (selected !== null) onVote(selected);
+    if (selected !== null && socket) {
+      setHasVoted(true);
+      setSelectedCulprit(selected);
+      // Determine the mapped choice for Culprit Voting. 
+      // Based on previous code, we just send the selected id/index.
+      // If `scenarios` array contains playerId, send playerId, else send selected index.
+      const choice = scenarios[selected]?.playerId || selected;
+      socket.emit('submitCulpritVote', { roomCode, playerId: choice });
+    }
+  };
+
+  const handleRefresh = () => {
+    // ...
   };
 
   return (
-    <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={onRefresh}>
+    <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={handleRefresh}>
       <View style={[styles.container, { maxWidth: isDesktop ? 1000 : 700 }]}>
         <View style={styles.dangerHeader}>
-           <MinimalHeader title="من الجاني؟" subtitle="اكشف الحقيقة" />
+          <MinimalHeader title="من الجاني؟" subtitle="اكشف الحقيقة" />
         </View>
 
         <View style={styles.listContainer}>
-           <ScrollView 
-             showsVerticalScrollIndicator={true}
-             contentContainerStyle={styles.gridContent}
-           >
-             {scenarios.map((scenario, index) => {
-               const isSelf = scenario.playerId === myPlayerId;
-               return (
-                 <TouchableOpacity
-                   key={index}
-                   style={[
-                     styles.voteCard,
-                     selected === index && styles.voteCardSelectedDanger,
-                     hasVoted && styles.voteCardDisabled,
-                     isSelf && styles.voteCardSelf,
-                     isDesktop && styles.voteCardDesktop
-                   ]}
-                   onPress={() => !hasVoted && !isSelf && setSelected(index)}
-                   activeOpacity={0.8}
-                   disabled={hasVoted || isSelf}
-                 >
-                   <View style={styles.cardHeader}>
-                     <View style={styles.authorBadge}>
-                        <Text style={styles.authorIcon}>👤</Text>
-                        <Text style={styles.authorName}>{scenario.playerName || scenario.author || 'مجهول'}</Text>
-                     </View>
-                     {selected === index && !hasVoted && <Text style={styles.checkMarkDanger}>🎯</Text>}
-                   </View>
-                   <Text style={styles.scenarioText}>
-                     {scenario.answer || scenario.text || '...'}
-                   </Text>
-                   {isSelf && <Text style={styles.selfVoteLabel}>تصويتك</Text>}
-                 </TouchableOpacity>
-               );
-             })}
-           </ScrollView>
+          <ScrollView
+            showsVerticalScrollIndicator={true}
+            contentContainerStyle={styles.gridContent}
+          >
+            {scenarios.map((scenario, index) => {
+              // Prevent voting for self if playing as player. 
+              // Depending on design, some games allow self voting. Leaving as false by default if unknown.
+              const isSelf = scenario.playerId === myPlayerId;
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={[
+                    styles.voteCard,
+                    selected === index && styles.voteCardSelectedDanger,
+                    hasVoted && styles.voteCardDisabled,
+                    isSelf && styles.voteCardSelf,
+                    isDesktop && styles.voteCardDesktop
+                  ]}
+                  onPress={() => !hasVoted && !isSelf && setSelected(index)}
+                  activeOpacity={0.8}
+                  disabled={hasVoted || isSelf}
+                >
+                  <View style={styles.cardHeader}>
+                    <View style={styles.authorBadge}>
+                      <Text style={styles.authorIcon}>👤</Text>
+                      <Text style={styles.authorName}>{scenario.playerName || scenario.author || 'مجهول'}</Text>
+                    </View>
+                    {selected === index && !hasVoted && <Text style={styles.checkMarkDanger}>🎯</Text>}
+                  </View>
+                  <Text style={styles.scenarioText}>
+                    {scenario.answer || scenario.text || '...'}
+                  </Text>
+                  {isSelf && <Text style={styles.selfVoteLabel}>تصويتك</Text>}
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
         </View>
 
         <View style={styles.footer}>
@@ -196,7 +229,7 @@ const styles = StyleSheet.create({
     gap: spacing.s,
     paddingBottom: spacing.l,
   },
-  
+
   // Vote Card
   voteCard: {
     width: '100%', // Mobile: Stack vertically
@@ -229,7 +262,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#E8E8E8',
     borderColor: '#999',
   },
-  
+
   cardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -260,7 +293,7 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     fontFamily: theme.fonts.main,
   },
-  
+
   // Author Badge
   authorBadge: {
     flexDirection: 'row',
@@ -279,7 +312,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.bold,
     color: '#555',
   },
-  
+
   // Footer
   footer: {
     paddingTop: spacing.s,
@@ -468,97 +501,116 @@ const styles = StyleSheet.create({
 /**
  * WaitingRevealScreen - V3
  */
-export const WaitingRevealScreen = ({ message = "انتظر قليلاً...", roleData, onRefresh, roomCode }) => {
-    return (
-      <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={onRefresh}>
-        <View style={styles.centerContainer}>
-            <Text style={styles.waitingTitle}>⏳</Text>
-            <Text style={styles.waitingText}>{message}</Text>
-        </View>
-      </MinimalLayout>
-    );
+export const WaitingRevealScreen = ({ message = "انتظر قليلاً..." }) => {
+  const roleData = useGameStore((state) => state.roleData);
+  const roomCode = useGameStore((state) => state.roomCode);
+  return (
+    <MinimalLayout roleData={roleData} roomCode={roomCode}>
+      <View style={styles.centerContainer}>
+        <Text style={styles.waitingTitle}>⏳</Text>
+        <Text style={styles.waitingText}>{message}</Text>
+      </View>
+    </MinimalLayout>
+  );
 };
 
 /**
  * EndScreen - V3
  */
-export const EndScreen = ({ results, onRestart }) => {
-    return (
-        <MinimalLayout>
-           <View style={styles.centerContainer}>
-              <MinimalHeader title="النهاية" subtitle="نتيجة اللعبة" />
-              <View style={styles.resultBox}>
-                  {/* Simplistic result display for now */}
-                  <Text style={styles.resultText}>انتهت اللعبة!</Text>
-              </View>
-              <MinimalButton title="عودة للرئيسية" onPress={onRestart} />
-           </View>
-        </MinimalLayout>
-    );
+export const EndScreen = () => {
+  const resetGame = useGameStore((state) => state.resetGame);
+  const { socket } = useSocket();
+
+  const handleRestart = () => {
+    if (socket) socket.disconnect();
+    resetGame();
+    // Router handle go back to beginning in app
+  };
+
+  return (
+    <MinimalLayout>
+      <View style={styles.centerContainer}>
+        <MinimalHeader title="النهاية" subtitle="نتيجة اللعبة" />
+        <View style={styles.resultBox}>
+          {/* Simplistic result display for now */}
+          <Text style={styles.resultText}>انتهت اللعبة!</Text>
+        </View>
+        <MinimalButton title="عودة للرئيسية" onPress={handleRestart} />
+      </View>
+    </MinimalLayout>
+  );
 };
 
 /**
  * PlayerDramaticRevealScreen - V3
  */
-export const PlayerDramaticRevealScreen = ({ roleData, currentReveal, onRefresh, roomCode }) => {
-    if (currentReveal?.type === 'HINT') {
-        return (
-            <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={onRefresh}>
-                 <View style={styles.centerContainer}>
-                     <Text style={styles.dramaTitle}>🔍</Text>
-                     <Text style={styles.dramaText}>تلميح هام!</Text>
-                     <View style={[styles.resultBox, { marginTop: 20, backgroundColor: 'rgba(218, 165, 32, 0.2)' }]}>
-                        <Text style={[styles.resultText, { textAlign: 'center', lineHeight: 30 }]}>
-                            {currentReveal.text}
-                        </Text>
-                     </View>
-                 </View>
-            </MinimalLayout>
-        );
-    }
+export const PlayerDramaticRevealScreen = () => {
+  const roleData = useGameStore((state) => state.roleData);
+  const roomCode = useGameStore((state) => state.roomCode);
+  const currentReveal = useGameStore((state) => state.currentReveal);
 
+  if (currentReveal?.type === 'HINT') {
     return (
-        <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={onRefresh}>
-             <View style={styles.centerContainer}>
-                 <Text style={styles.dramaTitle}>⚠️</Text>
-                 <Text style={styles.dramaText}>كشف الحقائق...</Text>
-                 {currentReveal?.text && (
-                     <Text style={[styles.waitingText, { textAlign: 'center', marginTop: 10, maxWidth: '80%' }]}>
-                        "{currentReveal.text}"
-                     </Text>
-                 )}
-                 {currentReveal?.voteCount !== undefined && (
-                     <Text style={[styles.dramaText, { color: '#FFF', fontSize: 24 }]}>
-                        {currentReveal.voteCount} صوت
-                     </Text>
-                 )}
-                 {currentReveal?.author && (
-                     <Text style={[styles.dramaText, { color: '#DAA520', fontSize: 32 }]}>
-                        {currentReveal.author}
-                     </Text>
-                 )}
-             </View>
-        </MinimalLayout>
+      <MinimalLayout roleData={roleData} roomCode={roomCode}>
+        <View style={styles.centerContainer}>
+          <Text style={styles.dramaTitle}>🔍</Text>
+          <Text style={styles.dramaText}>تلميح هام!</Text>
+          <View style={[styles.resultBox, { marginTop: 20, backgroundColor: 'rgba(218, 165, 32, 0.2)' }]}>
+            <Text style={[styles.resultText, { textAlign: 'center', lineHeight: 30 }]}>
+              {currentReveal.text}
+            </Text>
+          </View>
+        </View>
+      </MinimalLayout>
     );
+  }
+
+  return (
+    <MinimalLayout roleData={roleData} roomCode={roomCode}>
+      <View style={styles.centerContainer}>
+        <Text style={styles.dramaTitle}>⚠️</Text>
+        <Text style={styles.dramaText}>كشف الحقائق...</Text>
+        {currentReveal?.text && (
+          <Text style={[styles.waitingText, { textAlign: 'center', marginTop: 10, maxWidth: '80%' }]}>
+            "{currentReveal.text}"
+          </Text>
+        )}
+        {currentReveal?.voteCount !== undefined && (
+          <Text style={[styles.dramaText, { color: '#FFF', fontSize: 24 }]}>
+            {currentReveal.voteCount} صوت
+          </Text>
+        )}
+        {currentReveal?.author && (
+          <Text style={[styles.dramaText, { color: '#DAA520', fontSize: 32 }]}>
+            {currentReveal.author}
+          </Text>
+        )}
+      </View>
+    </MinimalLayout>
+  );
 };
 
 /**
  * PlayerResultsScreen - V4
  * يوجّه اللاعب لشاشة المضيف فقط
  */
-export const PlayerResultsScreen = ({ results, roleData, onRefresh, roomCode }) => {
-    if (!results) return <WaitingRevealScreen message="جاري حساب النتائج..." roleData={roleData} onRefresh={onRefresh} roomCode={roomCode} />;
+export const PlayerResultsScreen = () => {
+  const roleData = useGameStore((state) => state.roleData);
+  const roomCode = useGameStore((state) => state.roomCode);
+  const results = useGameStore((state) => state.roundResults);
 
-    return (
-        <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={onRefresh}>
-            <View style={styles.centerContainer}>
-                <MinimalCard style={styles.playerResCard}>
-                    <Text style={styles.playerResHint}>📺</Text>
-                    <Text style={styles.playerResMsg}>انظر إلى شاشة المضيف</Text>
-                    <Text style={styles.playerResSubMsg}>لرؤية نتائج الجولة وترتيب النقاط</Text>
-                </MinimalCard>
-                <Text style={styles.waitingText}>انتظر تعليمات المضيف...</Text>
-            </View>
-        </MinimalLayout>
-    );
+  if (!results) return <WaitingRevealScreen message="جاري حساب النتائج..." />;
+
+  return (
+    <MinimalLayout roleData={roleData} roomCode={roomCode}>
+      <View style={styles.centerContainer}>
+        <MinimalCard style={styles.playerResCard}>
+          <Text style={styles.playerResHint}>📺</Text>
+          <Text style={styles.playerResMsg}>انظر إلى شاشة المضيف</Text>
+          <Text style={styles.playerResSubMsg}>لرؤية نتائج الجولة وترتيب النقاط</Text>
+        </MinimalCard>
+        <Text style={styles.waitingText}>انتظر تعليمات المضيف...</Text>
+      </View>
+    </MinimalLayout>
+  );
 };

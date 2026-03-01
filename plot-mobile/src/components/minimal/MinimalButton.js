@@ -9,12 +9,12 @@ import { spacing, fonts, borderRadius } from '../../styles/responsive';
  * - Compact height
  * - Clear typography
  */
-const MinimalButton = ({ 
-  title, 
-  onPress, 
-  variant = 'primary', 
+const MinimalButton = ({
+  title,
+  onPress,
+  variant = 'primary',
   size = 'medium',
-  disabled = false, 
+  disabled = false,
   loading = false,
   style,
   textStyle
@@ -56,33 +56,42 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     flexDirection: 'row',
   },
-  
+
   // Variants
   button_primary: {
-    backgroundColor: theme.colors.text, // Charcoal
-    borderWidth: 1,
-    borderColor: '#000',
+    backgroundColor: '#2A2A2A', // Dark typewriter key color
+    borderWidth: 2,
+    borderColor: '#444', // Key rim
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.8,
+    shadowRadius: 2,
+    elevation: 5,
   },
   button_secondary: {
-    backgroundColor: theme.colors.coffee, // Brown
-    borderWidth: 1,
+    backgroundColor: '#8B7355', // Wood/Brown color
+    borderWidth: 2,
     borderColor: '#5D4037',
   },
   button_danger: {
-    backgroundColor: theme.colors.stamp, // Red
-    borderWidth: 1,
-    borderColor: '#8B0000',
+    backgroundColor: '#8B0000', // Crimson Red
+    borderWidth: 2,
+    borderColor: '#5A0000',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.6,
+    shadowRadius: 2,
   },
   button_outline: {
     backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderColor: theme.colors.text,
+    borderWidth: 2,
+    borderColor: '#2A2A2A',
   },
   button_ghost: {
     backgroundColor: 'transparent',
     borderWidth: 0,
   },
-  
+
   // Sizes
   button_small: {
     paddingVertical: spacing.xs,
@@ -111,10 +120,10 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   text_primary: {
-    color: '#E8DCC8', // Off-white text on charcoal
+    color: '#F4E4C1', // Vintage off-white typewriter font
   },
   text_secondary: {
-    color: '#FFF',
+    color: '#F4E4C1',
   },
   text_danger: {
     color: '#FFF',
@@ -125,7 +134,7 @@ const styles = StyleSheet.create({
   text_ghost: {
     color: theme.colors.textSecondary,
   },
-  
+
   // Text Sizes
   text_small: {
     fontSize: fonts.tiny,

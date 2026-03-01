@@ -1,5 +1,8 @@
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useGameStore } from '../store/useGameStore';
+import { useSocket, ROUTES } from '../hooks/useGameSocket';
+
 import MinimalLayout from '../components/minimal/MinimalLayout';
 import MinimalHeader from '../components/minimal/MinimalHeader';
 import MinimalCard from '../components/minimal/MinimalCard';
@@ -11,21 +14,21 @@ import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 /**
  * HostGameIntroScreen - V3
  */
-export const HostGameIntroScreen = ({ 
-  scenarioTitle = '',
-  round = 1,
-  totalRounds = 3,
-  roomCode
-}) => {
+export const HostGameIntroScreen = () => {
+  const scenarioTitle = useGameStore((state) => state.scenario);
+  const round = useGameStore((state) => state.currentRound);
+  const totalRounds = useGameStore((state) => state.totalRounds);
+  const roomCode = useGameStore((state) => state.roomCode);
+
   return (
     <MinimalLayout roomCode={roomCode}>
       <View style={styles.centerContent}>
         <View style={styles.badgeContainer}>
           <Text style={styles.badgeText}>الجولة {round} / {totalRounds}</Text>
         </View>
-        
+
         <Text style={styles.emojiDisplay}>🎮</Text>
-        
+
         <MinimalCard style={styles.introCard}>
           <Text style={styles.introLabel}>عنوان القضية</Text>
           <Text style={styles.introTitle}>{scenarioTitle || 'جاري التحميل...'}</Text>
@@ -43,14 +46,14 @@ export const HostGameIntroScreen = ({
 /**
  * HostDraftingScreen - V3
  */
-export const HostDraftingScreen = ({ 
-  players = [],
-  waitingFor = [],
-  timeLeft = 90,
-  hint = null,
-  roomCode
-}) => {
+export const HostDraftingScreen = () => {
   const { isDesktop } = useResponsiveLayout();
+  const roomCode = useGameStore((state) => state.roomCode);
+  const players = useGameStore((state) => state.players) || [];
+  const waitingFor = useGameStore((state) => state.waitingFor) || [];
+  const timeLeft = useGameStore((state) => state.timeLeft) || 0;
+  const hint = useGameStore((state) => state.lastHint);
+
   const submittedCount = players.length - waitingFor.length;
   const progress = players.length > 0 ? (submittedCount / players.length) * 100 : 0;
 
@@ -66,51 +69,51 @@ export const HostDraftingScreen = ({
         <MinimalHeader title="مرحلة الكتابة" subtitle="يراقب المضيف" />
 
         {hint && (
-            <MinimalCard style={styles.hostHintCard}>
-                <Text style={styles.hostHintLabel}>تلميح القضية</Text>
-                <Text style={styles.hostHintText}>{hint}</Text>
-            </MinimalCard>
+          <MinimalCard style={styles.hostHintCard}>
+            <Text style={styles.hostHintLabel}>تلميح القضية</Text>
+            <Text style={styles.hostHintText}>{hint}</Text>
+          </MinimalCard>
         )}
 
         <View style={styles.gridContainer}>
           {/* Timer & Progress */}
           <MinimalCard style={styles.dashboardCard}>
-             <View style={styles.timerRow}>
-                <Text style={styles.timerLabel}>الوقت المتبقي</Text>
-                <Text style={styles.timerValue}>{formatTime(timeLeft)}</Text>
-             </View>
-             <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: `${(timeLeft / 90) * 100}%` }]} />
-             </View>
-             
-             <View style={styles.divider} />
-             
-             <View style={styles.statsRow}>
-                <Text style={styles.statsLabel}>تم التسليم</Text>
-                <Text style={styles.statsValue}>{submittedCount} / {players.length}</Text>
-             </View>
-             <View style={styles.progressBarBg}>
-                <View style={[styles.progressBarFill, { width: `${progress}%`, backgroundColor: theme.colors.primary }]} />
-             </View>
+            <View style={styles.timerRow}>
+              <Text style={styles.timerLabel}>الوقت المتبقي</Text>
+              <Text style={styles.timerValue}>{formatTime(timeLeft)}</Text>
+            </View>
+            <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarFill, { width: `${(timeLeft / 90) * 100}%` }]} />
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.statsRow}>
+              <Text style={styles.statsLabel}>تم التسليم</Text>
+              <Text style={styles.statsValue}>{submittedCount} / {players.length}</Text>
+            </View>
+            <View style={styles.progressBarBg}>
+              <View style={[styles.progressBarFill, { width: `${progress}%`, backgroundColor: theme.colors.primary }]} />
+            </View>
           </MinimalCard>
 
           {/* Players List */}
           <View style={styles.playersListContainer}>
-             <Text style={styles.sectionHeader}>حالة اللاعبين</Text>
-             <ScrollView style={styles.scrollList}>
-                {players.map((player, index) => {
-                  const hasSubmitted = !waitingFor.includes(player.id);
-                  return (
-                    <View key={player.id || index} style={styles.playerRow}>
-                       <Text style={styles.playerIndex}>#{index + 1}</Text>
-                       <Text style={styles.playerName}>{player.name}</Text>
-                       <Text style={hasSubmitted ? styles.statusDone : styles.statusWait}>
-                         {hasSubmitted ? 'تم ✅' : '...'}
-                       </Text>
-                    </View>
-                  );
-                })}
-             </ScrollView>
+            <Text style={styles.sectionHeader}>حالة اللاعبين</Text>
+            <ScrollView style={styles.scrollList}>
+              {players.map((player, index) => {
+                const hasSubmitted = !waitingFor.includes(player.id);
+                return (
+                  <View key={player.id || index} style={styles.playerRow}>
+                    <Text style={styles.playerIndex}>#{index + 1}</Text>
+                    <Text style={styles.playerName}>{player.name}</Text>
+                    <Text style={hasSubmitted ? styles.statusDone : styles.statusWait}>
+                      {hasSubmitted ? 'تم ✅' : '...'}
+                    </Text>
+                  </View>
+                );
+              })}
+            </ScrollView>
           </View>
         </View>
       </View>
@@ -119,30 +122,35 @@ export const HostDraftingScreen = ({
 };
 
 /**
- * HostGameScreen - V3 (Monitoring)
+ * HostGameScreen - V3 (Monitoring) - Legacy, likely can be removed if not used
  */
-export const HostGameScreen = ({ players = [], waitingFor = [] }) => {
-  return <HostDraftingScreen players={players} waitingFor={waitingFor} timeLeft={0} />;
+export const HostGameScreen = () => {
+  return <HostDraftingScreen />;
 };
 
 /**
- * HostVotingScreen - V3
+ * HostVotingScreen - V3 (can handle both quality and culprit depending on route/params in real app, we use global state)
  */
-export const HostVotingScreen = ({ 
-  votingType = 'quality', 
-  scenarios = [],
-  liveVotes = [],
-  players = [],
-  roomCode
-}) => {
+export const HostVotingScreen = ({ route }) => {
   const { isDesktop } = useResponsiveLayout();
+
+  // Decide voting type based on screen param or path, defaulting to quality
+  // If no router params, we might need a store variable. Let's assume it passed via route if possible,
+  // Or we just create two wrappers
+  const votingType = route?.params?.votingType || 'quality';
+
+  const roomCode = useGameStore((state) => state.roomCode);
+  const scenarios = useGameStore((state) => state.scenarios) || [];
+  const liveVotes = useGameStore((state) => state.liveVotes) || [];
+  const players = useGameStore((state) => state.players) || [];
+
   const votedCount = liveVotes.length;
   const totalPlayers = players.length;
 
   const getVotesForScenario = (index) => {
     if (votingType === 'culprit') {
-        const targetId = scenarios[index]?.playerId;
-        return liveVotes.filter(vote => vote.choice === targetId).length;
+      const targetId = scenarios[index]?.playerId;
+      return liveVotes.filter(vote => vote.choice === targetId).length;
     }
     return liveVotes.filter(vote => vote.choice === index).length;
   };
@@ -150,81 +158,86 @@ export const HostVotingScreen = ({
   return (
     <MinimalLayout roomCode={roomCode}>
       <View style={[styles.container, isDesktop && styles.containerDesktop]}>
-        <MinimalHeader 
-          title={votingType === 'quality' ? 'تصويت الجودة' : 'تصويت الجاني'} 
+        <MinimalHeader
+          title={votingType === 'quality' ? 'تصويت الجودة' : 'تصويت الجاني'}
           subtitle={`${votedCount} من ${totalPlayers} صوتوا`}
         />
 
         <View style={styles.gridContainer}>
-           <View style={styles.leftColumn}>
-              <MinimalCard style={styles.voteStatsCard}>
-                 <Text style={styles.cardTitle}>تقدم التصويت</Text>
-                 <View style={styles.progressBarBg}>
-                    <View style={[styles.progressBarFill, { width: `${(votedCount / totalPlayers) * 100}%`, backgroundColor: theme.colors.primary }]} />
-                 </View>
-                 <View style={styles.votersList}>
-                    {players.map(p => {
-                       const hasVoted = liveVotes.some(v => v.playerId === p.id);
-                       return (
-                         <Text key={p.id} style={[styles.miniVoter, hasVoted && styles.miniVoterDone]}>
-                           {p.name} {hasVoted ? '✓' : ''}
-                         </Text>
-                       );
-                    })}
-                 </View>
-              </MinimalCard>
-           </View>
+          <View style={styles.leftColumn}>
+            <MinimalCard style={styles.voteStatsCard}>
+              <Text style={styles.cardTitle}>تقدم التصويت</Text>
+              <View style={styles.progressBarBg}>
+                <View style={[styles.progressBarFill, { width: totalPlayers > 0 ? `${(votedCount / totalPlayers) * 100}%` : '0%', backgroundColor: theme.colors.primary }]} />
+              </View>
+              <View style={styles.votersList}>
+                {players.map(p => {
+                  const hasVoted = liveVotes.some(v => v.playerId === p.id);
+                  return (
+                    <Text key={p.id} style={[styles.miniVoter, hasVoted && styles.miniVoterDone]}>
+                      {p.name} {hasVoted ? '✓' : ''}
+                    </Text>
+                  );
+                })}
+              </View>
+            </MinimalCard>
+          </View>
 
-           <View style={styles.rightColumn}>
-              <ScrollView style={styles.resultsScroll}>
-                 {scenarios.map((scenario, index) => {
-                    const votes = getVotesForScenario(index);
-                    const label = votingType === 'quality' 
-                        ? `سيناريو #${index + 1}` 
-                        : scenario.playerName || `لاعب ${index + 1}`;
-                    
-                    return (
-                       <View key={index} style={styles.resultBarContainer}>
-                          <View style={styles.resultBarLabelRow}>
-                             <Text style={styles.resultLabel}>{label}</Text>
-                             <Text style={styles.resultCount}>{votes}</Text>
-                          </View>
-                          <View style={styles.resultBarBg}>
-                             <View style={[
-                               styles.resultBarFill, 
-                               { width: totalPlayers > 0 ? `${(votes / totalPlayers) * 100}%` : '0%' }
-                             ]} />
-                          </View>
-                       </View>
-                    );
-                 })}
-              </ScrollView>
-           </View>
+          <View style={styles.rightColumn}>
+            <ScrollView style={styles.resultsScroll}>
+              {scenarios.map((scenario, index) => {
+                const votes = getVotesForScenario(index);
+                const label = votingType === 'quality'
+                  ? `سيناريو #${index + 1}`
+                  : scenario.playerName || `لاعب ${index + 1}`;
+
+                return (
+                  <View key={index} style={styles.resultBarContainer}>
+                    <View style={styles.resultBarLabelRow}>
+                      <Text style={styles.resultLabel}>{label}</Text>
+                      <Text style={styles.resultCount}>{votes}</Text>
+                    </View>
+                    <View style={styles.resultBarBg}>
+                      <View style={[
+                        styles.resultBarFill,
+                        { width: totalPlayers > 0 ? `${(votes / totalPlayers) * 100}%` : '0%' }
+                      ]} />
+                    </View>
+                  </View>
+                );
+              })}
+            </ScrollView>
+          </View>
         </View>
       </View>
     </MinimalLayout>
   );
 };
 
+// Aliases for the specific host voting screens if mapped individually in AppNavigator
+export const HostQualityVotingScreen = () => <HostVotingScreen route={{ params: { votingType: 'quality' } }} />;
+export const HostCulpritVotingScreen = () => <HostVotingScreen route={{ params: { votingType: 'culprit' } }} />;
+
 /**
  * HostResultsScreen - V4 Clean Minimal
  */
-export const HostResultsScreen = ({ 
-  roundResults = null,
-  onContinue,
-  isLastRound: isLastRoundProp = false,
-  roomCode
-}) => {
+export const HostResultsScreen = () => {
   const [revealStep, setRevealStep] = React.useState(0);
   const [expandedPlayer, setExpandedPlayer] = React.useState(null);
-  
+  const { socket } = useSocket();
+
+  const roomCode = useGameStore((state) => state.roomCode);
+  const roundResults = useGameStore((state) => state.roundResults);
+  const currentRoundState = useGameStore((state) => state.currentRound);
+  const totalRoundsState = useGameStore((state) => state.totalRounds);
+
   React.useEffect(() => {
     if (roundResults) {
-        setRevealStep(0);
-        setExpandedPlayer(null);
-        const t1 = setTimeout(() => setRevealStep(1), 500);
-        const t2 = setTimeout(() => setRevealStep(2), 3000);
-        return () => { clearTimeout(t1); clearTimeout(t2); };
+      setRevealStep(0);
+      setExpandedPlayer(null);
+      const t1 = setTimeout(() => setRevealStep(1), 500);
+      const t2 = setTimeout(() => setRevealStep(2), 3000);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
     }
   }, [roundResults]);
 
@@ -236,13 +249,19 @@ export const HostResultsScreen = ({
   // حساب isLastRound من بيانات الخادم مباشرة (أكثر موثوقية)
   const isLastRound = roundResults.isLastRound != null
     ? roundResults.isLastRound
-    : (round != null && totalR != null ? round >= totalR : isLastRoundProp);
+    : (round != null && totalR != null ? round >= totalR : (currentRoundState >= totalRoundsState));
 
   const isContinue = winner === 'CONTINUE';
-  const isCrime    = winner === 'CRIME';
-  const bannerBg   = isContinue ? '#7B6010' : isCrime ? '#6B0000' : '#10346B';
+  const isCrime = winner === 'CRIME';
+  const bannerBg = isContinue ? '#7B6010' : isCrime ? '#6B0000' : '#10346B';
   const winnerText = isContinue ? '⚖️ اللعبة مستمرة' : isCrime ? '🔴 فاز فريق الجريمة' : '🔵 فاز فريق العدالة';
-  const btnTitle   = isContinue ? 'متابعة النقاش ←' : (isLastRound ? 'إنهاء اللعبة' : 'جولة جديدة ←');
+  const btnTitle = isContinue ? 'متابعة النقاش ←' : (isLastRound ? 'إنهاء اللعبة' : 'جولة جديدة ←');
+
+  const handleContinue = () => {
+    if (socket) {
+      socket.emit('nextRound', { roomCode });
+    }
+  };
 
   return (
     <MinimalLayout roomCode={roomCode}>
@@ -284,10 +303,10 @@ export const HostResultsScreen = ({
               <MinimalCard style={styles.resScoresCard}>
                 <Text style={styles.resScoresTitle}>ترتيب النقاط</Text>
                 {scores?.map((p, i) => {
-                  const isCrimePlayer  = p.team === 'CRIME';
+                  const isCrimePlayer = p.team === 'CRIME';
                   const isJusticePlayer = p.team === 'JUSTICE';
                   const teamColor = isCrimePlayer ? '#c0392b' : isJusticePlayer ? '#2980b9' : '#888';
-                  const showRole  = p.role && p.role !== '؟؟؟';
+                  const showRole = p.role && p.role !== '؟؟؟';
                   const isExpanded = expandedPlayer === i;
                   const hasBreakdown = p.breakdown && p.breakdown.length > 0;
                   return (
@@ -337,7 +356,7 @@ export const HostResultsScreen = ({
 
         {revealStep >= 2 && (
           <View style={styles.resFooter}>
-            <MinimalButton title={btnTitle} onPress={onContinue} size="large" />
+            <MinimalButton title={btnTitle} onPress={handleContinue} size="large" />
           </View>
         )}
       </View>
@@ -348,26 +367,26 @@ export const HostResultsScreen = ({
 /**
  * HostDramaticRevealScreen - V3
  */
-export const HostDramaticRevealScreen = ({ 
-  revealedScenarios = [],
-  currentReveal = null,
-  roomCode
-}) => {
+export const HostDramaticRevealScreen = () => {
+  const roomCode = useGameStore((state) => state.roomCode);
+  const revealedScenarios = useGameStore((state) => state.revealedScenarios) || [];
+  const currentReveal = useGameStore((state) => state.currentReveal);
+
   // Check for HINT type first
   if (currentReveal?.type === 'HINT') {
-      return (
-        <MinimalLayout roomCode={roomCode}>
-           <View style={styles.centerContent}>
-              <MinimalHeader title="تلميح درامي" />
-              <View style={[styles.revealCard, { backgroundColor: '#FFFACD', borderWidth: 2, borderColor: '#DAA520' }]}> 
-                 <Text style={{fontSize: 60}}>🔍</Text>
-                 <Text style={[styles.revealText, {fontSize: 24, marginVertical: 20, color: '#8B4513'}]}>
-                    {currentReveal.text}
-                 </Text>
-              </View>
-           </View>
-        </MinimalLayout>
-      );
+    return (
+      <MinimalLayout roomCode={roomCode}>
+        <View style={styles.centerContent}>
+          <MinimalHeader title="تلميح درامي" />
+          <View style={[styles.revealCard, { backgroundColor: '#FFFACD', borderWidth: 2, borderColor: '#DAA520' }]}>
+            <Text style={{ fontSize: 60 }}>🔍</Text>
+            <Text style={[styles.revealText, { fontSize: 24, marginVertical: 20, color: '#8B4513' }]}>
+              {currentReveal.text}
+            </Text>
+          </View>
+        </View>
+      </MinimalLayout>
+    );
   }
 
   // currentReveal structure updates over time: { text, index, voters, voteCount, author }
@@ -378,60 +397,60 @@ export const HostDramaticRevealScreen = ({
 
   return (
     <MinimalLayout roomCode={roomCode}>
-       <View style={styles.centerContent}>
-          <MinimalHeader title="كشف النتائج" />
-          
-          {currentReveal ? (
-             <MinimalCard style={[styles.revealCard, showAuthor && styles.revealCardComplete]}>
-                {/* 1. Scenario Text */}
-                <Text style={styles.revealText}>"{currentReveal.text}"</Text>
-                
-                {/* 2. Voters (Reveal Step 2) */}
-                {showVoters && (
-                    <View style={styles.votersSection}>
-                         <Text style={styles.votersLabel}>صوّت له:</Text>
-                         <View style={styles.votersListHorizontal}>
-                             {currentReveal.voters.length > 0 ? (
-                                 currentReveal.voters.map((v, i) => (
-                                     <Text key={i} style={styles.voterTag}>{v}</Text>
-                                 ))
-                             ) : (
-                                 <Text style={styles.noVotesText}>لا أحد</Text>
-                             )}
-                         </View>
-                         <Text style={styles.voteCountBig}>{currentReveal.voteCount} صوت</Text>
-                    </View>
-                )}
+      <View style={styles.centerContent}>
+        <MinimalHeader title="كشف النتائج" />
 
-                {/* 3. Author (Reveal Step 3 - Prominent) */}
-                {showAuthor && (
-                    <View style={styles.authorSection}>
-                        <Text style={styles.authorLabel}>الكاتب هو...</Text>
-                        <Text style={styles.authorNameBig}>{currentReveal.author}</Text>
-                    </View>
-                )}
-             </MinimalCard>
-          ) : (
-             <Text style={styles.waitingText}>جاري التحضير...</Text>
-          )}
+        {currentReveal ? (
+          <MinimalCard style={[styles.revealCard, showAuthor && styles.revealCardComplete]}>
+            {/* 1. Scenario Text */}
+            <Text style={styles.revealText}>"{currentReveal.text}"</Text>
 
-          {/* History (Previous Scenarios) */}
-          <ScrollView style={styles.revealHistory} horizontal contentContainerStyle={{ gap: 10 }}>
-             {revealedScenarios.map((s, i) => (
-                <View key={i} style={styles.miniRevealCard}>
-                   <Text numberOfLines={2} style={styles.miniRevealText}>{s.text}</Text>
-                   <Text style={styles.miniRevealAuthor}>{s.author}</Text>
-                   {/* Show Voters */}
-                   <View style={styles.miniVotersList}>
-                       <Text style={styles.miniVotersLabel}>أصوات ({s.voteCount}):</Text>
-                       <Text numberOfLines={1} style={styles.miniVotersNames}>
-                           {s.voters && s.voters.length > 0 ? s.voters.join(', ') : 'لا أحد'}
-                       </Text>
-                   </View>
+            {/* 2. Voters (Reveal Step 2) */}
+            {showVoters && (
+              <View style={styles.votersSection}>
+                <Text style={styles.votersLabel}>صوّت له:</Text>
+                <View style={styles.votersListHorizontal}>
+                  {currentReveal.voters.length > 0 ? (
+                    currentReveal.voters.map((v, i) => (
+                      <Text key={i} style={styles.voterTag}>{v}</Text>
+                    ))
+                  ) : (
+                    <Text style={styles.noVotesText}>لا أحد</Text>
+                  )}
                 </View>
-             ))}
-          </ScrollView>
-       </View>
+                <Text style={styles.voteCountBig}>{currentReveal.voteCount} صوت</Text>
+              </View>
+            )}
+
+            {/* 3. Author (Reveal Step 3 - Prominent) */}
+            {showAuthor && (
+              <View style={styles.authorSection}>
+                <Text style={styles.authorLabel}>الكاتب هو...</Text>
+                <Text style={styles.authorNameBig}>{currentReveal.author}</Text>
+              </View>
+            )}
+          </MinimalCard>
+        ) : (
+          <Text style={styles.waitingText}>جاري التحضير...</Text>
+        )}
+
+        {/* History (Previous Scenarios) */}
+        <ScrollView style={styles.revealHistory} horizontal contentContainerStyle={{ gap: 10 }}>
+          {revealedScenarios.map((s, i) => (
+            <View key={i} style={styles.miniRevealCard}>
+              <Text numberOfLines={2} style={styles.miniRevealText}>{s.text}</Text>
+              <Text style={styles.miniRevealAuthor}>{s.author}</Text>
+              {/* Show Voters */}
+              <View style={styles.miniVotersList}>
+                <Text style={styles.miniVotersLabel}>أصوات ({s.voteCount}):</Text>
+                <Text numberOfLines={1} style={styles.miniVotersNames}>
+                  {s.voters && s.voters.length > 0 ? s.voters.join(', ') : 'لا أحد'}
+                </Text>
+              </View>
+            </View>
+          ))}
+        </ScrollView>
+      </View>
     </MinimalLayout>
   );
 };
@@ -453,7 +472,7 @@ const styles = StyleSheet.create({
     width: '100%',
     gap: spacing.l,
   },
-  
+
   // Intro Screen
   badgeContainer: {
     backgroundColor: 'rgba(255,255,255,0.1)',
@@ -525,7 +544,7 @@ const styles = StyleSheet.create({
   statsRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: spacing.s },
   statsLabel: { fontFamily: theme.fonts.main, color: '#555' },
   statsValue: { fontFamily: theme.fonts.bold, color: '#333' },
-  
+
   playersListContainer: {
     flex: 1,
     minWidth: 300,
@@ -567,216 +586,91 @@ const styles = StyleSheet.create({
   resultBarBg: { height: 12, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 6 },
   resultBarFill: { height: '100%', backgroundColor: theme.colors.secondary, borderRadius: 6 },
 
-  // Results Screen
-  resultsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.m, marginBottom: spacing.l },
-  resultCard: { flex: 1, minWidth: 250, alignItems: 'center' },
-  resultCardTitle: { fontSize: fonts.medium, color: '#888', marginBottom: spacing.s },
-  winnerName: { fontSize: fonts.large, fontFamily: theme.fonts.bold, color: '#333', textAlign: 'center' },
-  points: { color: '#4CAF50', fontWeight: 'bold', marginTop: 4 },
-  verdict: { fontSize: fonts.medium, fontFamily: theme.fonts.bold, marginTop: 4 },
-  verdictCorrect: { color: '#4CAF50' },
-  verdictWrong: { color: '#F44336' },
-  standingsContainer: { backgroundColor: 'rgba(0,0,0,0.2)', padding: spacing.m, borderRadius: borderRadius.medium },
-  standingRow: { flexDirection: 'row', paddingVertical: spacing.s, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
-  rank: { width: 40, color: theme.colors.primary, fontWeight: 'bold' },
-  standingName: { fontSize: 16, fontFamily: theme.fonts.bold, color: '#FFF' },
-  standingRole: { fontSize: 12, color: '#AAA', marginTop: 2 },
-  standingScore: { color: '#FFD700', fontWeight: 'bold', fontSize: 18 },
-  footer: { paddingTop: spacing.m },
+  // Results Screen v4
+  resContainer: { flex: 1, width: '100%', padding: spacing.m },
+  resScroll: { paddingBottom: spacing.xl },
+  resEliminatedCard: { backgroundColor: '#1A1A1A', borderColor: '#333', alignItems: 'center', padding: spacing.m, marginBottom: spacing.l },
+  resSmallLabel: { color: '#888', fontSize: 12, fontFamily: theme.fonts.main },
+  resEliminatedName: { color: '#FFF', fontSize: 24, fontFamily: theme.fonts.bold, marginVertical: 4 },
+  resRoleTag: { fontSize: 16, fontFamily: theme.fonts.bold },
+  resBanner: { padding: spacing.m, borderRadius: borderRadius.medium, alignItems: 'center', marginBottom: spacing.l },
+  resBannerTitle: { color: '#FFF', fontSize: 24, fontFamily: theme.fonts.bold },
+  resBannerReason: { color: '#EEE', fontSize: 14, fontFamily: theme.fonts.main, marginTop: 4, textAlign: 'center' },
+  resScoresCard: { padding: spacing.m },
+  resScoresTitle: { fontSize: 18, fontFamily: theme.fonts.bold, color: '#333', marginBottom: spacing.m, textAlign: 'center' },
+  resScoreRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.s, borderBottomWidth: 1, borderBottomColor: '#EEE' },
+  resScoreRowFirst: { backgroundColor: 'rgba(218,165,32,0.1)', borderRadius: borderRadius.small },
+  resScoreRank: { width: 30, color: '#888', fontFamily: theme.fonts.bold },
+  resTeamStripe: { width: 4, height: '80%', borderRadius: 2, marginHorizontal: 8 },
+  resScoreName: { color: '#333', fontFamily: theme.fonts.bold, fontSize: 16 },
+  resScoreRole: { fontSize: 12, fontFamily: theme.fonts.main },
+  resScoreRight: { flexDirection: 'row', alignItems: 'center', width: 90, justifyContent: 'flex-end', gap: 6 },
+  resRoundDelta: { fontSize: 12, fontWeight: 'bold' },
+  resScoreVal: { fontSize: 18, fontWeight: 'bold', color: '#555' },
+  resExpandIcon: { fontSize: 10, color: '#999', width: 15, textAlign: 'center' },
+  resBreakdown: { backgroundColor: '#F9F9F9', padding: spacing.s, borderRadius: borderRadius.small, marginTop: 2, marginLeft: 40 },
+  resBreakdownLine: { fontSize: 12, color: '#555', fontFamily: theme.fonts.main, marginVertical: 2 },
+  resFooter: { marginTop: spacing.m },
 
   // Reveal Screen
   revealCard: { width: '100%', maxWidth: 500, padding: spacing.l, alignItems: 'center' },
   revealText: { fontSize: fonts.medium, fontFamily: theme.fonts.main, textAlign: 'center', lineHeight: 28 },
-  revealMeta: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', marginTop: spacing.l },
-  revealAuthor: { color: '#666', fontWeight: 'bold' },
-  revealVotes: { backgroundColor: theme.colors.primary, color: '#FFF', paddingHorizontal: 8, borderRadius: 10, fontSize: 12 },
-  revealHistory: { maxHeight: 100, marginTop: spacing.l, width: '100%' },
-  miniRevealCard: { width: 150, height: 80, backgroundColor: 'rgba(255,255,255,0.1)', marginHorizontal: spacing.s, padding: spacing.s, borderRadius: 8 },
-  miniRevealText: { color: '#CCC', fontSize: 10 },
-  miniRevealAuthor: { color: '#AAA', fontSize: 9, marginTop: 4 },
-  waitingText: { color: '#AAA', fontSize: fonts.medium },
-  
-  // Results V4 Styles
-  resultBanner: {
-    padding: spacing.l,
-    borderRadius: borderRadius.medium,
-    alignItems: 'center',
-    marginBottom: spacing.l,
-  },
-  resultBannerTitle: {
-    fontSize: 32,
-    fontFamily: theme.fonts.bold,
-    color: '#FFF',
-    marginBottom: 8,
-  },
-  resultBannerReason: {
-    fontSize: 18,
-    fontFamily: theme.fonts.main,
-    color: '#EEE',
-    textAlign: 'center',
-  },
-  eliminatedText: {
-    marginTop: 10,
-    fontSize: 20,
-    color: '#FFD700', // Gold
-    fontWeight: 'bold',
-  },
-  eliminatedBox: {
-      backgroundColor: 'rgba(0,0,0,0.2)',
-      padding: spacing.m,
-      borderRadius: borderRadius.medium,
-      alignItems: 'center',
-      marginVertical: spacing.m,
-      width: '80%',
-  },
-  eliminatedLabel: {
-      color: '#DDD',
-      fontSize: 14,
-  },
-  eliminatedName: {
-      color: '#FFF',
-      fontSize: 24,
-      fontFamily: theme.fonts.bold,
-      marginVertical: 4,
-  },
-  eliminatedRevealRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-  },
-  eliminatedTeam: {
-      color: '#FFD700',
-      fontSize: 18,
-      fontWeight: 'bold',
-  },
-  eliminatedRole: {
-      color: '#FF6347', // Tomato red for Culprit
-      fontSize: 18,
-      fontWeight: 'bold',
-  },
-  teamsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing.m,
-    marginBottom: spacing.l,
-  },
-  teamCard: {
-    flex: 1,
-    minWidth: 250,
-  },
-  teamHeader: {
-    fontSize: fonts.medium,
-    fontFamily: theme.fonts.bold,
-    marginBottom: spacing.m,
-    textAlign: 'center',
-  },
-  noPlayersText: {
-      textAlign: 'center',
-      color: '#999',
-      fontStyle: 'italic',
-      padding: 10
-  },
-  playerResultRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
-  },
-  playerResultName: {
-    fontFamily: theme.fonts.main,
-    color: '#333',
-  },
-  playerResultRole: {
-    fontFamily: theme.fonts.bold,
-    color: '#666',
-  },
-  scoreRowDetailed: {
-    marginBottom: spacing.m,
-    paddingBottom: spacing.s,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.1)',
-  },
-  scoreRowHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  breakdownRow: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    paddingLeft: 40,
-  },
-  scoreBadge: {
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  scoreBadgeText: {
-    color: '#DDD',
-    fontSize: 10,
-  },
-  
-  // Reveal Screen New Styles
-  revealCard: { width: '100%', maxWidth: 500, padding: spacing.l, alignItems: 'center' },
-  revealText: { fontSize: fonts.medium, fontFamily: theme.fonts.main, textAlign: 'center', lineHeight: 28 },
   revealCardComplete: {
-      backgroundColor: '#FFF8DC', // Gold tint when complete
-      transform: [{ scale: 1.05 }],
-      borderColor: theme.colors.primary,
-      borderWidth: 2,
+    backgroundColor: '#FFF8DC', // Gold tint when complete
+    transform: [{ scale: 1.05 }],
+    borderColor: theme.colors.primary,
+    borderWidth: 2,
   },
   votersSection: {
-      marginTop: spacing.l,
-      alignItems: 'center',
-      width: '100%',
-      backgroundColor: 'rgba(0,0,0,0.03)',
-      padding: spacing.m,
-      borderRadius: borderRadius.medium,
+    marginTop: spacing.l,
+    alignItems: 'center',
+    width: '100%',
+    backgroundColor: 'rgba(0,0,0,0.03)',
+    padding: spacing.m,
+    borderRadius: borderRadius.medium,
   },
   votersLabel: {
-      fontSize: 12,
-      color: '#888',
-      marginBottom: 4,
+    fontSize: 12,
+    color: '#888',
+    marginBottom: 4,
   },
   votersListHorizontal: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      justifyContent: 'center',
-      gap: 8,
-      marginBottom: 8,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: 8,
+    marginBottom: 8,
   },
   voterTag: {
-      backgroundColor: '#DDD',
-      paddingHorizontal: 8,
-      paddingVertical: 4,
-      borderRadius: 12,
-      fontSize: 12,
-      color: '#333',
+    backgroundColor: '#DDD',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    fontSize: 12,
+    color: '#333',
   },
   noVotesText: {
-      color: '#CCC',
-      fontStyle: 'italic',
+    color: '#CCC',
+    fontStyle: 'italic',
   },
   voteCountBig: {
-      fontSize: 18,
-      fontWeight: 'bold',
-      color: theme.colors.primary,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: theme.colors.primary,
   },
   authorSection: {
-      marginTop: spacing.l,
-      alignItems: 'center',
+    marginTop: spacing.l,
+    alignItems: 'center',
   },
   authorLabel: {
-      fontSize: 14,
-      color: '#555',
+    fontSize: 14,
+    color: '#555',
   },
   authorNameBig: {
-      fontSize: 32,
-      fontFamily: theme.fonts.bold,
-      color: '#8B4513',
-      marginTop: 4,
+    fontSize: 32,
+    fontFamily: theme.fonts.bold,
+    color: '#8B4513',
+    marginTop: 4,
   },
   revealHistory: { maxHeight: 120, marginTop: spacing.l, width: '100%' },
   miniRevealCard: { width: 180, height: 100, backgroundColor: 'rgba(255,255,255,0.1)', marginHorizontal: spacing.s, padding: spacing.s, borderRadius: 8 },
@@ -786,146 +680,27 @@ const styles = StyleSheet.create({
   miniVotersLabel: { color: theme.colors.primary, fontSize: 8, fontWeight: 'bold' },
   miniVotersNames: { color: '#888', fontSize: 8 },
   waitingText: { color: '#AAA', fontSize: fonts.medium },
-  
+
   // Host Hint Styles
   hostHintCard: {
-      width: '100%',
-      backgroundColor: '#FFFACD',
-      borderWidth: 2,
-      borderColor: '#DAA520',
-      marginBottom: spacing.m,
-      alignItems: 'center',
-      padding: spacing.l,
-  },
-  hostHintLabel: {
-      color: '#8B4513',
-      fontSize: fonts.small,
-      marginBottom: 4,
-      fontFamily: theme.fonts.bold,
-  },
-  hostHintText: {
-      color: '#333',
-      fontSize: 28,
-      fontFamily: theme.fonts.bold,
-      textAlign: 'center',
-  },
-
-  // ── HostResultsScreen Minimal Styles ──
-  resContainer: {
-    flex: 1,
     width: '100%',
-    maxWidth: 900,
-    gap: spacing.s,
-    paddingBottom: spacing.m,
-  },
-  resScroll: {
-    paddingHorizontal: spacing.m,
-    paddingBottom: spacing.xl,
-    gap: spacing.m,
-  },
-  resEliminatedCard: {
+    backgroundColor: '#FFFACD',
+    borderWidth: 2,
+    borderColor: '#DAA520',
+    marginBottom: spacing.m,
     alignItems: 'center',
     padding: spacing.l,
-    borderWidth: 2,
-    borderColor: 'rgba(218,165,32,0.5)',
-    backgroundColor: 'rgba(0,0,0,0.3)',
   },
-  resSmallLabel: { color: '#AAA', fontSize: fonts.small, marginBottom: 4 },
-  resEliminatedName: {
-    color: '#FFF',
-    fontSize: 36,
-    fontFamily: theme.fonts.bold,
-    textAlign: 'center',
-  },
-  resRoleTag: {
+  hostHintLabel: {
     fontSize: fonts.small,
-    marginTop: 6,
-    fontFamily: theme.fonts.bold,
-  },
-  resBanner: {
-    borderRadius: borderRadius.medium,
-    padding: spacing.m,
-    alignItems: 'center',
-    marginTop: spacing.s,
-  },
-  resBannerTitle: {
-    color: '#FFF',
-    fontSize: fonts.large,
-    fontFamily: theme.fonts.bold,
-    textAlign: 'center',
-  },
-  resBannerReason: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: fonts.small,
-    marginTop: 4,
-    textAlign: 'center',
-  },
-  resTeamsRow: {
-    flexDirection: 'row',
-    gap: spacing.m,
-    flexWrap: 'wrap',
-  },
-  resTeamCard: {
-    flex: 1,
-    minWidth: 200,
-    borderWidth: 1,
-    padding: spacing.m,
-  },
-  resTeamTitle: {
-    fontFamily: theme.fonts.bold,
-    fontSize: fonts.medium,
+    color: '#DAA520',
+    fontWeight: 'bold',
     marginBottom: spacing.s,
-    textAlign: 'center',
   },
-  resPlayerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    paddingVertical: 6,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.06)',
-  },
-  resPlayerName: { fontFamily: theme.fonts.main, color: '#333', flex: 1 },
-  resPlayerRole: { fontFamily: theme.fonts.bold, color: '#666', fontSize: fonts.small },
-  resScoresCard: { padding: spacing.m },
-  resScoresTitle: {
-    fontFamily: theme.fonts.bold,
+  hostHintText: {
+    fontSize: fonts.medium,
     color: '#8B4513',
-    fontSize: fonts.medium,
-    marginBottom: spacing.s,
-    textAlign: 'center',
-  },
-  resScoreRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#EEE',
-    gap: spacing.s,
-  },
-  resScoreRowFirst: { backgroundColor: 'rgba(218,165,32,0.07)', borderRadius: 6 },
-  resScoreRank: { color: '#AAA', width: 28, fontSize: fonts.small, textAlign: 'center' },
-  resTeamStripe: { width: 4, borderRadius: 2, alignSelf: 'stretch', marginRight: 8 },
-  resScoreName:{ fontFamily: theme.fonts.bold, color: '#333', fontSize: fonts.medium },
-  resScoreRole: { color: '#999', fontSize: fonts.tiny },
-  resScoreVal: { fontFamily: theme.fonts.bold, color: '#555', fontSize: fonts.large, minWidth: 36, textAlign: 'right' },
-  resScoreRight: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  resRoundDelta: { fontSize: fonts.small, fontFamily: theme.fonts.bold },
-  resExpandIcon: { color: '#AAA', fontSize: 10, width: 12 },
-  resBreakdown: {
-    backgroundColor: 'rgba(0,0,0,0.03)',
-    paddingHorizontal: spacing.m,
-    paddingVertical: spacing.s,
-    marginBottom: 4,
-    borderRadius: borderRadius.small,
-  },
-  resBreakdownLine: {
-    color: '#666',
-    fontSize: fonts.small,
     fontFamily: theme.fonts.main,
-    marginBottom: 2,
-  },
-  resFooter: {
-    paddingHorizontal: spacing.m,
-    paddingBottom: spacing.m,
-  },
+    textAlign: 'center',
+  }
 });

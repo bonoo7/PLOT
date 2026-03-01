@@ -7,27 +7,27 @@ import { spacing, fonts, borderRadius } from '../../styles/responsive';
  * PlayerBadge - A reusable component for displaying player names.
  * Style: Bureaucratic/File Folder Tab/Name Tag
  */
-export const PlayerBadge = ({ 
-  name, 
+export const PlayerBadge = ({
+  name,
   role, // Optional: role name or icon
   score, // Optional: score
-  isSelf = false, 
+  isSelf = false,
   isActive = false, // e.g. speaking
   isEliminated = false,
   size = 'medium', // small, medium, large
   style
 }) => {
   const getBackgroundColor = () => {
-    if (isEliminated) return '#888';
-    if (isActive) return theme.colors.stickyNote; // Active/Speaking = Yellow Note
-    if (isSelf) return theme.colors.paper; // Self = Paper
-    return 'rgba(255, 255, 255, 0.8)'; // Default
+    if (isEliminated) return '#666'; // Dark gray/faded
+    if (isActive) return '#D4AF37'; // Dull gold/amber for active speaker
+    if (isSelf) return '#D2B48C'; // Tan paper
+    return '#EBE1D2'; // Manila paper default
   };
 
   const getBorderColor = () => {
-    if (isActive) return theme.colors.primary;
-    if (isSelf) return theme.colors.text;
-    return 'rgba(0,0,0,0.1)';
+    if (isActive) return '#8B7355'; // Darker brown
+    if (isSelf) return '#5D4037';
+    return '#C1A173'; // Manila border
   };
 
   const containerStyle = {
@@ -55,17 +55,17 @@ export const PlayerBadge = ({
 
   return (
     <View style={containerStyle}>
-      <View style={{flexDirection: 'row', alignItems: 'center', gap: 6}}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <Text style={textStyle} numberOfLines={1}>
           {name}
         </Text>
-        {role && <Text style={{fontSize: 10, color: '#666'}}>({role})</Text>}
+        {role && <Text style={{ fontSize: 10, color: '#666' }}>({role})</Text>}
       </View>
-      
+
       {score !== undefined && (
-         <View style={styles.scoreBadge}>
-            <Text style={styles.scoreText}>{score}</Text>
-         </View>
+        <View style={styles.scoreBadge}>
+          <Text style={styles.scoreText}>{score}</Text>
+        </View>
       )}
     </View>
   );
@@ -73,14 +73,16 @@ export const PlayerBadge = ({
 
 const styles = StyleSheet.create({
   scoreBadge: {
-    backgroundColor: theme.colors.text,
+    backgroundColor: '#2A2A2A', // Typewriter black
     borderRadius: 10,
     paddingHorizontal: 6,
     paddingVertical: 2,
-    marginLeft: 8
+    marginLeft: 8,
+    borderWidth: 1,
+    borderColor: '#000'
   },
   scoreText: {
-    color: '#FFF',
+    color: '#F4E4C1', // Vintage off-white
     fontSize: 10,
     fontWeight: 'bold',
     fontFamily: theme.fonts.bold

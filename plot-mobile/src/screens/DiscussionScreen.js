@@ -1,5 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { useGameStore } from '../store/useGameStore';
+import { useSocket, ROUTES } from '../hooks/useGameSocket';
+import { useNavigation } from '@react-navigation/native';
+
 import MinimalLayout from '../components/minimal/MinimalLayout';
 import MinimalHeader from '../components/minimal/MinimalHeader';
 import MinimalCard from '../components/minimal/MinimalCard';
@@ -8,44 +12,71 @@ import { PlayerBadge } from '../components/minimal/PlayerBadge';
 import { theme } from '../styles/theme';
 import { spacing, fonts, borderRadius } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
-
-console.log('DiscussionScreen Imports Check:', {
-    MinimalLayout: !!MinimalLayout,
-    MinimalHeader: !!MinimalHeader,
-    MinimalCard: !!MinimalCard,
-    MinimalButton: !!MinimalButton,
-    PlayerBadge: !!PlayerBadge
-});
+import { InvestigationNote } from '../components/InvestigationNote';
 
 /**
  * DiscussionScreen - Manages the discussion phase
- * Host can select players to speak. Players see who is speaking.
+ * Host can select players to speak (only visible on host view). Players see who is speaking.
  */
-export const DiscussionScreen = ({ 
-    isHost = false, 
-    players = [], 
-    speakingPlayerId = null,
-    onSelectSpeaker, // Host function to set speaker
-    onEndDiscussion, // Host function to proceed
-    scenarios = [],
-    roleData, // Added roleData
-    hint, // Added hint prop
-    roomCode, // Added roomCode prop
-    onRefresh // Added onRefresh prop
-}) => {
-    // Safety check for imports
-    if (!MinimalLayout) return <Text>Error: MinimalLayout missing</Text>;
-    
+export const DiscussionScreen = ({ isHost = false }) => {
     const { isDesktop } = useResponsiveLayout();
-    const [showScenarios, setShowScenarios] = useState(true); // Default to true per request "better/clearer"
+    const { socket } = useSocket();
+    const navigation = useNavigation();
+
+    const [showScenarios, setShowScenarios] = useState(true);
+
+    const roomCode = useGameStore((state) => state.roomCode);
+    const roleData = useGameStore((state) => state.roleData);
+    const players = useGameStore((state) => state.players) || [];
+    const speakingPlayerId = useGameStore((state) => state.speakingPlayerId);
+    const scenarios = useGameStore((state) => state.revealedScenarios) || [];
+    const hint = useGameStore((state) => state.lastHint);
+
+    // نتيجة تحقيق المحقق — تُعرض عند بداية النقاش كنوتة Noir
+    const [investigationNote, setInvestigationNote] = useState(null);
+
+    useEffect(() => {
+        if (!socket) return;
+        const handleAbilityResult = ({ type, targetName, result, isSabotaged }) => {
+            if (type === 'INVESTIGATE') {
+                setInvestigationNote({ targetName, result, isSabotaged });
+            }
+        };
+        socket.on('abilityResult', handleAbilityResult);
+        return () => socket.off('abilityResult', handleAbilityResult);
+    }, [socket]);
+
     const speakingPlayer = players.find(p => p.id === speakingPlayerId);
 
+    const handleSelectSpeaker = (playerId) => {
+        if (!socket || !roomCode) return;
+        socket.emit('setSpeaker', { roomCode, playerId });
+    };
+
+    const handleEndDiscussion = () => {
+        if (!socket || !roomCode) return;
+        socket.emit('endDiscussion', { roomCode });
+    };
+
+    const handleRefresh = () => {
+        // Option to refresh if needed
+    };
+
     return (
-        <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={onRefresh}>
+        <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={handleRefresh}>
+            {/* نوتة نتيجة تحقيق المحقق */}
+            <InvestigationNote
+                visible={!!investigationNote}
+                targetName={investigationNote?.targetName}
+                result={investigationNote?.result}
+                isSabotaged={investigationNote?.isSabotaged}
+                onDismiss={() => setInvestigationNote(null)}
+            />
+
             <View style={styles.container}>
-                <MinimalHeader 
-                    title="وقت النقاش" 
-                    subtitle={isHost ? "إدارة النقاش" : "استمع للمناقشة"} 
+                <MinimalHeader
+                    title="وقت النقاش"
+                    subtitle={isHost ? "إدارة النقاش" : "استمع للمناقشة"}
                 />
 
                 {/* Display Hint if available */}
@@ -58,7 +89,11 @@ export const DiscussionScreen = ({
 
                 <View style={[styles.contentWrapper, isDesktop && styles.contentWrapperDesktop]}>
                     {/* Left Panel: Active Speaker & Scenarios */}
-                    <View style={[styles.mainPanel, isHost && isDesktop && styles.mainPanelWithSide]}>
+                    <ScrollView
+                        style={[styles.mainPanel, isHost && isDesktop && styles.mainPanelWithSide]}
+                        contentContainerStyle={styles.mainPanelContent}
+                        showsVerticalScrollIndicator={false}
+                    >
                         <MinimalCard style={styles.speakerCard}>
                             {speakingPlayer ? (
                                 <>
@@ -88,8 +123,8 @@ export const DiscussionScreen = ({
                         {/* Scenarios Reference Toggle */}
                         {scenarios.length > 0 && (
                             <View style={styles.scenariosSection}>
-                                <TouchableOpacity 
-                                    style={styles.toggleScenariosBtn} 
+                                <TouchableOpacity
+                                    style={styles.toggleScenariosBtn}
                                     onPress={() => setShowScenarios(!showScenarios)}
                                 >
                                     <Text style={styles.toggleBtnText}>
@@ -102,10 +137,10 @@ export const DiscussionScreen = ({
                                         <ScrollView horizontal contentContainerStyle={styles.scenariosScrollContent}>
                                             {scenarios.map((s, i) => (
                                                 <View key={i} style={styles.miniScenarioCard}>
-                                                    <ScrollView style={{flex: 1}}>
+                                                    <ScrollView style={{ flex: 1 }}>
                                                         <Text style={styles.miniScenarioText}>{s.text || s.answer}</Text>
                                                     </ScrollView>
-                                                    
+
                                                     {/* Voters Display */}
                                                     {s.voters && s.voters.length > 0 && (
                                                         <View style={styles.votersContainer}>
@@ -131,7 +166,7 @@ export const DiscussionScreen = ({
                                 )}
                             </View>
                         )}
-                    </View>
+                    </ScrollView>
 
                     {/* Right Panel: Host Controls */}
                     {isHost && (
@@ -140,23 +175,22 @@ export const DiscussionScreen = ({
                             <ScrollView style={styles.playersList} contentContainerStyle={styles.playersListContent}>
                                 <View style={styles.playersGrid}>
                                     {players.map((player) => (
-                                        <TouchableOpacity 
-                                            key={player.id} 
+                                        <TouchableOpacity
+                                            key={player.id}
                                             style={[
-                                                styles.playerButton, 
+                                                styles.playerButton,
                                                 speakingPlayerId === player.id && styles.playerButtonActive
                                             ]}
-                                            onPress={() => onSelectSpeaker(player.id === speakingPlayerId ? null : player.id)}
+                                            onPress={() => handleSelectSpeaker(player.id === speakingPlayerId ? null : player.id)}
                                         >
-                                            <PlayerBadge 
+                                            <PlayerBadge
                                                 name={player.name}
-                                                // role={player.role} // HIDDEN IN DISCUSSION
                                                 score={player.score}
                                                 isSelf={false}
                                                 isActive={speakingPlayerId === player.id}
                                                 isEliminated={player.eliminated}
                                                 size="small"
-                                                style={{borderWidth: 0, backgroundColor: 'transparent', padding: 0}}
+                                                style={{ borderWidth: 0, backgroundColor: 'transparent', padding: 0 }}
                                             />
                                             {speakingPlayerId === player.id && <Text style={styles.micStatus}>🎤</Text>}
                                         </TouchableOpacity>
@@ -164,9 +198,9 @@ export const DiscussionScreen = ({
                                 </View>
                             </ScrollView>
 
-                            <MinimalButton 
-                                title="بدء التصويت على الجاني" 
-                                onPress={onEndDiscussion} 
+                            <MinimalButton
+                                title="بدء التصويت على الجاني"
+                                onPress={handleEndDiscussion}
                                 style={styles.nextButton}
                             />
                         </View>
@@ -176,6 +210,8 @@ export const DiscussionScreen = ({
         </MinimalLayout>
     );
 };
+
+export const HostDiscussionScreen = () => <DiscussionScreen isHost={true} />;
 
 const styles = StyleSheet.create({
     container: {
@@ -187,7 +223,7 @@ const styles = StyleSheet.create({
     contentWrapper: {
         flex: 1,
         width: '100%',
-        gap: spacing.l,
+        gap: spacing.xl,
         alignItems: 'center',
         flexDirection: 'column',
     },
@@ -197,25 +233,27 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         paddingHorizontal: spacing.l,
     },
-    
+
     // Hint
     hintCard: {
         width: '100%',
-        backgroundColor: 'rgba(255, 215, 0, 0.1)', // Gold tint
-        borderColor: '#FFD700',
+        backgroundColor: 'rgba(212, 175, 55, 0.1)',
+        borderColor: 'rgba(212, 175, 55, 0.5)',
+        borderWidth: 1,
         marginBottom: spacing.m,
         alignItems: 'center',
         padding: spacing.m,
+        borderRadius: borderRadius.medium,
     },
     hintTitle: {
         fontFamily: theme.fonts.bold,
-        color: '#FFD700',
+        color: '#D4AF37',
         marginBottom: spacing.xs,
         fontSize: fonts.medium,
     },
     hintText: {
         fontFamily: theme.fonts.main,
-        color: '#FFF',
+        color: '#F4E4C1',
         fontSize: fonts.default,
         textAlign: 'center',
     },
@@ -224,13 +262,16 @@ const styles = StyleSheet.create({
     mainPanel: {
         flex: 1,
         width: '100%',
+    },
+    mainPanelContent: {
         alignItems: 'center',
-        justifyContent: 'center',
-        gap: spacing.l,
+        justifyContent: 'flex-start',
+        gap: spacing.xl,
+        paddingBottom: spacing.xl,
     },
     mainPanelWithSide: {
-        flex: 2, // Take more space than side panel
-        paddingRight: spacing.l, // Spacing between panels
+        flex: 2,
+        paddingRight: spacing.xl,
         borderRightWidth: 1,
         borderRightColor: 'rgba(255,255,255,0.1)',
     },
@@ -239,122 +280,130 @@ const styles = StyleSheet.create({
         maxWidth: 600,
         flex: 1,
         display: 'flex',
+        justifyContent: 'flex-start',
+        gap: spacing.l,
     },
     sidePanelDesktop: {
         flex: 1,
-        maxWidth: 350, // Limit width of controls on desktop
-        paddingLeft: spacing.l,
-        justifyContent: 'center',
+        maxWidth: 350,
+        paddingLeft: spacing.xl,
+        justifyContent: 'flex-start',
     },
 
     // Speaker Card
     speakerCard: {
         width: '100%',
-        maxWidth: 500, // Reduced max width slightly for better fit
+        maxWidth: 500,
         alignItems: 'center',
-        paddingVertical: spacing.l,
-        minHeight: 200,
+        paddingVertical: spacing.xl,
+        paddingHorizontal: spacing.l,
+        minHeight: 220,
         justifyContent: 'center',
+        backgroundColor: 'rgba(235, 225, 210, 0.05)',
+        borderColor: 'rgba(235, 225, 210, 0.2)',
+        borderWidth: 1,
+        borderRadius: borderRadius.large,
     },
     micIconContainer: {
-        width: 80,
-        height: 80,
-        borderRadius: 40,
-        backgroundColor: theme.colors.primary,
+        width: 70,
+        height: 70,
+        borderRadius: 35,
+        backgroundColor: 'rgba(0,0,0,0.5)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
         justifyContent: 'center',
         alignItems: 'center',
         marginBottom: spacing.m,
-        shadowColor: theme.colors.primary,
-        shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.5,
-        shadowRadius: 20,
-        elevation: 10,
     },
     micIcon: {
-        fontSize: 40,
+        fontSize: 30,
     },
     speakingLabel: {
         fontFamily: theme.fonts.main,
-        color: '#888',
-        marginBottom: spacing.xs,
+        color: 'rgba(255,255,255,0.6)',
+        marginBottom: spacing.s,
         fontSize: fonts.small,
+        letterSpacing: 1,
     },
     speakingName: {
         fontFamily: theme.fonts.bold,
-        fontSize: fonts.title,
-        color: '#333',
+        fontSize: fonts.xlarge,
+        color: '#F4E4C1',
         marginBottom: spacing.l,
+        textAlign: 'center',
     },
     soundWave: {
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 6,
-        height: 60,
+        gap: 8,
+        height: 40,
     },
     bar: {
-        width: 8,
-        backgroundColor: theme.colors.primary,
-        borderRadius: 4,
+        width: 6,
+        backgroundColor: '#D4AF37',
+        borderRadius: 3,
     },
     noSpeakerIcon: {
-        fontSize: 60,
+        fontSize: 50,
         opacity: 0.3,
         marginBottom: spacing.m,
     },
     noSpeakerText: {
         fontFamily: theme.fonts.main,
-        fontSize: fonts.small,
-        color: '#888',
+        fontSize: fonts.medium,
+        color: 'rgba(255,255,255,0.5)',
     },
 
     // Controls
     sectionTitle: {
         fontFamily: theme.fonts.bold,
-        color: '#EBE1D2',
-        marginBottom: spacing.m,
+        color: '#F4E4C1',
         textAlign: 'center',
-        fontSize: fonts.medium,
+        fontSize: fonts.large,
+        letterSpacing: 1,
     },
     playersList: {
         flex: 1,
-        marginBottom: spacing.m,
-        maxHeight: '70%', // Prevent taking too much height
     },
     playersListContent: {
         flexGrow: 1,
-        justifyContent: 'center',
+        justifyContent: 'flex-start',
+        paddingVertical: spacing.s,
     },
     playersGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'center',
-        gap: spacing.s,
+        gap: spacing.m,
     },
     playerButton: {
         paddingVertical: spacing.s,
         paddingHorizontal: spacing.m,
-        backgroundColor: 'rgba(255,255,255,0.1)',
+        backgroundColor: 'rgba(255, 255, 255, 0.05)',
         borderRadius: borderRadius.medium,
         borderWidth: 1,
-        borderColor: 'rgba(255,255,255,0.2)',
+        borderColor: 'rgba(255, 255, 255, 0.1)',
         flexDirection: 'row',
         alignItems: 'center',
-        gap: 8,
-        minWidth: '45%', // 2 per row in side panel roughly
+        gap: 12,
+        minWidth: '45%',
         justifyContent: 'center',
     },
     playerButtonActive: {
-        backgroundColor: theme.colors.primary,
-        borderColor: theme.colors.primary,
+        backgroundColor: 'rgba(212, 175, 55, 0.15)',
+        borderColor: '#D4AF37',
     },
     micStatus: {
-        fontSize: 12,
+        fontSize: 16,
     },
     nextButton: {
-        marginTop: 'auto', // Push to bottom
-        backgroundColor: '#8B0000',
+        marginTop: 'auto',
+        backgroundColor: 'rgba(139, 0, 0, 0.8)',
+        borderWidth: 1,
+        borderColor: '#5A0000',
+        paddingVertical: spacing.m,
     },
-    
+
     // Scenarios
     scenariosSection: {
         width: '100%',
@@ -362,96 +411,92 @@ const styles = StyleSheet.create({
         marginTop: spacing.m,
     },
     toggleScenariosBtn: {
-        backgroundColor: 'rgba(255,255,255,0.1)',
-        paddingVertical: 8,
-        paddingHorizontal: 16,
-        borderRadius: 20,
-        marginBottom: 10,
+        backgroundColor: 'rgba(255,255,255,0.05)',
+        borderWidth: 1,
+        borderColor: 'rgba(255,255,255,0.2)',
+        paddingVertical: 12,
+        paddingHorizontal: 24,
+        borderRadius: 25,
+        marginBottom: spacing.l,
     },
     toggleBtnText: {
-        color: '#EBE1D2',
-        fontFamily: theme.fonts.main,
+        color: '#FFF',
+        fontFamily: theme.fonts.bold,
         fontSize: fonts.small,
     },
     scenariosListContainer: {
-        height: 220, // Increased height
         width: '100%',
+        paddingVertical: spacing.s,
     },
     scenariosScrollContent: {
-        gap: 15, // Increased gap
-        paddingHorizontal: 10,
-        paddingBottom: 10,
+        gap: spacing.l,
+        paddingHorizontal: spacing.s,
     },
     miniScenarioCard: {
-        width: 320, // Increased width
-        height: 220, // Increased height
-        backgroundColor: '#FDF5E6',
-        borderRadius: 12, // Slightly more rounded
-        padding: 16, // More padding
-        justifyContent: 'space-between',
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 4 }, // Deeper shadow
-        shadowOpacity: 0.3,
-        shadowRadius: 5,
-        elevation: 8,
+        width: 320,
+        backgroundColor: 'rgba(255, 255, 255, 0.95)',
+        borderRadius: borderRadius.medium,
+        padding: spacing.l,
+        justifyContent: 'flex-start',
         borderWidth: 1,
-        borderColor: '#D2B48C',
+        borderColor: '#E0E0E0',
     },
     miniScenarioText: {
         fontFamily: theme.fonts.main,
-        fontSize: 14, // Larger text
-        color: '#222', // Darker text for contrast
-        lineHeight: 22, // Better line height
-        textAlign: 'right', // RTL
+        fontSize: fonts.medium,
+        color: '#333',
+        lineHeight: 24,
+        textAlign: 'right',
+        minHeight: 80, // Minimum height for text area
     },
     miniScenarioMeta: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        marginTop: 8,
-        paddingTop: 8,
+        marginTop: spacing.m,
+        paddingTop: spacing.m,
         borderTopWidth: 1,
-        borderTopColor: '#E0E0E0',
+        borderTopColor: 'rgba(0,0,0,0.1)',
     },
     miniScenarioAuthor: {
-        fontSize: 10,
+        fontSize: fonts.small,
         color: '#666',
-        fontWeight: 'bold',
+        fontFamily: theme.fonts.bold,
     },
     miniScenarioVotes: {
-        fontSize: 12,
-        color: theme.colors.primary,
-        fontWeight: 'bold',
+        fontSize: fonts.medium,
+        color: '#D4AF37',
+        fontFamily: theme.fonts.bold,
     },
-    
+
     // Voters
     votersContainer: {
-        marginTop: 8,
-        padding: 4,
-        backgroundColor: 'rgba(0,0,0,0.03)',
-        borderRadius: 4,
+        marginTop: spacing.m,
+        padding: spacing.s,
+        backgroundColor: 'rgba(0,0,0,0.02)',
+        borderRadius: borderRadius.small,
     },
     votersLabel: {
-        fontSize: 10,
+        fontSize: fonts.tiny,
         color: '#888',
-        marginBottom: 4,
+        marginBottom: spacing.xs,
         textAlign: 'right',
     },
     votersList: {
         flexDirection: 'row',
         flexWrap: 'wrap',
-        gap: 4,
-        justifyContent: 'flex-end', // RTL
+        gap: 6,
+        justifyContent: 'flex-end',
     },
     voterBadge: {
         backgroundColor: '#FFF',
-        paddingHorizontal: 6,
-        paddingVertical: 2,
-        borderRadius: 10,
+        paddingHorizontal: spacing.s,
+        paddingVertical: 4,
+        borderRadius: 12,
         borderWidth: 1,
-        borderColor: '#DDD',
+        borderColor: '#EEE',
     },
     voterName: {
-        fontSize: 9,
+        fontSize: fonts.tiny,
         color: '#555',
     },
 });

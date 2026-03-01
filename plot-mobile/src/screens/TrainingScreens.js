@@ -1,18 +1,23 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Image, Alert } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { useGameStore } from '../store/useGameStore';
+import { useSocket, ROUTES } from '../hooks/useGameSocket';
 import MinimalLayout from '../components/minimal/MinimalLayout';
 import MinimalHeader from '../components/minimal/MinimalHeader';
 import MinimalCard from '../components/minimal/MinimalCard';
 import MinimalButton from '../components/minimal/MinimalButton';
 import { theme } from '../styles/theme';
-import { spacing, fonts, borderRadius, moderateScale } from '../styles/responsive';
+import { spacing, fonts, borderRadius } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 
 /**
  * TrainingRoleSelectScreen - V3
  */
-export const TrainingRoleSelectScreen = ({ onSelectRole, onBack }) => {
+export const TrainingRoleSelectScreen = () => {
   const { isDesktop } = useResponsiveLayout();
+  const navigation = useNavigation();
+  const setSelectedTrainingRole = useGameStore((state) => state.setSelectedTrainingRole);
 
   const roles = [
     { id: 'CULPRIT', nameAr: 'الجاني', description: 'فريق الجريمة: تعرف القصة الكاملة', icon: '🎭' },
@@ -25,53 +30,58 @@ export const TrainingRoleSelectScreen = ({ onSelectRole, onBack }) => {
     { id: 'MASTERMIND', nameAr: 'العقل المدبر', description: 'فريق الجريمة: تعرف أعضاء عصابتك', icon: '🧠' },
   ];
 
+  const handleSelectRole = (roleId) => {
+    setSelectedTrainingRole(roleId);
+    navigation.navigate(ROUTES.TRAINING_JOIN);
+  };
+
   return (
     <MinimalLayout>
       <View style={[styles.container, isDesktop && styles.containerDesktop]}>
         <MinimalHeader title="تدريب فردي" subtitle="اختر الدور الذي تريد لعبه" />
 
-        <ScrollView 
-            contentContainerStyle={styles.gridContainer} 
-            showsVerticalScrollIndicator={false}
+        <ScrollView
+          contentContainerStyle={styles.gridContainer}
+          showsVerticalScrollIndicator={false}
         >
-            {roles.map((role) => (
-              <TouchableOpacity
-                key={role.id}
-                style={[styles.roleCard, isDesktop && styles.roleCardDesktop]}
-                onPress={() => onSelectRole(role.id)}
-                activeOpacity={0.8}
-              >
-                {theme.roleImages && theme.roleImages[role.id] ? (
-                    <Image 
-                        source={theme.roleImages[role.id]} 
-                        style={styles.roleCardImage} 
-                        resizeMode="contain"
-                    />
-                ) : (
-                    <Text style={styles.roleIcon}>{role.icon}</Text>
-                )}
-                <Text style={styles.roleName}>{role.nameAr}</Text>
-                <Text style={styles.roleDesc}>{role.description}</Text>
-              </TouchableOpacity>
-            ))}
-            
-            {/* Random Role */}
+          {roles.map((role) => (
             <TouchableOpacity
-              style={[styles.roleCard, styles.randomCard, isDesktop && styles.roleCardDesktop]}
-              onPress={() => onSelectRole(null)}
+              key={role.id}
+              style={[styles.roleCard, isDesktop && styles.roleCardDesktop]}
+              onPress={() => handleSelectRole(role.id)}
               activeOpacity={0.8}
             >
-              <Text style={styles.roleIcon}>🎲</Text>
-              <Text style={styles.roleName}>عشوائي</Text>
-              <Text style={styles.roleDesc}>اختيار عشوائي</Text>
+              {theme.roleImages && theme.roleImages[role.id] ? (
+                <Image
+                  source={theme.roleImages[role.id]}
+                  style={styles.roleCardImage}
+                  resizeMode="contain"
+                />
+              ) : (
+                <Text style={styles.roleIcon}>{role.icon}</Text>
+              )}
+              <Text style={styles.roleName}>{role.nameAr}</Text>
+              <Text style={styles.roleDesc}>{role.description}</Text>
             </TouchableOpacity>
+          ))}
+
+          {/* Random Role */}
+          <TouchableOpacity
+            style={[styles.roleCard, styles.randomCard, isDesktop && styles.roleCardDesktop]}
+            onPress={() => handleSelectRole(null)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.roleIcon}>🎲</Text>
+            <Text style={styles.roleName}>عشوائي</Text>
+            <Text style={styles.roleDesc}>اختيار عشوائي</Text>
+          </TouchableOpacity>
         </ScrollView>
 
-        <MinimalButton 
-            title="رجوع" 
-            onPress={onBack} 
-            variant="secondary" 
-            style={styles.backButton}
+        <MinimalButton
+          title="رجوع"
+          onPress={() => navigation.goBack()}
+          variant="secondary"
+          style={styles.backButton}
         />
       </View>
     </MinimalLayout>
@@ -79,32 +89,63 @@ export const TrainingRoleSelectScreen = ({ onSelectRole, onBack }) => {
 };
 
 /**
- * TrainingJoinScreen - V3
+ * TrainingJoinScreen - V4 (Manual Room Code Entry)
+ * اللاعب يختار دوره ويدخل كود الغرفة التي أنشأها المضيف.
+ * عند الانضمام يُضيف الخادم 3 بوتات تلقائياً بترتيب الأدوار.
  */
-export const TrainingJoinScreen = ({ 
-  selectedRole, 
-  playerName, 
-  setPlayerName, 
-  roomCode, 
-  setRoomCode, 
-  onJoin, 
-  connecting,
-  onBack 
-}) => {
+export const TrainingJoinScreen = () => {
   const { isDesktop } = useResponsiveLayout();
-  
+  const navigation = useNavigation();
+  const { socket } = useSocket();
+
+  // Store state
+  const selectedRole = useGameStore((state) => state.selectedTrainingRole);
+  const playerName = useGameStore((state) => state.playerName);
+  const setPlayerName = useGameStore((state) => state.setPlayerName);
+  const connecting = useGameStore((state) => state.connecting);
+  const setConnecting = useGameStore((state) => state.setConnecting);
+  const setUserRole = useGameStore((state) => state.setUserRole);
+
+  const [roomCode, setRoomCode] = React.useState('');
+
+  const handleJoinTraining = () => {
+    if (!socket) {
+      Alert.alert('خطأ', 'لم يتم الاتصال بالخادم بعد.');
+      return;
+    }
+    if (!playerName.trim()) {
+      Alert.alert('تنبيه', 'الرجاء إدخال اسمك أولاً.');
+      return;
+    }
+    if (!roomCode.trim() || roomCode.trim().length < 4) {
+      Alert.alert('تنبيه', 'الرجاء إدخال كود الغرفة الصحيح.');
+      return;
+    }
+
+    setConnecting(true);
+    setUserRole('PLAYER');
+
+    // ✅ الانضمام للغرفة مع الدور المحدد
+    // الخادم سيضيف 3 بوتات تلقائياً بترتيب الأدوار (مع تجاهل دور اللاعب)
+    socket.emit('joinRoom', {
+      roomCode: roomCode.trim().toUpperCase(),
+      playerName: playerName.trim(),
+      desiredRole: selectedRole,  // الخادم يُعيّن هذا الدور للاعب ويُضيف البوتات
+    });
+  };
+
   const getRoleInfo = (roleId) => {
     const roles = {
-      'CULPRIT': { nameAr: 'الجاني' },
-      'MASTERMIND': { nameAr: 'العقل المدبر' },
-      'SABOTEUR': { nameAr: 'المخرب' },
-      'BENEFICIARY': { nameAr: 'المستفيد' },
-      'DETECTIVE': { nameAr: 'المحقق' },
-      'WITNESS': { nameAr: 'الشاهد' },
-      'SEER': { nameAr: 'العراف' },
-      'MINISTER': { nameAr: 'الوزير' },
+      'CULPRIT': { nameAr: 'الجاني', icon: '🎭' },
+      'MASTERMIND': { nameAr: 'العقل المدبر', icon: '🧠' },
+      'SABOTEUR': { nameAr: 'المخرب', icon: '🧨' },
+      'BENEFICIARY': { nameAr: 'المستفيد', icon: '💰' },
+      'DETECTIVE': { nameAr: 'المحقق', icon: '🔍' },
+      'WITNESS': { nameAr: 'الشاهد', icon: '👁️' },
+      'SEER': { nameAr: 'العراف', icon: '🔮' },
+      'MINISTER': { nameAr: 'الوزير', icon: '📜' },
     };
-    return roles[roleId] || { nameAr: 'دور عشوائي' };
+    return roles[roleId] || { nameAr: 'دور عشوائي', icon: '🎲' };
   };
 
   const roleInfo = getRoleInfo(selectedRole);
@@ -112,49 +153,56 @@ export const TrainingJoinScreen = ({
   return (
     <MinimalLayout>
       <View style={[styles.container, { maxWidth: 500 }]}>
-        <MinimalHeader title="تدريب فردي" subtitle="إعداد اللعبة" />
+        <MinimalHeader title="تدريب فردي" subtitle="انضم للغرفة" />
 
         <MinimalCard>
-            <Text style={styles.label}>الدور المختار</Text>
-            <View style={styles.selectedRoleBox}>
-                <Text style={styles.selectedRoleText}>{roleInfo.nameAr}</Text>
-            </View>
+          {/* Role Display */}
+          <Text style={styles.label}>دورك المختار</Text>
+          <View style={styles.selectedRoleBox}>
+            <Text style={styles.roleIconLarge}>{roleInfo.icon}</Text>
+            <Text style={styles.selectedRoleText}>{roleInfo.nameAr}</Text>
+          </View>
 
-            <View style={styles.inputGroup}>
-                <Text style={styles.label}>اسمك</Text>
-                <MinimalTextInput 
-                    value={playerName} 
-                    onChangeText={setPlayerName} 
-                    placeholder="أدخل اسمك"
-                />
-            </View>
+          {/* Name Input */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>اسمك</Text>
+            <MinimalTextInput
+              value={playerName}
+              onChangeText={setPlayerName}
+              placeholder="أدخل اسمك"
+            />
+          </View>
 
-            <View style={styles.inputGroup}>
-                <Text style={styles.label}>رمز الغرفة</Text>
-                <MinimalTextInput 
-                    value={roomCode} 
-                    onChangeText={(t) => setRoomCode(t.toUpperCase())} 
-                    placeholder="مثال: ABCD"
-                    maxLength={6}
-                />
-            </View>
+          {/* Room Code Input */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>كود الغرفة</Text>
+            <MinimalTextInput
+              value={roomCode}
+              onChangeText={(t) => setRoomCode(t.toUpperCase())}
+              placeholder="مثال: ABCD"
+              maxLength={6}
+            />
+          </View>
         </MinimalCard>
-        
+
+        {/* Info Box */}
         <View style={styles.infoBox}>
-            <Text style={styles.infoText}>⚠️ يجب أن يقوم المضيف بإضافة البوتات</Text>
+          <Text style={styles.infoText}>🤖 سيضيف المضيف 3 بوتات تلقائياً عند انضمامك</Text>
+          <Text style={[styles.infoText, { marginTop: 4, fontSize: 11 }]}>🎮 المضيف يتحكم ببدء اللعبة وإضافة بوتات إضافية</Text>
         </View>
 
         <View style={styles.buttonGroup}>
-            <MinimalButton 
-                title={connecting ? 'جاري الانضمام...' : 'انضم للغرفة'} 
-                onPress={onJoin}
-                disabled={connecting || !playerName.trim() || !roomCode.trim()}
-            />
-            <MinimalButton 
-                title="رجوع" 
-                onPress={onBack} 
-                variant="secondary"
-            />
+          <MinimalButton
+            title={connecting ? 'جاري الانضمام...' : 'انضم للتدريب 🚀'}
+            onPress={handleJoinTraining}
+            disabled={connecting || !playerName.trim() || roomCode.trim().length < 4}
+            loading={connecting}
+          />
+          <MinimalButton
+            title="رجوع"
+            onPress={() => navigation.goBack()}
+            variant="secondary"
+          />
         </View>
       </View>
     </MinimalLayout>
@@ -163,14 +211,14 @@ export const TrainingJoinScreen = ({
 
 // Helper Input Component for V3
 const MinimalTextInput = ({ value, onChangeText, placeholder, maxLength }) => (
-    <TextInput 
-        style={styles.textInput}
-        value={value}
-        onChangeText={onChangeText}
-        placeholder={placeholder}
-        maxLength={maxLength}
-        placeholderTextColor="#999"
-    />
+  <TextInput
+    style={styles.textInput}
+    value={value}
+    onChangeText={onChangeText}
+    placeholder={placeholder}
+    maxLength={maxLength}
+    placeholderTextColor="#999"
+  />
 );
 
 const styles = StyleSheet.create({
@@ -184,7 +232,7 @@ const styles = StyleSheet.create({
   containerDesktop: {
     maxWidth: 1000,
   },
-  
+
   // Grid
   gridContainer: {
     flexDirection: 'row',
@@ -194,7 +242,7 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.l,
   },
   roleCard: {
-    width: '45%', 
+    width: '45%',
     minWidth: 140,
     backgroundColor: '#FDF5E6',
     borderRadius: borderRadius.small,
@@ -219,15 +267,16 @@ const styles = StyleSheet.create({
 
   // Join Screen
   label: { color: '#8B4513', marginBottom: spacing.xs, fontFamily: theme.fonts.bold },
-  selectedRoleBox: { 
-    backgroundColor: 'rgba(0,0,0,0.05)', 
-    padding: spacing.m, 
+  selectedRoleBox: {
+    backgroundColor: 'rgba(0,0,0,0.05)',
+    padding: spacing.m,
     borderRadius: borderRadius.small,
     alignItems: 'center',
     marginBottom: spacing.m,
     width: '100%'
   },
   selectedRoleText: { fontSize: fonts.large, fontFamily: theme.fonts.bold, color: theme.colors.primary },
+  roleIconLarge: { fontSize: 48, marginBottom: spacing.xs },
   inputGroup: { width: '100%', marginBottom: spacing.m },
   // Custom Input Styles
   textInput: {
@@ -241,11 +290,11 @@ const styles = StyleSheet.create({
     width: '100%',
     textAlign: 'right' // Arabic support
   },
-  infoBox: { 
-    backgroundColor: 'rgba(255, 215, 0, 0.15)', 
-    padding: spacing.s, 
-    borderRadius: borderRadius.small, 
-    borderWidth: 1, 
+  infoBox: {
+    backgroundColor: 'rgba(255, 215, 0, 0.15)',
+    padding: spacing.s,
+    borderRadius: borderRadius.small,
+    borderWidth: 1,
     borderColor: '#DAA520',
     marginBottom: spacing.m
   },

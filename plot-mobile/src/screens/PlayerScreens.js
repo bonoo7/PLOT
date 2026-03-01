@@ -1,11 +1,14 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { 
-  MinimalLayout, 
-  MinimalHeader, 
-  MinimalCard, 
-  MinimalButton, 
-  MinimalInput 
+import { useNavigation } from '@react-navigation/native';
+import { useGameStore } from '../store/useGameStore';
+import { useSocket } from '../hooks/useGameSocket';
+import {
+  MinimalLayout,
+  MinimalHeader,
+  MinimalCard,
+  MinimalButton,
+  MinimalInput
 } from '../components/minimal';
 import { theme } from '../styles/theme';
 import { spacing, fonts, borderRadius } from '../styles/responsive';
@@ -14,23 +17,31 @@ import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 /**
  * LoginScreen - Minimalist V3
  */
-export const LoginScreen = ({ 
-  playerName, 
-  setPlayerName, 
-  roomCode, 
-  setRoomCode, 
-  onJoinRoom, 
-  connecting,
-  onBack 
-}) => {
+export const LoginScreen = () => {
+  const navigation = useNavigation();
+  const playerName = useGameStore((state) => state.playerName);
+  const setPlayerName = useGameStore((state) => state.setPlayerName);
+  const roomCode = useGameStore((state) => state.roomCode);
+  const setRoomCode = useGameStore((state) => state.setRoomCode);
+  const connecting = useGameStore((state) => state.connecting);
+  const setConnecting = useGameStore((state) => state.setConnecting);
+  const { socket } = useSocket();
+
   const canJoin = playerName.trim().length >= 2 && roomCode.trim().length >= 4;
+
+  const handleJoinRoom = () => {
+    if (socket) {
+      setConnecting(true);
+      socket.emit('joinRoom', { roomCode, playerName, isHost: false });
+    }
+  };
 
   return (
     <MinimalLayout>
       <View style={styles.centerBox}>
-        <MinimalHeader 
-          title="الانضمام" 
-          subtitle="أدخل بيانات الدخول" 
+        <MinimalHeader
+          title="الانضمام"
+          subtitle="أدخل بيانات الدخول"
         />
 
         <MinimalCard style={styles.formCard}>
@@ -57,7 +68,7 @@ export const LoginScreen = ({
 
           <MinimalButton
             title={connecting ? "جاري الاتصال..." : "دخول"}
-            onPress={onJoinRoom}
+            onPress={handleJoinRoom}
             disabled={!canJoin || connecting}
             loading={connecting}
             size="medium"
@@ -65,16 +76,14 @@ export const LoginScreen = ({
           />
         </MinimalCard>
 
-        {onBack && (
-          <MinimalButton
-            title="رجوع"
-            onPress={onBack}
-            variant="ghost"
-            size="small"
-            style={styles.backButton}
-            textStyle={styles.backButtonText}
-          />
-        )}
+        <MinimalButton
+          title="رجوع"
+          onPress={() => navigation.goBack()}
+          variant="ghost"
+          size="small"
+          style={styles.backButton}
+          textStyle={styles.backButtonText}
+        />
       </View>
     </MinimalLayout>
   );
@@ -83,14 +92,16 @@ export const LoginScreen = ({
 /**
  * LobbyScreen - Minimalist V3
  */
-export const LobbyScreen = ({ players = [], roomCode }) => {
+export const LobbyScreen = () => {
   const { isDesktop } = useResponsiveLayout();
+  const players = useGameStore((state) => state.players);
+  const roomCode = useGameStore((state) => state.roomCode);
 
   return (
     <MinimalLayout>
       <View style={[styles.lobbyContainer, { maxWidth: isDesktop ? 900 : 500 }]}>
-        <MinimalHeader 
-          title="غرفة الانتظار" 
+        <MinimalHeader
+          title="غرفة الانتظار"
           subtitle="في انتظار بدء المهمة"
         />
 
@@ -103,7 +114,7 @@ export const LobbyScreen = ({ players = [], roomCode }) => {
         {/* Players Grid */}
         <MinimalCard flex style={styles.playersCard}>
           <Text style={styles.sectionTitle}>اللاعبون ({players.length})</Text>
-          
+
           {players.length === 0 ? (
             <View style={styles.emptyState}>
               <Text style={styles.emptyText}>لا يوجد لاعبون...</Text>
@@ -150,7 +161,7 @@ const styles = StyleSheet.create({
     color: '#E8DCC8',
     opacity: 0.8,
   },
-  
+
   // Lobby Styles
   lobbyContainer: {
     flex: 1,

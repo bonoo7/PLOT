@@ -2,72 +2,95 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
 import MinimalLayout from '../components/minimal/MinimalLayout';
 import MinimalHeader from '../components/minimal/MinimalHeader';
-import MinimalCard from '../components/minimal/MinimalCard';
 import { theme } from '../styles/theme';
-import { spacing, fonts, moderateScale, borderRadius } from '../styles/responsive';
+import { spacing, fonts, borderRadius } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
+import { useGameStore } from '../store/useGameStore';
+import { useNavigation } from '@react-navigation/native';
+import { ROUTES } from '../hooks/useGameSocket';
 
 /**
- * RoleSelectScreen_v3 - Minimalist design.
+ * RoleSelectScreen - Minimalist design.
  * Full screen layout with centered cards.
  */
-export const RoleSelectScreen = ({ onSelectHost, onSelectPlayer, onSelectTraining, onHowToPlay }) => {
+export const RoleSelectScreen = () => {
   const { isDesktop, isLandscape } = useResponsiveLayout();
+  const navigation = useNavigation();
+  const setUserRole = useGameStore((state) => state.setUserRole);
 
   // Determine layout direction based on screen size/orientation
   const isHorizontalLayout = isDesktop || isLandscape;
 
+  const handleSelectHost = () => {
+    setUserRole('HOST');
+    navigation.navigate(ROUTES.HOST_SETUP);
+  };
+
+  const handleSelectPlayer = () => {
+    setUserRole('PLAYER');
+    navigation.navigate(ROUTES.LOGIN);
+  };
+
+  const handleSelectTraining = () => {
+    setUserRole('PLAYER');
+    navigation.navigate(ROUTES.TRAINING_ROLE_SELECT);
+  };
+
+  const handleHowToPlay = () => {
+    navigation.navigate(ROUTES.HOW_TO_PLAY);
+  };
+
   return (
     <MinimalLayout>
-      <MinimalHeader 
-        title="PLOT" 
-        subtitle="لعبة التحقيقات السرية" 
+      <MinimalHeader
+        title="PLOT"
+        subtitle="لعبة التحقيقات السرية"
       />
 
-      <ScrollView 
+      <ScrollView
         style={{ width: '100%' }}
         contentContainerStyle={[
           styles.contentContainer,
           isHorizontalLayout && styles.contentContainerHorizontal
         ]}
       >
-        
+
         {/* Role Cards Container */}
         <View style={[
           styles.cardsWrapper,
           isHorizontalLayout && styles.cardsWrapperHorizontal
         ]}>
-          
+
           {/* Host Card */}
-          <RoleCard 
+          <RoleCard
             title="المضيف"
             description="إنشاء غرفة جديدة"
-            onPress={onSelectHost}
+            onPress={handleSelectHost}
             color="#EBE1D2"
           />
 
           {/* Player Card */}
-          <RoleCard 
+          <RoleCard
             title="لاعب"
             description="انضمام للعبة"
-            onPress={onSelectPlayer}
+            onPress={handleSelectPlayer}
             color="#EBE1D2"
           />
 
           {/* Training Card */}
-          <RoleCard 
+          <RoleCard
             title="تدريب"
             description="اللعب مع بوتات"
-            onPress={onSelectTraining}
+            onPress={handleSelectTraining}
             color="#FFF0C8"
             borderColor={theme.colors.accentYellow}
           />
-          
+
           {/* How To Play Card */}
-          <RoleCard 
+          <RoleCard
             title="دليل اللعبة"
             description="شرح الأدوار والقوانين"
-            onPress={onHowToPlay}
+            onPress={handleHowToPlay}
             color="#E0F7FA"
             borderColor="#006064"
           />
@@ -83,9 +106,9 @@ export const RoleSelectScreen = ({ onSelectHost, onSelectPlayer, onSelectTrainin
 };
 
 const RoleCard = ({ title, description, onPress, color, borderColor }) => (
-  <TouchableOpacity 
+  <TouchableOpacity
     style={[
-      styles.card, 
+      styles.card,
       { backgroundColor: color, borderColor: borderColor || '#8B7355' }
     ]}
     onPress={onPress}
@@ -130,7 +153,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.main,
     fontSize: fonts.small,
   },
-  
+
   // Card Internal Styles
   card: {
     padding: spacing.l,

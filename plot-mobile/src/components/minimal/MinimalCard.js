@@ -26,25 +26,25 @@ const MinimalCard = ({ children, style, variant = 'default', flex = false }) => 
 
 const styles = StyleSheet.create({
   card: {
-    backgroundColor: 'rgba(235, 225, 210, 0.95)', // Default paper-like
+    backgroundColor: '#EBE1D2', // Manila folder/vintage paper base
     borderRadius: borderRadius.small,
     padding: spacing.m,
     borderWidth: 1,
-    borderColor: '#8B7355',
+    borderColor: '#C1A173', // Darker brown border
     width: '100%',
-    shadowColor: theme.colors.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+    shadowColor: '#000',
+    shadowOffset: { width: 2, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 5,
+    elevation: 6,
   },
   cardGold: {
-    backgroundColor: 'rgba(255, 215, 0, 0.1)',
-    borderColor: 'rgba(255, 215, 0, 0.3)',
+    backgroundColor: '#F5DEB3', // Wheat/Gold tint paper
+    borderColor: '#DAA520',
   },
   cardTransparent: {
-    backgroundColor: 'rgba(0, 0, 0, 0.3)',
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    backgroundColor: 'rgba(20, 20, 20, 0.75)',
+    borderColor: '#4A4A4A',
   },
   flex: {
     flex: 1, // Allow card to expand and fill available space

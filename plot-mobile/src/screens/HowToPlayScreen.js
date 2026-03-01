@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import MinimalLayout from '../components/minimal/MinimalLayout';
 import MinimalHeader from '../components/minimal/MinimalHeader';
 import MinimalCard from '../components/minimal/MinimalCard';
@@ -7,49 +8,51 @@ import MinimalButton from '../components/minimal/MinimalButton';
 import { theme } from '../styles/theme';
 import { fonts, spacing } from '../styles/responsive';
 
-export const HowToPlayScreen = ({ onBack }) => {
+export const HowToPlayScreen = () => {
+  const navigation = useNavigation();
+
   return (
     <MinimalLayout>
       <View style={styles.container}>
         <MinimalHeader title="دليل اللعبة" subtitle="كيف تلعب؟" />
-        
+
         <ScrollView style={styles.scrollContent} contentContainerStyle={styles.scrollInner}>
-          
+
           {/* Section 1: Game Flow */}
           <MinimalCard style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>1. سير اللعبة (Game Flow)</Text>
-            
+
             <View style={styles.step}>
-                <Text style={styles.stepTitle}>📝 مرحلة الكتابة (Drafting):</Text>
-                <Text style={styles.text}>
-                    يقوم الجميع (بمن فيهم الجاني) بكتابة "سيناريو" أو "تبرير" بناءً على عنوان القضية.
-                    الجاني يمتلك القصة الكاملة، ويحاول تضليل الآخرين.
-                </Text>
-                <Text style={styles.note}>💡 ميزة جديدة: العروض والمفاوضات تتم في هذه المرحلة فقط.</Text>
+              <Text style={styles.stepTitle}>📝 مرحلة الكتابة (Drafting):</Text>
+              <Text style={styles.text}>
+                يقوم الجميع (بمن فيهم الجاني) بكتابة "سيناريو" أو "تبرير" بناءً على عنوان القضية.
+                الجاني يمتلك القصة الكاملة، ويحاول تضليل الآخرين.
+              </Text>
+              <Text style={styles.note}>💡 ميزة جديدة: العروض والمفاوضات تتم في هذه المرحلة فقط.</Text>
             </View>
 
             <View style={styles.step}>
-                <Text style={styles.stepTitle}>🗳️ تصويت الجودة (Quality Vote):</Text>
-                <Text style={styles.text}>
-                    تظهر جميع السيناريوهات (بدون أسماء). يصوت اللاعبون لأفضل سيناريو.
-                    الهدف: كسب نقاط إضافية.
-                </Text>
+              <Text style={styles.stepTitle}>🗳️ تصويت الجودة (Quality Vote):</Text>
+              <Text style={styles.text}>
+                تظهر جميع السيناريوهات (بدون أسماء). يصوت اللاعبون لأفضل سيناريو.
+                الهدف: كسب نقاط إضافية.
+              </Text>
             </View>
 
             <View style={styles.step}>
-                <Text style={styles.stepTitle}>🎬 العرض التشويقي (Dramatic Reveal):</Text>
-                <Text style={styles.text}>
-                    يتم كشف السيناريوهات بالترتيب من الأكثر تصويتًا إلى الأقل، مع كشف كاتب كل سيناريو.
-                </Text>
+              <Text style={styles.stepTitle}>🎬 العرض التشويقي (Dramatic Reveal):</Text>
+              <Text style={styles.text}>
+                يتم كشف السيناريوهات بالترتيب من الأكثر تصويتًا إلى الأقل، مع كشف كاتب كل سيناريو.
+              </Text>
             </View>
 
             <View style={styles.step}>
-                <Text style={styles.stepTitle}>🕵️ تصويت الجاني (Culprit Vote):</Text>
-                <Text style={styles.text}>
-                    يصوت الجميع على من يعتقدون أنه "الجاني".
+              <Text style={styles.stepTitle}>🕵️ تصويت الجاني (Culprit Vote):</Text>
+              <Text style={styles.text}>
+                يصوت الجميع على من يعتقدون أنه "الجاني".
                     إذا حصل الجاني على أعلى الأصوات -> يفوز فريق العدالة.
                     إذا نجا الجاني -> يفوز فريق الجريمة.
-                </Text>
+              </Text>
             </View>
           </MinimalCard>
 
@@ -58,47 +61,47 @@ export const HowToPlayScreen = ({ onBack }) => {
             <Text style={styles.sectionTitle}>2. الأدوار (Roles)</Text>
 
             <Text style={styles.teamTitle}>👮 فريق العدالة (Justice Team)</Text>
-            
+
             <View style={styles.roleBox}>
-                <Text style={styles.roleHeader}>🕵️‍♂️ المحقق (Detective)</Text>
-                <Text style={styles.text}>يمكنك فحص لاعب واحد لمعرفة فريقه (الجريمة أو العدالة). (+1000 نقطة إذا كشف الجاني).</Text>
+              <Text style={styles.roleHeader}>🕵️‍♂️ المحقق (Detective)</Text>
+              <Text style={styles.text}>يمكنك فحص لاعب واحد لمعرفة فريقه (الجريمة أو العدالة). (+1000 نقطة إذا كشف الجاني).</Text>
             </View>
 
             <View style={styles.roleBox}>
-                <Text style={styles.roleHeader}>👁️ الشاهد (Witness)</Text>
-                <Text style={styles.text}>تظهر لك كلمات مفتاحية من القصة الحقيقية. (+50 نقطة لكل كلمة إذا كان سيناريوه الأفضل).</Text>
+              <Text style={styles.roleHeader}>👁️ الشاهد (Witness)</Text>
+              <Text style={styles.text}>تظهر لك كلمات مفتاحية من القصة الحقيقية. (+50 نقطة لكل كلمة إذا كان سيناريوه الأفضل).</Text>
             </View>
 
             <View style={styles.roleBox}>
-                <Text style={styles.roleHeader}>🔮 العرّاف (Seer)</Text>
-                <Text style={styles.text}>يمكنك "نسخ" القصة الحقيقية وإرسالها مباشرة. (+500 نقطة إذا فعل ذلك وكان الأفضل).</Text>
+              <Text style={styles.roleHeader}>🔮 العرّاف (Seer)</Text>
+              <Text style={styles.text}>يمكنك "نسخ" القصة الحقيقية وإرسالها مباشرة. (+500 نقطة إذا فعل ذلك وكان الأفضل).</Text>
             </View>
 
             <View style={styles.roleBox}>
-                <Text style={styles.roleHeader}>📜 الوزير (Minister)</Text>
-                <Text style={styles.text}>يعرف هوية المحقق والمستفيد. يبدأ بـ +1000 نقطة. يمكنه إرسال عروض لتحصين اللاعبين.</Text>
+              <Text style={styles.roleHeader}>📜 الوزير (Minister)</Text>
+              <Text style={styles.text}>يعرف هوية المحقق والمستفيد. يبدأ بـ +1000 نقطة. يمكنه إرسال عروض لتحصين اللاعبين.</Text>
             </View>
 
             <Text style={[styles.teamTitle, { color: '#8B0000', marginTop: 15 }]}>🎭 فريق الجريمة (Crime Team)</Text>
 
             <View style={styles.roleBox}>
-                <Text style={styles.roleHeader}>🎭 الجاني (Culprit)</Text>
-                <Text style={styles.text}>يعرف القصة الكاملة. هدفه خداع الجميع والنجاة. (+500 نقطة للنجاة).</Text>
+              <Text style={styles.roleHeader}>🎭 الجاني (Culprit)</Text>
+              <Text style={styles.text}>يعرف القصة الكاملة. هدفه خداع الجميع والنجاة. (+500 نقطة للنجاة).</Text>
             </View>
 
             <View style={styles.roleBox}>
-                <Text style={styles.roleHeader}>🧠 العقل المدبر (Mastermind)</Text>
-                <Text style={styles.text}>يعرف جميع أعضاء فريقه. يعمل كوسيط للعروض ويحصل على 25% عمولة.</Text>
+              <Text style={styles.roleHeader}>🧠 العقل المدبر (Mastermind)</Text>
+              <Text style={styles.text}>يعرف جميع أعضاء فريقه. يعمل كوسيط للعروض ويحصل على 25% عمولة.</Text>
             </View>
 
             <View style={styles.roleBox}>
-                <Text style={styles.roleHeader}>🧨 المخرب (Saboteur)</Text>
-                <Text style={styles.text}>يمكنه اختيار لاعب لتغيير نتيجة فحصه من قبل المحقق (يظهر عكس فريقه).</Text>
+              <Text style={styles.roleHeader}>🧨 المخرب (Saboteur)</Text>
+              <Text style={styles.text}>يمكنه اختيار لاعب لتغيير نتيجة فحصه من قبل المحقق (يظهر عكس فريقه).</Text>
             </View>
 
             <View style={styles.roleBox}>
-                <Text style={styles.roleHeader}>💰 المستفيد (Beneficiary)</Text>
-                <Text style={styles.text}>يبدأ بـ +1000 نقطة. يمكنه رشوة اللاعبين لتعطيل قدراتهم (الشاهد، العراف، المحقق).</Text>
+              <Text style={styles.roleHeader}>💰 المستفيد (Beneficiary)</Text>
+              <Text style={styles.text}>يبدأ بـ +1000 نقطة. يمكنه رشوة اللاعبين لتعطيل قدراتهم (الشاهد، العراف، المحقق).</Text>
             </View>
           </MinimalCard>
 
@@ -106,10 +109,10 @@ export const HowToPlayScreen = ({ onBack }) => {
           <MinimalCard style={styles.sectionCard}>
             <Text style={styles.sectionTitle}>3. نظام العروض (Offers)</Text>
             <Text style={styles.text}>
-                • يمكن للمستفيد والوزير إرسال "نقاط" للاعبين آخرين.
-                {"\n"}• إذا قبل اللاعب العرض: يكسب النقاط، ولكن **تتعطل قدرته الخاصة**.
-                {"\n"}• المستفيد يمكنه إرسال العرض عبر "العقل المدبر" (وسيط) لإخفاء هويته، مقابل 25% عمولة.
-                {"\n"}• الوزير يحاول كشف المستفيد (إذا أرسل له عرضًا مباشرًا) أو تحصين المحقق.
+              • يمكن للمستفيد والوزير إرسال "نقاط" للاعبين آخرين.
+              {"\n"}• إذا قبل اللاعب العرض: يكسب النقاط، ولكن **تتعطل قدرته الخاصة**.
+              {"\n"}• المستفيد يمكنه إرسال العرض عبر "العقل المدبر" (وسيط) لإخفاء هويته، مقابل 25% عمولة.
+              {"\n"}• الوزير يحاول كشف المستفيد (إذا أرسل له عرضًا مباشرًا) أو تحصين المحقق.
             </Text>
           </MinimalCard>
 
@@ -117,7 +120,7 @@ export const HowToPlayScreen = ({ onBack }) => {
         </ScrollView>
 
         <View style={styles.footer}>
-            <MinimalButton title="العودة للقائمة" onPress={onBack} size="large" />
+          <MinimalButton title="العودة للقائمة" onPress={() => navigation.goBack()} size="large" />
         </View>
       </View>
     </MinimalLayout>
