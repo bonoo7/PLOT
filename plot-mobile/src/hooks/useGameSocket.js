@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { io } from 'socket.io-client';
-import { Alert } from 'react-native';
 import { useGameStore } from '../store/useGameStore';
 import { DEV_SERVER_IP, DEV_SERVER_PORT, PROD_SERVER_URL } from '../constants/config';
 
@@ -79,6 +78,7 @@ export const useGameSocket = (navigationRef) => {
         setPlayers,
         setConnecting,
         setRoleData,
+        setPendingAbilityResult,
         setGameMode,
         setTotalRounds,
         setCurrentRound,
@@ -101,6 +101,7 @@ export const useGameSocket = (navigationRef) => {
         clearRoundState,
         resetGame,
         setThemeMode,
+        setVoteTieInfo,
     } = useGameStore();
 
     const navigate = (routeName, params) => {
@@ -338,6 +339,7 @@ export const useGameSocket = (navigationRef) => {
             if (step === 'SCENARIO' || step === 'scenario') {
                 setCurrentReveal({
                     text: data.data.answer || data.data.text,
+                    template: data.data.template || null,
                     index: data.data.index,
                     position: data.data.position,
                     total: data.data.total
@@ -416,7 +418,7 @@ export const useGameSocket = (navigationRef) => {
             setHasVoted(false);
             setSelectedCulprit(null);
             setLiveVotes([]);
-            Alert.alert('تنبيه', data.message || 'تعادل في الأصوات! أعد التصويت.');
+            setVoteTieInfo(data); // عرض التعادل بدلاً من Alert عادي
         });
 
         newSocket.on('voteReceived', (data) => {
@@ -454,35 +456,19 @@ export const useGameSocket = (navigationRef) => {
                 setRoleData({ ...prevData, abilityResult: data });
             }
 
-            let title = 'نتيجة القدرة';
-            let message = '';
-
-            switch (data.type) {
-                case 'INVESTIGATE':
-                    title = '🕵️ تقرير المحقق';
-                    message = `الهدف: ${data.targetName}\nالنتيجة: ${data.result}`;
-                    break;
-                case 'REVELATION':
-                    title = '🔮 رؤية العراف';
-                    message = `القصة الحقيقية:\n${data.content}`;
-                    break;
-                case 'REVELATION_SUCCESS':
-                    title = '🔮 تم الوحي';
-                    message = data.message;
-                    setIsSubmitted(true);
-                    break;
-                case 'SABOTAGE':
-                    title = '🧨 نتيجة التخريب';
-                    message = data.message;
-                    break;
-                case 'FLASH_MEMORY':
-                    title = '👁️ ذاكرة الشاهد';
-                    message = `الكلمات المفتاحية:\n${data.keywords.join(' - ')}`;
-                    break;
-                default:
-                    message = JSON.stringify(data);
+            // REVELATION_SUCCESS يشير لإرسال ناجح — نحدّث حالة الإرسال
+            if (data.type === 'REVELATION_SUCCESS') {
+                setIsSubmitted(true);
             }
-            Alert.alert(title, message);
+
+            // تجاهل النتائج المعلّقة (isPending) — النتيجة الحقيقية ستأتي في بداية النقاش
+            if (data.isPending) return;
+
+            // عرض التنبيه مرة واحدة فقط في الجولة (لا يتكرر عند العودة للنقاش)
+            const existing = useGameStore.getState().pendingAbilityResult;
+            if (!existing) {
+                setPendingAbilityResult(data);
+            }
         });
 
         newSocket.on('startPresentation', () => {

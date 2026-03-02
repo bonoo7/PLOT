@@ -1,6 +1,46 @@
 # التوثيق التقني - مشروع الحبكة
 
-## حالة المشروع الحالية (الإصدار 2.4.0)
+## حالة المشروع الحالية (الإصدار 2.9.0)
+
+### آخر التحديثات (2026-03-02 — v2.9.0 — Identity, Blitz Colors, Tie Banner):
+- ✅ **كود الغرفة دائماً ظاهر**: `GameHeader.js` يعرض header مبسط لشاشات الهوست بدون roleData.
+- ✅ **نتيجة القدرة في هوية اللاعب**: نقطة ذهبية + قسم في modal الدور يعرض نتيجة التحقيق/التخريب.
+- ✅ **تلوين الكلمات المملوءة (Blitz)**: `getHighlightedParts()` في `ScenarioRevealCard` + إرسال `template` من الخادم.
+- ✅ **بانر التعادل للهوست**: `voteTieInfo` في الـ store + بانر برتقالي في `HostVotingScreen`.
+- ✅ **إصلاح ReferenceError**: `toggleTheme` ينتقل قبل الـ early returns في `GameHeader`.
+
+### آخر التحديثات (2026-03-01 — v2.8.0 — Ability Notification Unification):
+- ✅ **توحيد التنبيهات**: حذف `Alert.alert()` من `abilityResult`، استبداله بـ `setPendingAbilityResult`.
+- ✅ **مكوّن `ScenarioRevealCard`** (جديد): بطاقة سيناريو مع author badge (أعلى) و voter badges (أسفل) بـ negative margins.
+- ✅ **`InvestigationNote.js` موسّع**: يدعم 4 أنواع قدرات بـ `getConfig()`.
+- ✅ **إصلاح نتيجة المحقق**: حارس `isPending` يتجاهل الـ placeholder.
+- ✅ **`abilityResultSeen` flag**: التنبيه مرة واحدة فقط في الجولة.
+
+### آخر التحديثات (2026-03-01 — v2.7.0 — Bot Avatars & Admin Fixes):
+- ✅ **نظام أفاتار البوتات**: مكونات `Avatar.js`, `AvatarEditor.js`, `AvatarLayers.js` — أفاتار SVG قابلة للتخصيص مع أنيميشن.
+- ✅ **توليد أفاتار عشوائي**: `generateRandomBotAvatar` في `registerHandlers.js` يضمن تميزاً بصرياً لكل بوت.
+- ✅ **إصلاح لوحة المشرف**: إزالة علامات الهروب من قالب HTML في `adminRoutes.js` لعرض البيانات الفعلية.
+- ✅ **إحصائيات دقيقة للوحة المشرف**: `roomList.reduce` لحساب اللاعبين البشر والبوتات.
+- ✅ **تحديث `PlayerBadge`**: يدعم الآن الأفاتار الكاملة.
+- ✅ **تحسين `TrainingScreens`**: هوامش مناسبة وعرض الأفاتار في لوبي التدريب.
+
+
+- ✅ **توحيد `PlayerBadge`**: تُستخدم في Lobby, Voting, Discussion بدلاً من عرض الأسماء النصية.
+- ✅ **أصول بصرية جديدة**: 2 خلفية Noir محسّنة + 8 صور أدوار عالية الجودة + `texture_paper.png`.
+- ✅ **`ScreenWrapper.js`** (جديد): غلاف شاشة موحد.
+- ✅ **`constants/theme.js`** (جديد): ثوابت ثيم مشتركة.
+- ✅ **`ShowcaseScreen.js`** (جديد): شاشة عرض المكونات للمطورين.
+- ✅ **تنظيف الأصول القديمة**: حذف صور الأدوار القديمة ذات الهاشات المختلفة.
+
+### آخر التحديثات (2026-03-01 — v2.5.0 — Complete Server Modularization):
+- ✅ **تقسيم `server/index.js`**: من ~2500 سطر إلى 5 وحدات متخصصة (`state.js`, `game/phases.js`, `sockets/registerHandlers.js`, `routes/adminRoutes.js`, `utils/serverUtils.js`).
+- ✅ **استخراج `useGameSocket.js`**: هوك React (569 سطر) لإدارة Socket بعيداً عن `App.js`.
+- ✅ **`DraftingScreen.js`** (جديد): شاشة مستقلة لمرحلة الكتابة (Classic & Blitz).
+- ✅ **`AppNavigator.js`** (جديد): نظام تنقل مركزي بـ React Navigation.
+- ✅ **`useGameStore.js`** (جديد): متجر Zustand لإدارة الحالة.
+- ✅ **معالج `uncaughtException`**: يمنع تعطل الخادم الكامل.
+- ✅ **`test_game_flow.js`** (جديد): سكريبت اختبار تدفق اللعبة.
+- ✅ **حذف ملفات النسخ الاحتياطية**: إزالة `App.js.backup` و `App.js.old`.
 
 ### آخر التحديثات (2026-02-26 - Results Redesign & Bot Fixes):
 - ✅ **إعادة تصميم شاشة نتائج الجولة**: Minimal style — شريط لون الفريق لكل لاعب، اسم دوره، النقاط المكتسبة بالجولة (+N)، تفاصيل قابلة للتوسيع.
@@ -67,72 +107,121 @@
 - **اللغة**: JavaScript/JSX
 - **الاتصال**: WebSocket (Socket.io)
 
-## هيكلة المشروع
+## هيكلة المشروع (v3.0.0 — بعد إعادة الهيكلة الكاملة)
 ```
 plot/
-├── server/                          # Backend Node.js
-│   ├── index.js                    # منطق الخادم الرئيسي
-│   ├── githubAI.js                 # محرك الذكاء الاصطناعي (GitHub Models gpt-4o-mini)
-│   ├── botAI.js                    # منطق بوتات اللعبة
-│   ├── roles.js                    # تعريف الأدوار والفرق
+├── server/                              # Backend Node.js
+│   ├── index.js                        # نقطة الدخول فقط (~200 سطر بعد الـ Refactor)
+│   ├── state.js                        # ⭐ حالة الغرف المشتركة rooms = {}
+│   ├── githubAI.js                     # محرك الذكاء الاصطناعي (GitHub Models gpt-4o-mini)
+│   ├── botAI.js                        # منطق بوتات اللعبة وتوليد السيناريوهات
+│   ├── roles.js                        # تعريف الأدوار والفرق وترتيب الأولوية
+│   ├── game/
+│   │   └── phases.js                   # ⭐ منطق مراحل اللعبة (21 دالة، 1385 سطر)
+│   ├── sockets/
+│   │   └── registerHandlers.js         # ⭐ معالجات أحداث Socket.IO (986 سطر)
+│   ├── routes/
+│   │   └── adminRoutes.js              # ⭐ لوحة تحكم المشرف (/admin, /admin/api/rooms)
+│   ├── utils/
+│   │   └── serverUtils.js              # ⭐ دوال مساعدة (generateRoomCode, safeEmit...)
 │   ├── logic/
-│   │   ├── scoring.js              # منطق احتساب النقاط (V4)
-│   │   └── offers.js               # منطق العروض والمفاوضات (V4)
-│   ├── scenarios.js                # قاعدة بيانات السيناريوهات
-│   ├── database.js                 # نظام تخزين البيانات (JSON)
-│   ├── db.json                     # ملف قاعدة البيانات
+│   │   ├── scoring.js                  # منطق احتساب النقاط (V4)
+│   │   └── offers.js                   # منطق العروض والمفاوضات (V4)
+│   ├── scenarios.js                    # قاعدة بيانات السيناريوهات
+│   ├── database.js                     # نظام تخزين البيانات (JSON)
+│   ├── db.json                         # ملف قاعدة البيانات
 │   ├── package.json
-│   └── /public                     # ملفات الويب المبنية
+│   └── /public                         # ملفات الويب المبنية (Expo Web Build)
 │
-├── plot-mobile/                    # React Native (Expo) - الكود الموحد
-│   ├── App.js                     # المكون الرئيسي
-│   ├── app.json                   # إعدادات Expo
+├── plot-mobile/                        # React Native (Expo) - الكود الموحد
+│   ├── App.js                         # المكون الرئيسي (مصغر بعد الـ Refactor)
+│   ├── app.json                       # إعدادات Expo
 │   ├── package.json
-│   ├── /src
-│       ├── /screens                # شاشات اللعبة المنظمة
-│       │   ├── RoleSelectScreen.js        # اختيار الدور (+ زر دليل اللعبة)
-│       │   ├── HowToPlayScreen.js         # شاشة دليل اللعبة
-│       │   ├── HostScreens.js             # شاشات المضيف (Lobby)
-│       │   ├── HostGameScreens.js         # شاشات المضيف داخل اللعبة
-│       │   ├── PlayerScreens.js           # شاشات اللاعب (Login, Lobby)
-│       │   ├── GameScreens.js             # شاشات اللعبة للاعب
-│       │   ├── VotingScreens.js           # شاشات التصويت والنتائج
-│       │   ├── DiscussionScreen.js        # مرحلة النقاش
-│       │   └── TrainingScreens.js         # شاشات التدريب الفردي
+│   ├── /assets                        # الأصول البصرية
+│   │   ├── bg_dark_noir.png           # ⭐ خلفية الوضع الداكن
+│   │   ├── bg_light_noir.png          # ⭐ خلفية الوضع الفاتح
+│   │   ├── noir_desk_background.png   # خلفية المكتب
+│   │   ├── texture_paper.png          # ملمس الورق
+│   │   └── /roles                     # ⭐ 8 صور أدوار بجودة عالية
+│   │       ├── role_culprit.png
+│   │       ├── role_witness.png
+│   │       ├── role_detective.png
+│   │       ├── role_saboteur.png
+│   │       ├── role_beneficiary.png
+│   │       ├── role_minister.png
+│   │       ├── role_seer.png
+│   │       └── role_mastermind.png
+│   └── /src
+│       ├── /hooks
+│       │   └── useGameSocket.js        # ⭐ هوك Socket مخصص (569 سطر)
+│       ├── /store
+│       │   └── useGameStore.js         # ⭐ متجر Zustand للحالة المشتركة
+│       ├── /navigation
+│       │   └── AppNavigator.js         # ⭐ نظام التنقل المركزي (React Navigation)
+│       ├── /constants
+│       │   ├── config.js               # ⭐ إعدادات الاتصال (SERVER_URL...)
+│       │   └── theme.js                # ⭐ ثوابت الثيم المشتركة
+│       ├── /screens
+│       │   ├── /game
+│       │   │   ├── DraftingScreen.js   # ⭐ شاشة الكتابة المستقلة (Classic & Blitz)
+│       │   │   ├── GameScreen.js       # ⭐ شاشة اللعبة الموحدة
+│       │   │   └── gameScreenStyles.js # ⭐ Styles شاشات اللعبة
+│       │   ├── RoleSelectScreen.js     # اختيار الدور (+ زر دليل اللعبة)
+│       │   ├── HowToPlayScreen.js      # شاشة دليل اللعبة
+│       │   ├── HostScreens.js          # شاشات المضيف (Lobby)
+│       │   ├── HostGameScreens.js      # شاشات المضيف داخل اللعبة
+│       │   ├── PlayerScreens.js        # شاشات اللاعب (Login, Lobby, Avatar)
+│       │   ├── GameScreens.js          # شاشات اللعبة للاعب
+│       │   ├── VotingScreens.js        # شاشات التصويت والنتائج
+│       │   ├── DiscussionScreen.js     # مرحلة النقاش
+│       │   ├── TrainingScreens.js      # شاشات التدريب الفردي
+│       │   └── ShowcaseScreen.js       # ⭐ شاشة عرض المكونات للمطورين
 │       ├── /components
-│       │   ├── GlobalLayout.js            # المكون الحاوي الرئيسي
-│       │   ├── GlobalRTLWrapper.js        # ضمان اتجاه RTL على الويب
-│       │   └── /minimal                   # مكتبة مكونات Noir UI
-│       │       ├── MinimalLayout.js       # تخطيط الصفحة مع roomCode badge
+│       │   ├── ScreenWrapper.js        # ⭐ غلاف شاشة موحد (SafeArea + خلفية)
+│       │   ├── InvestigationNote.js    # ⭐ بطاقة نتيجة التحقيق
+│       │   ├── /avatar                 # ⭐ نظام الأفاتار الكامل
+│       │   │   ├── Avatar.js           # عرض الأفاتار مع أنيميشن
+│       │   │   ├── AvatarEditor.js     # شاشة تعديل الأفاتار
+│       │   │   └── AvatarLayers.js     # مكتبة طبقات SVG
+│       │   ├── GlobalLayout.js         # المكون الحاوي الرئيسي
+│       │   ├── GlobalRTLWrapper.js     # ضمان اتجاه RTL على الويب
+│       │   └── /minimal                # مكتبة مكونات Noir UI
+│       │       ├── MinimalLayout.js    # تخطيط الصفحة مع roomCode badge
 │       │       ├── MinimalButton.js
 │       │       ├── MinimalCard.js
+│       │       ├── GameHeader.js       # ⭐ رأس اللعبة مع مؤشر الجولة
+│       │       ├── PlayerBadge.js      # ⭐ شارة اللاعب (أفاتار + اسم)
 │       │       ├── MinimalHeader.js
 │       │       ├── MinimalInput.js
 │       │       ├── MinimalBadge.js
-│       │       ├── MinimalTimer.js        # مؤقت دائري متحرك
-│       │       ├── MinimalTypewriter.js   # نص يظهر تدريجياً
+│       │       ├── MinimalTimer.js     # مؤقت دائري متحرك
+│       │       ├── MinimalTypewriter.js # نص يظهر تدريجياً
 │       │       ├── MinimalNotification.js # إشعارات تحل محل alert()
-│       │       ├── MinimalDossier.js      # بطاقة معلومات اللاعب
-│       │       ├── MinimalStamp.js        # زر ختم (بديل Submit)
+│       │       ├── MinimalDossier.js   # بطاقة معلومات اللاعب
+│       │       ├── MinimalStamp.js     # زر ختم (بديل Submit)
 │       │       ├── MinimalSpinner.js
 │       │       ├── MinimalDivider.js
 │       │       ├── MinimalMeter.js
-│       │       └── index.js               # تصدير موحد
-│       ├── /ui                     # مكونات قديمة (محلها minimal الجديدة)
+│       │       └── index.js            # تصدير موحد
 │       └── /styles
-│           ├── theme.js            # متغيرات الألوان والتصميم
-│           └── responsive.js       # متغيرات التصميم المتجاوب
+│           ├── theme.js               # متغيرات الألوان والتصميم
+│           └── responsive.js          # متغيرات التصميم المتجاوب
 │
-├── start.js                       # سكريبت التشغيل
-├── start_fixed.js                 # سكريبت التشغيل مع IP ثابت (192.168.8.48)
-├── package.json                   # التبعيات الرئيسية (npm start → start_fixed.js)
+├── start.js                           # سكريبت التشغيل
+├── start_fixed.js                     # سكريبت التشغيل مع IP ثابت
+├── test_game_flow.js                   # ⭐ سكريبت اختبار تدفق اللعبة
+├── find_*.js / find_reveal.py         # ⭐ أدوات تشخيصية
+├── package.json                       # التبعيات الرئيسية
 │
-└── /docs                         # التوثيق
-    ├── GDD.md                    # تصميم اللعبة
-    ├── TECHNICAL_IMPLEMENTATION.md
-    ├── ROADMAP.md               # خطة العمل
+└── /docs                              # التوثيق
+    ├── GDD.md                         # تصميم اللعبة
+    ├── CHANGELOG.md                   # سجل التغييرات
+    ├── TECHNICAL_IMPLEMENTATION.md    # هذا الملف
+    ├── ROADMAP.md                     # خطة العمل
     └── الهوية البصرية.md
 ```
+
+> ⭐ = ملف جديد أو محدّث جوهرياً في إعادة الهيكلة (v2.5.0+)
 
 ## توحيد المنصات (Web & Mobile Unification)
 تم دمج واجهات الويب والجوال في كود واحد باستخدام **React Native Web**.

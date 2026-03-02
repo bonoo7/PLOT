@@ -8,17 +8,19 @@ const { handleSendOffer, handleMastermindForward, handleOfferResponse } = requir
 // Helper to generate a random avatar configuration matching the React Native component bounds
 const generateRandomBotAvatar = () => {
     const avatarColors = [
-        '#FDF5E6', '#FFF8DC', '#FFC0CB', '#FF69B4', '#FF4500', '#FFD700',
-        '#ADFF2F', '#00FF7F', '#00CED1', '#1E90FF', '#9370DB', '#8A2BE2',
-        '#A0522D', '#696969'
+        '#FDDBB4', '#FDF5E6', '#FFF8DC', '#F5CBA7', '#E59866', '#CA6F1E', '#784212',
+        '#FFC0CB', '#FF69B4', '#FFD700', '#ADFF2F', '#00FF7F', '#00BFFF',
+        '#00CED1', '#1E90FF', '#9370DB', '#8A2BE2', '#FF6347', '#FF4500',
+        '#A0522D', '#696969', '#2C3E50'
     ];
     return {
-        base: Math.floor(Math.random() * 6),
-        eyes: Math.floor(Math.random() * 7),
-        hair: Math.floor(Math.random() * 7),
-        hat: Math.floor(Math.random() * 6),
-        mouth: Math.floor(Math.random() * 8),
-        accessory: Math.floor(Math.random() * 7),
+        base: Math.floor(Math.random() * 9),
+        eyes: Math.floor(Math.random() * 10),
+        eyebrows: Math.floor(Math.random() * 5),
+        hair: Math.floor(Math.random() * 16),
+        hat: Math.floor(Math.random() * 8),
+        mouth: Math.floor(Math.random() * 10),
+        accessory: Math.floor(Math.random() * 10),
         color: avatarColors[Math.floor(Math.random() * avatarColors.length)],
     };
 };

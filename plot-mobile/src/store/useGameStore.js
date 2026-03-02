@@ -49,6 +49,9 @@ export const useGameStore = create((set) => ({
     connecting: false,
     reconnecting: false,
     selectedTrainingRole: null,
+    pendingAbilityResult: null, // نتيجة القدرة — تُعرض مرة واحدة فقط في الجولة
+    abilityResultSeen: false,   // هل تم الاطلاع على النتيجة في هذه الجولة؟
+    voteTieInfo: null,          // بيانات التعادل في التصويت { candidates, message }
 
     // Actions
     setThemeMode: (mode) => set({ themeMode: mode }),
@@ -86,6 +89,9 @@ export const useGameStore = create((set) => ({
     setRoundResults: (results) => set({ roundResults: results }),
 
     setRoleData: (data) => set({ roleData: data }),
+    setPendingAbilityResult: (result) => set({ pendingAbilityResult: result }),
+    setAbilityResultSeen: (seen) => set({ abilityResultSeen: seen }),
+    setVoteTieInfo: (info) => set({ voteTieInfo: info }),
     setConnecting: (connecting) => set({ connecting }),
     setReconnecting: (reconnecting) => set({ reconnecting }),
     setSelectedTrainingRole: (role) => set({ selectedTrainingRole: role }),
@@ -100,7 +106,10 @@ export const useGameStore = create((set) => ({
         liveVotes: [],
         revealedScenarios: [],
         currentReveal: null,
-        roundResults: null
+        roundResults: null,
+        pendingAbilityResult: null,
+        abilityResultSeen: false,
+        voteTieInfo: null,
     }),
 
     resetGame: () => set({

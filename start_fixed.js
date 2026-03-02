@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
@@ -38,8 +38,22 @@ const qrcode = require('qrcode-terminal');
 const mobileUrl = `exp://${localIP}:8081`; // استخدام مسار التطبيق الافتراضي لـ Expo
 qrcode.generate(mobileUrl, { small: true });
 
-// 3. Start both using concurrently (with stdio: inherit for interactive Expo terminal!)
 const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+
+// 3. Build web before starting dev servers
+console.log('🔨 جاري بناء نسخة الويب (expo export)...\n');
+const buildResult = spawnSync(
+    npmCmd,
+    ['run', 'build:web'],
+    { cwd: path.join(__dirname, 'plot-mobile'), stdio: 'inherit', shell: true }
+);
+if (buildResult.status !== 0) {
+    console.log('\n⚠️ تحذير: فشل بناء الويب، لكن سيتم المتابعة...\n');
+} else {
+    console.log('\n✅ تم بناء الويب بنجاح!\n');
+}
+
+// 4. Start both using concurrently (with stdio: inherit for interactive Expo terminal!)
 const child = spawn(
     npmCmd,
     ['run', 'start:dev'],

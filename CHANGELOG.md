@@ -1,5 +1,206 @@
 # CHANGELOG
 
+## [2.9.0] - 2026-03-02
+
+### ميزات الهوية، وضع Blitz، التعادل في التصويت، وكود الغرفة 🔍⚖️
+
+#### كود الغرفة دائماً ظاهر على شاشات الهوست:
+- **`GameHeader.js`**: بدلاً من إعادة `null` عند غياب `roleData`، يعرض الآن header مبسط يُظهر كود الغرفة وزر تغيير الثيم لجميع شاشات الهوست.
+
+#### نتيجة القدرة مضافة لهوية اللاعب:
+- **`GameHeader.js`**: نقطة ذهبية صغيرة (🟡) تظهر فوق أيقونة الدور عند توفر نتيجة قدرة.
+- عند النقر على أيقونة الدور → modal الدور يعرض قسم **"🔍 نتيجة قدرتك"** مع الهدف والنتيجة.
+- `roleData.abilityResult` كانت تُحفظ بالفعل في `useGameSocket.js`؛ الآن تُعرض بشكل مستدام.
+
+#### تلوين الكلمات المملوءة في وضع Blitz:
+- **`server/game/phases.js`**: يضيف `template` في `revealStep SCENARIO` emit (وضع Blitz فقط).
+- **`useGameSocket.js`**: يخزن `template` في `currentReveal`.
+- **`ScenarioRevealCard.js`**: دالة `getHighlightedParts()` تكتشف الكلمات المملوءة وتلوّنها بلون ذهبي مع خط سفلي.
+
+#### إشعار التعادل في التصويت على شاشة الهوست:
+- **`useGameStore.js`**: أضاف `voteTieInfo`, `setVoteTieInfo`، وإعادة تعيينها في `clearRoundState`.
+- **`useGameSocket.js`**: استبدل `Alert.alert` في حدث `voteTie` بـ `setVoteTieInfo(data)`.
+- **`HostGameScreens.js`**: بانر برتقالي واضح في `HostVotingScreen` يعرض أسماء المتعادلين.
+
+#### إصلاح خطأ ReferenceError:
+- **`GameHeader.js`**: نقل تعريف `toggleTheme` قبل الـ early returns لتفادي "Cannot access before initialization" في الـ bundle.
+
+#### الملفات المُعدّلة 📝:
+| الملف | التعديل |
+|-------|---------|
+| `plot-mobile/src/components/minimal/GameHeader.js` | كود الغرفة للهوست + مؤشر قدرة + modal محسّن + إصلاح ReferenceError |
+| `plot-mobile/src/components/ScenarioRevealCard.js` | دعم `template` لتلوين الكلمات المملوءة |
+| `plot-mobile/src/store/useGameStore.js` | إضافة `voteTieInfo` |
+| `plot-mobile/src/hooks/useGameSocket.js` | خزن `template` في `currentReveal` + `voteTieInfo` بدلاً من Alert |
+| `plot-mobile/src/screens/HostGameScreens.js` | بانر التعادل + `template` في ScenarioRevealCard |
+| `plot-mobile/src/screens/VotingScreens.js` | `template` في ScenarioRevealCard |
+| `server/game/phases.js` | إرسال `template` مع `revealStep SCENARIO` في وضع Blitz |
+
+---
+
+## [2.8.0] - 2026-03-01
+
+### توحيد التنبيهات، بطاقة ScenarioRevealCard، إصلاح نتيجة المحقق 🎭🔍
+
+#### توحيد نظام التنبيهات:
+- **`useGameSocket.js`**: حذف `Alert.alert()` من حدث `abilityResult`، استبداله بـ `setPendingAbilityResult`.
+- **حارس `isPending`**: تجاهل النتائج المعلّقة (placeholder) تماماً — النتيجة الحقيقية تأتي في بداية النقاش.
+- **`abilityResultSeen` flag**: التنبيه يظهر مرة واحدة فقط في الجولة؛ لا يتكرر عند العودة للنقاش.
+
+#### مكوّن `ScenarioRevealCard` الجديد:
+- Author Badge (medium) يتداخل مع الحافة العلوية بـ `marginBottom: -18`.
+- Voter Badges (small) يتداخل مع الحافة السفلية بـ `marginTop: -14`.
+- تدفق طبيعي (لا `position: absolute`) يضمن عدم تغطية النص مهما كان عدد المصوتين.
+
+#### توسيع `InvestigationNote.js`:
+- دعم 4 أنواع قدرات: `INVESTIGATE`, `SABOTAGE`, `REVELATION`, `FLASH_MEMORY`.
+- دالة `getConfig()` تُرجع header/stamp/body مناسبة لكل نوع.
+
+#### إصلاح نتيجة التحقيق:
+- الخادم يُرسل حدثَي `abilityResult`: (1) placeholder أثناء الكتابة `isPending=true`، (2) النتيجة الحقيقية عند بدء النقاش.
+- الإصلاح: `if (data.isPending) return;` يتجاهل الـ placeholder تماماً.
+
+---
+
+## [2.7.0] - 2026-03-01
+
+### أفاتار البوتات، إصلاحات لوحة المشرف، تحسينات UI/UX (Bot Avatars, Admin Fixes, UI Polish) 🤖🎨
+
+
+#### نظام أفاتار البوتات (Bot Avatar System):
+- **مكون `Avatar.js`** (145 سطر): مكون React Native يعرض أفاتاراً قابلة للتخصيص مع دعم الأنيميشن عبر `Animated.Value`.
+- **مكون `AvatarEditor.js`** (191 سطر): شاشة تعديل الأفاتار تتيح للاعب اختيار الطبقات (قاعدة، شعر، قبعة، عيون، فم، إكسسوار).
+- **مكون `AvatarLayers.js`** (318 سطر): مكتبة طبقات SVG الكاملة لرسم الأفاتار، تحتوي على مجموعات متعددة لكل خاصية بصرية.
+- **توليد أفاتار عشوائي للبوتات**: الدالة `generateRandomBotAvatar` في `server/sockets/registerHandlers.js` تُضاف عند إضافة البوت للغرفة.
+- **تحديث `PlayerBadge.js`**: يعرض الآن الأفاتار بجانب الاسم بدلاً من الأحرف الأولى فقط.
+
+#### إصلاح لوحة تحكم المشرف (Admin Dashboard Fixes):
+- **إصلاح عرض المتغيرات الديناميكية**: إزالة علامات الهروب (`\\`) من `${...}` في قالب HTML بـ `adminRoutes.js` لإظهار البيانات الفعلية.
+- **إحصائيات دقيقة**: استخدام `roomList.reduce` و `filter` لحساب عدد الغرف النشطة، اللاعبين البشر، والبوتات بدقة.
+
+#### تحسين شاشة التدريب (TrainingScreens):
+- **إضافة هوامش وحواشي مناسبة**: ضمان ظهور جميع أزرار التحكم على الشاشات الصغيرة دون قطع.
+- **تحسين عرض البوتات في قائمة التدريب**: ظهور الأفاتار لكل بوت في لوبي التدريب.
+
+#### شاشة اللاعب (PlayerScreens):
+- **إضافة خيار تعديل الأفاتار** قبل الدخول للغرفة.
+- **تحسين تجربة الانضمام**: عرض الأفاتار الحالي للاعب في اللوبي.
+
+#### الملفات المُعدّلة 📝:
+| الملف | التعديل |
+|-------|---------|
+| `plot-mobile/src/components/avatar/Avatar.js` | **جديد** — مكون عرض الأفاتار مع أنيميشن |
+| `plot-mobile/src/components/avatar/AvatarEditor.js` | **جديد** — شاشة تعديل الأفاتار |
+| `plot-mobile/src/components/avatar/AvatarLayers.js` | **جديد** — مكتبة طبقات SVG للأفاتار |
+| `plot-mobile/src/components/minimal/PlayerBadge.js` | تحديث لدعم عرض الأفاتار |
+| `plot-mobile/src/screens/PlayerScreens.js` | إضافة خيار تعديل الأفاتار |
+| `plot-mobile/src/screens/TrainingScreens.js` | تحسين الهوامش وعرض الأفاتار |
+| `plot-mobile/src/store/useGameStore.js` | إضافة حقل أفاتار للاعب |
+| `server/routes/adminRoutes.js` | إصلاح المتغيرات الديناميكية في القالب |
+| `server/sockets/registerHandlers.js` | إضافة توليد أفاتار عشوائي للبوتات |
+| `README.md` | تحديث الهيكل والميزات |
+| `TECHNICAL_IMPLEMENTATION.md` | توثيق نظام الأفاتار ولوحة المشرف |
+
+---
+
+## [2.6.0] - 2026-03-01
+
+### تلميع واجهة المستخدم وتوحيد PlayerBadge (UI Polish: PlayerBadge Unification) 🎨
+
+#### توحيد `PlayerBadge` عبر جميع الشاشات:
+- **Lobby Screen**: استبدال عرض الأسماء النصية البسيطة بمكون `PlayerBadge` لكل لاعب.
+- **Voting Screens**: استخدام `PlayerBadge` في قائمة التصويت وعرض المُصوَّت عليه.
+- **Discussion Screen**: عرض أفاتار المتحدث الحالي ضمن `PlayerBadge` بدلاً من النص.
+
+#### أصول بصرية جديدة (New Visual Assets):
+- إضافة `bg_dark_noir.png` و `bg_light_noir.png`: خلفيتان محسّنتان للوضعَين الليلي والنهاري.
+- إضافة 8 صور أدوار جديدة (`role_beneficiary.png`, `role_culprit.png`, `role_detective.png`, `role_mastermind.png`, `role_minister.png`, `role_saboteur.png`, `role_seer.png`, `role_witness.png`) بدقة أعلى ومصممة خصيصاً لهوية Bureaucratic Noir.
+- إضافة `texture_paper.png`: ملمس ورق محسَّن.
+- **تنظيف الأصول القديمة**: حذف صور الأدوار القديمة ذات أسماء الهاش المختلفة.
+
+#### مكونات UI محسّنة:
+- **`ScreenWrapper.js`** (جديد، 49 سطر): مكون غلاف مشترك للشاشات يوحد الخلفية والحواشي الآمنة (SafeArea).
+- **`GameHeader.js`** (محسّن، 330 سطر): رأس صفحة اللعبة مع دعم أزرار سريعة ومؤشر الجولة.
+- **`MinimalButton.js`**: تحسين التنسيق والاستجابة.
+- **`MinimalCard.js`**: تقليل الحواشي وتحسين الظلال.
+- **`MinimalLayout.js`**: إعادة هيكلة لدعم أنماط تخطيط متعددة.
+- **`constants/theme.js`** (جديد، 43 سطر): ثوابت الثيم المشتركة بين المكونات.
+- **`ShowcaseScreen.js`** (جديد، 123 سطر): شاشة عرض لمكونات Noir UI للمطورين.
+
+#### الملفات المُعدّلة 📝:
+| الملف | التعديل |
+|-------|---------|
+| `plot-mobile/src/components/ScreenWrapper.js` | **جديد** — غلاف موحد للشاشات |
+| `plot-mobile/src/components/minimal/GameHeader.js` | تحسين رأس اللعبة |
+| `plot-mobile/src/components/minimal/PlayerBadge.js` | توحيد الأفاتار والاسم |
+| `plot-mobile/src/components/minimal/MinimalButton.js` | تحسين التنسيق |
+| `plot-mobile/src/components/minimal/MinimalCard.js` | تحسين الحواشي |
+| `plot-mobile/src/components/minimal/MinimalLayout.js` | إعادة هيكلة التخطيط |
+| `plot-mobile/src/constants/theme.js` | **جديد** — ثوابت الثيم |
+| `plot-mobile/src/screens/ShowcaseScreen.js` | **جديد** — شاشة عرض المكونات |
+| `plot-mobile/src/screens/DiscussionScreen.js` | توحيد PlayerBadge |
+| `plot-mobile/src/screens/HostGameScreens.js` | توحيد PlayerBadge |
+| `plot-mobile/assets/bg_dark_noir.png` | **جديد** — خلفية داكنة محسّنة |
+| `plot-mobile/assets/bg_light_noir.png` | **جديد** — خلفية فاتحة محسّنة |
+| `plot-mobile/assets/roles/role_*.png` | **جديد** — 8 صور أدوار بجودة عالية |
+
+---
+
+## [2.5.0] - 2026-03-01
+
+### إعادة الهيكلة الكاملة للخادم والتطبيق (Complete Server Modularization) 🏗️
+
+#### إعادة هيكلة الخادم (Server Refactoring):
+- **تقسيم `server/index.js`** (كان ~2500 سطر) إلى وحدات متخصصة:
+  - `server/state.js` (14 سطر): حالة الغرف المشتركة `rooms = {}` — نقطة مركزية واحدة.
+  - `server/game/phases.js` (1385 سطر): منطق مراحل اللعبة (21 دالة) — `startDraftingPhase`, `startQualityVoting`, `handleRoundResults`, إلخ.
+  - `server/sockets/registerHandlers.js` (986 سطر): معالجات أحداث Socket.IO كاملة.
+  - `server/routes/adminRoutes.js` (98 سطر): مسارات لوحة تحكم المشرف (`/admin`, `/admin/api/rooms`).
+  - `server/utils/serverUtils.js` (119 سطر): دوال مساعدة مشتركة (`generateRoomCode`, `safeEmit`, إلخ).
+
+#### إعادة هيكلة التطبيق (App Refactoring):
+- **استخراج `useGameSocket.js`** (569 سطر): هوك React مخصص يُدير دورة حياة الـ Socket (الاتصال، إعادة الاتصال، معالجات الأحداث) بعيداً عن `App.js`.
+- **شاشة `DraftingScreen.js`** (477 سطر): شاشة مستقلة لمرحلة الكتابة تدعم وضعَي Classic و Blitz.
+- **`GameScreen.js`** (129 سطر): شاشة اللعبة الموحدة مع التوجيه الديناميكي بين المراحل.
+- **`gameScreenStyles.js`** (358 سطر): ملف styles مستقل لشاشات اللعبة.
+- **`AppNavigator.js`** (79 سطر): نظام التنقل المركزي باستخدام React Navigation.
+- **`useGameStore.js`** (122 سطر): متجر Zustand لإدارة الحالة المشتركة.
+
+#### إصلاحات الأخطاء (Bug Fixes):
+- **إصلاح `generateRoomCode()`**: إضافة معامل `rooms` المفقود بعد الـ Refactor.
+- **إصلاح `io is not defined`**: استخدام `ioInstance` في `phases.js` بعد الفصل.
+- **معالج `uncaughtException`**: `process.on('uncaughtException')` لمنع تعطل الخادم الكامل.
+- **حماية `endGame()`**: تغليف عمليات قاعدة البيانات بـ `try-catch` لضمان الاستمرارية.
+
+#### تحسينات الأدوات (Tooling):
+- **`test_game_flow.js`** (69 سطر): سكريبت اختبار تدفق اللعبة الكامل بدون واجهة رسومية.
+- **`find_*.js` / `find_reveal.py`**: أدوات تشخيصية للبحث عن أماكن معينة في الكود.
+- **`package.json`**: إضافة تبعية `zustand` لإدارة الحالة.
+- **حذف ملفات النسخ الاحتياطية**: إزالة `App.js.backup` و `App.js.old` من المستودع.
+
+#### الملفات المُعدّلة 📝:
+| الملف | التعديل |
+|-------|---------|
+| `server/state.js` | **جديد** — حالة الغرف المشتركة |
+| `server/game/phases.js` | **جديد** — منطق مراحل اللعبة (21 دالة) |
+| `server/sockets/registerHandlers.js` | **جديد** — معالجات Socket.IO |
+| `server/routes/adminRoutes.js` | **جديد** — مسارات لوحة المشرف |
+| `server/utils/serverUtils.js` | **جديد** — دوال مساعدة |
+| `server/index.js` | تصغير جذري (من ~2500 → ~200 سطر) |
+| `plot-mobile/src/hooks/useGameSocket.js` | **جديد** — هوك Socket مخصص |
+| `plot-mobile/src/screens/game/DraftingScreen.js` | **جديد** — شاشة الكتابة المستقلة |
+| `plot-mobile/src/screens/game/GameScreen.js` | **جديد** — شاشة اللعبة الموحدة |
+| `plot-mobile/src/screens/game/gameScreenStyles.js` | **جديد** — Styles مستقلة |
+| `plot-mobile/src/navigation/AppNavigator.js` | **جديد** — نظام التنقل |
+| `plot-mobile/src/store/useGameStore.js` | **جديد** — متجر Zustand |
+| `plot-mobile/src/constants/config.js` | **جديد** — إعدادات الاتصال |
+| `plot-mobile/App.js` | تصغير جذري (نقل المنطق للهوكس والشاشات) |
+| `start_fixed.js` | تحديث لدعم الهيكلة الجديدة |
+| `test_game_flow.js` | **جديد** — سكريبت اختبار شامل |
+| `README.md` | تحديث هيكل المشروع v3.0.0 |
+
+---
+
 ## [2.4.0] - 2026-02-26
 
 ### إعادة تصميم شاشة النتائج وإصلاح البوتات (Results Redesign & Bot Fixes) 🏆🤖

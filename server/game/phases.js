@@ -416,6 +416,7 @@ function startDramaticReveal(roomCode) {
                 data: {
                     index: scenario.index,
                     text: scenario.answer,
+                    template: room.gameMode === 'BLITZ' ? (room.currentScenario?.template || null) : null,
                     position: idx + 1,
                     total: scenariosWithVotes.length
                 }

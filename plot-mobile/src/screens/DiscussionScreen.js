@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import { useGameStore } from '../store/useGameStore';
 import { useSocket, ROUTES } from '../hooks/useGameSocket';
@@ -13,6 +13,7 @@ import { theme } from '../styles/theme';
 import { spacing, fonts, borderRadius } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 import { InvestigationNote } from '../components/InvestigationNote';
+import { ScenarioRevealCard } from '../components/ScenarioRevealCard';
 
 /**
  * DiscussionScreen - Manages the discussion phase
@@ -31,20 +32,9 @@ export const DiscussionScreen = ({ isHost = false }) => {
     const speakingPlayerId = useGameStore((state) => state.speakingPlayerId);
     const scenarios = useGameStore((state) => state.revealedScenarios) || [];
     const hint = useGameStore((state) => state.lastHint);
-
-    // نتيجة تحقيق المحقق — تُعرض عند بداية النقاش كنوتة Noir
-    const [investigationNote, setInvestigationNote] = useState(null);
-
-    useEffect(() => {
-        if (!socket) return;
-        const handleAbilityResult = ({ type, targetName, result, isSabotaged }) => {
-            if (type === 'INVESTIGATE') {
-                setInvestigationNote({ targetName, result, isSabotaged });
-            }
-        };
-        socket.on('abilityResult', handleAbilityResult);
-        return () => socket.off('abilityResult', handleAbilityResult);
-    }, [socket]);
+    const pendingAbilityResult = useGameStore((state) => state.pendingAbilityResult);
+    const abilityResultSeen = useGameStore((state) => state.abilityResultSeen);
+    const setAbilityResultSeen = useGameStore((state) => state.setAbilityResultSeen);
 
     const speakingPlayer = players.find(p => p.id === speakingPlayerId);
 
@@ -64,13 +54,17 @@ export const DiscussionScreen = ({ isHost = false }) => {
 
     return (
         <MinimalLayout roleData={roleData} roomCode={roomCode} onRefresh={handleRefresh}>
-            {/* نوتة نتيجة تحقيق المحقق */}
+            {/* نوتة نتيجة القدرة — تُعرض مرة واحدة في الجولة */}
             <InvestigationNote
-                visible={!!investigationNote}
-                targetName={investigationNote?.targetName}
-                result={investigationNote?.result}
-                isSabotaged={investigationNote?.isSabotaged}
-                onDismiss={() => setInvestigationNote(null)}
+                visible={!!pendingAbilityResult && !abilityResultSeen}
+                type={pendingAbilityResult?.type}
+                targetName={pendingAbilityResult?.targetName}
+                result={pendingAbilityResult?.result}
+                isSabotaged={pendingAbilityResult?.isSabotaged}
+                content={pendingAbilityResult?.content}
+                message={pendingAbilityResult?.message}
+                keywords={pendingAbilityResult?.keywords}
+                onDismiss={() => setAbilityResultSeen(true)}
             />
 
             <View style={styles.container}>
@@ -79,12 +73,9 @@ export const DiscussionScreen = ({ isHost = false }) => {
                     subtitle={isHost ? "إدارة النقاش" : "استمع للمناقشة"}
                 />
 
-                {/* Display Hint if available */}
+                {/* Display Hint if available — سطر inline مدمج */}
                 {hint && (
-                    <MinimalCard style={styles.hintCard}>
-                        <Text style={styles.hintTitle}>💡 تلميح:</Text>
-                        <Text style={styles.hintText}>{hint}</Text>
-                    </MinimalCard>
+                    <Text style={styles.hintInline}>💡 <Text style={styles.hintInlineText}>{hint}</Text></Text>
                 )}
 
                 <View style={[styles.contentWrapper, isDesktop && styles.contentWrapperDesktop]}>
@@ -137,32 +128,16 @@ export const DiscussionScreen = ({ isHost = false }) => {
                                     <View style={styles.scenariosListContainer}>
                                         <ScrollView horizontal contentContainerStyle={styles.scenariosScrollContent}>
                                             {scenarios.map((s, i) => (
-                                                <View key={i} style={styles.miniScenarioCard}>
-                                                    <ScrollView style={{ flex: 1 }}>
-                                                        <Text style={styles.miniScenarioText}>{s.text || s.answer}</Text>
-                                                    </ScrollView>
-
-                                                    {/* Voters Display */}
-                                                    {s.voters && s.voters.length > 0 && (
-                                                        <View style={styles.votersContainer}>
-                                                            <Text style={styles.votersLabel}>المصوتون:</Text>
-                                                            <View style={[styles.votersList, { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.s, marginTop: spacing.s }]}>
-                                                                {s.voters.map((v, idx) => (
-                                                                    <PlayerBadge key={idx} name={typeof v === 'object' ? v.name : v} size="small" />
-                                                                ))}
-                                                            </View>
-                                                        </View>
-                                                    )}
-
-                                                    <View style={[styles.miniScenarioMeta, { flexDirection: 'column', gap: spacing.s, alignItems: 'flex-start' }]}>
-                                                        {s.author && (
-                                                            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.s }}>
-                                                                <Text style={{ fontSize: 12 }}>الكاتب:</Text>
-                                                                <PlayerBadge name={s.author} size="small" />
-                                                            </View>
-                                                        )}
-                                                        <Text style={styles.miniScenarioVotes}>⭐ {s.voteCount || 0}</Text>
-                                                    </View>
+                                                <View key={i} style={styles.scenarioCardWrapper}>
+                                                    <ScenarioRevealCard
+                                                        text={s.text || s.answer}
+                                                        author={s.author}
+                                                        voters={s.voters && s.voters.length > 0
+                                                            ? s.voters.map(v => typeof v === 'object' ? v.name : v)
+                                                            : undefined}
+                                                        isComplete={!!s.author}
+                                                    />
+                                                    <Text style={styles.miniScenarioVotes}>⭐ {s.voteCount || 0}</Text>
                                                 </View>
                                             ))}
                                         </ScrollView>
@@ -227,7 +202,7 @@ const styles = StyleSheet.create({
     contentWrapper: {
         flex: 1,
         width: '100%',
-        gap: spacing.xl,
+        gap: spacing.m,
         alignItems: 'center',
         flexDirection: 'column',
     },
@@ -238,7 +213,20 @@ const styles = StyleSheet.create({
         paddingHorizontal: spacing.l,
     },
 
-    // Hint
+    // Hint — inline
+    hintInline: {
+        color: '#D4AF37',
+        fontSize: fonts.small,
+        fontFamily: theme.fonts.main,
+        marginBottom: spacing.xs,
+        textAlign: 'center',
+    },
+    hintInlineText: {
+        color: '#F4E4C1',
+        fontFamily: theme.fonts.main,
+    },
+
+    // Hint (legacy, unused but kept for reference)
     hintCard: {
         width: '100%',
         backgroundColor: 'rgba(212, 175, 55, 0.1)',
@@ -270,8 +258,8 @@ const styles = StyleSheet.create({
     mainPanelContent: {
         alignItems: 'center',
         justifyContent: 'flex-start',
-        gap: spacing.xl,
-        paddingBottom: spacing.xl,
+        gap: spacing.m,
+        paddingBottom: spacing.l,
     },
     mainPanelWithSide: {
         flex: 2,
@@ -436,14 +424,9 @@ const styles = StyleSheet.create({
         gap: spacing.l,
         paddingHorizontal: spacing.s,
     },
-    miniScenarioCard: {
-        width: 320,
-        backgroundColor: 'rgba(255, 255, 255, 0.95)',
-        borderRadius: borderRadius.medium,
-        padding: spacing.l,
-        justifyContent: 'flex-start',
-        borderWidth: 1,
-        borderColor: '#E0E0E0',
+    scenarioCardWrapper: {
+        width: 280,
+        alignItems: 'center',
     },
     miniScenarioText: {
         fontFamily: theme.fonts.main,

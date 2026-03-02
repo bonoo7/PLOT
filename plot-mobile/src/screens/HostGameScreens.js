@@ -8,6 +8,7 @@ import MinimalHeader from '../components/minimal/MinimalHeader';
 import MinimalCard from '../components/minimal/MinimalCard';
 import MinimalButton from '../components/minimal/MinimalButton';
 import { PlayerBadge } from '../components/minimal/PlayerBadge';
+import { ScenarioRevealCard } from '../components/ScenarioRevealCard';
 import { theme } from '../styles/theme';
 import { spacing, fonts, borderRadius, moderateScale } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
@@ -146,6 +147,7 @@ export const HostVotingScreen = ({ route }) => {
   const scenarios = useGameStore((state) => state.scenarios) || [];
   const liveVotes = useGameStore((state) => state.liveVotes) || [];
   const players = useGameStore((state) => state.players) || [];
+  const voteTieInfo = useGameStore((state) => state.voteTieInfo);
 
   const votedCount = liveVotes.length;
   const totalPlayers = players.length;
@@ -165,6 +167,19 @@ export const HostVotingScreen = ({ route }) => {
           title={votingType === 'quality' ? 'تصويت الجودة' : 'تصويت الجاني'}
           subtitle={`${votedCount} من ${totalPlayers} صوتوا`}
         />
+
+        {/* بانر التعادل في التصويت */}
+        {voteTieInfo && (
+          <View style={styles.tieBanner}>
+            <Text style={styles.tieBannerTitle}>⚖️ تعادل في الأصوات!</Text>
+            <Text style={styles.tieBannerSub}>إعادة التصويت بين:</Text>
+            <View style={styles.tieCandidatesRow}>
+              {(voteTieInfo.candidates || []).map((name, i) => (
+                <PlayerBadge key={i} name={name} size="small" />
+              ))}
+            </View>
+          </View>
+        )}
 
         <View style={styles.gridContainer}>
           <View style={styles.leftColumn}>
@@ -280,33 +295,35 @@ export const HostResultsScreen = () => {
 
         <ScrollView contentContainerStyle={styles.resScroll} showsVerticalScrollIndicator={false}>
 
-          {/* ── خطوة 1: المستبعد ── */}
-          {eliminatedPlayer && (
-            <MinimalCard style={styles.resEliminatedCard}>
-              <Text style={styles.resSmallLabel}>تم استبعاد</Text>
-              {revealStep >= 1 ? (
-                <View style={{ marginVertical: spacing.s }}>
-                  <PlayerBadge name={eliminatedPlayer.name} size="large" />
-                </View>
-              ) : (
-                <Text style={styles.resEliminatedName}>···</Text>
-              )}
-              {revealStep >= 1 && detailedEliminated?.role && detailedEliminated.role !== '؟؟؟' && (
+          {/* ── خطوة 1: المستبعد (سطر مدمج) ── */}
+          {eliminatedPlayer && revealStep >= 1 && (
+            <View style={styles.resEliminatedRow}>
+              <Text style={styles.resSmallLabel}>تم استبعاد:</Text>
+              <PlayerBadge name={eliminatedPlayer.name} size="small" />
+              {detailedEliminated?.role && detailedEliminated.role !== '؟؟؟' && (
                 <Text style={[styles.resRoleTag, { color: detailedEliminated.isCulprit ? '#e74c3c' : '#3498db' }]}>
                   {detailedEliminated.role}
                 </Text>
               )}
-            </MinimalCard>
+            </View>
+          )}
+          {eliminatedPlayer && revealStep < 1 && (
+            <View style={styles.resEliminatedRow}>
+              <Text style={styles.resSmallLabel}>تم استبعاد:</Text>
+              <Text style={{ color: '#888' }}>···</Text>
+            </View>
           )}
 
           {/* ── خطوة 2: النتيجة الكاملة ── */}
           {revealStep >= 2 && (
             <>
-              {/* لافتة الفائز */}
-              <View style={[styles.resBanner, { backgroundColor: bannerBg }]}>
-                <Text style={styles.resBannerTitle}>{winnerText}</Text>
-                {reason ? <Text style={styles.resBannerReason}>{reason}</Text> : null}
-              </View>
+              {/* لافتة الفائز — تُخفى عند استمرار الجولة */}
+              {!isContinue && (
+                <View style={[styles.resBanner, { backgroundColor: bannerBg }]}>
+                  <Text style={styles.resBannerTitle}>{winnerText}</Text>
+                  {reason ? <Text style={styles.resBannerReason}>{reason}</Text> : null}
+                </View>
+              )}
 
               {/* ترتيب النقاط مع طريقة الكسب */}
               <MinimalCard style={styles.resScoresCard}>
@@ -380,6 +397,7 @@ export const HostDramaticRevealScreen = () => {
   const roomCode = useGameStore((state) => state.roomCode);
   const revealedScenarios = useGameStore((state) => state.revealedScenarios) || [];
   const currentReveal = useGameStore((state) => state.currentReveal);
+  const abilityResult = useGameStore((state) => state.roleData?.abilityResult);
 
   // Check for HINT type first
   if (currentReveal?.type === 'HINT') {
@@ -398,46 +416,23 @@ export const HostDramaticRevealScreen = () => {
     );
   }
 
-  // currentReveal structure updates over time: { text, index, voters, voteCount, author }
-  // We determine what to show based on what properties exist
-
   const showVoters = currentReveal?.voters !== undefined;
   const showAuthor = currentReveal?.author !== undefined;
 
   return (
     <MinimalLayout roomCode={roomCode}>
-      <View style={styles.centerContent}>
+      <ScrollView contentContainerStyle={styles.centerContent} showsVerticalScrollIndicator={false}>
         <MinimalHeader title="كشف النتائج" />
 
         {currentReveal ? (
-          <View style={{ width: '100%', alignItems: 'center' }}>
-            {/* 3. Author (Reveal Step 3 - Prominent at the top outside the card) */}
-            {showAuthor && (
-              <View style={[styles.authorSection, { marginTop: 0, marginBottom: spacing.m }]}>
-                <PlayerBadge name={currentReveal.author} size="large" />
-              </View>
-            )}
-
-            <MinimalCard style={[styles.revealCard, showAuthor && styles.revealCardComplete]}>
-              {/* 1. Scenario Text */}
-              <Text style={styles.revealText}>"{currentReveal.text}"</Text>
-            </MinimalCard>
-
-            {/* 2. Voters (Reveal Step 2 - Badges outside bottom) */}
-            {showVoters && (
-              <View style={[styles.votersSection, { backgroundColor: 'transparent', padding: 0 }]}>
-                <View style={[styles.votersListHorizontal, { gap: spacing.m, marginTop: spacing.s }]}>
-                  {currentReveal.voters.length > 0 ? (
-                    currentReveal.voters.map((v, i) => (
-                      <PlayerBadge key={i} name={v} size="medium" />
-                    ))
-                  ) : (
-                    <Text style={styles.noVotesText}>لا أحد</Text>
-                  )}
-                </View>
-              </View>
-            )}
-          </View>
+          <ScenarioRevealCard
+            text={currentReveal.text}
+            template={currentReveal.template}
+            author={showAuthor ? currentReveal.author : undefined}
+            voters={showVoters ? currentReveal.voters : undefined}
+            isComplete={showAuthor}
+            style={{ maxWidth: 520 }}
+          />
         ) : (
           <Text style={styles.waitingText}>جاري التحضير...</Text>
         )}
@@ -450,7 +445,6 @@ export const HostDramaticRevealScreen = () => {
               <View style={{ marginVertical: spacing.xs }}>
                 <PlayerBadge name={s.author} size="small" />
               </View>
-              {/* Show Voters */}
               <View style={styles.miniVotersList}>
                 <Text style={styles.miniVotersLabel}>أصوات ({s.voteCount}):</Text>
                 <Text numberOfLines={1} style={styles.miniVotersNames}>
@@ -460,7 +454,7 @@ export const HostDramaticRevealScreen = () => {
             </View>
           ))}
         </ScrollView>
-      </View>
+      </ScrollView>
     </MinimalLayout>
   );
 };
@@ -597,6 +591,19 @@ const styles = StyleSheet.create({
   resultBarFill: { height: '100%', backgroundColor: theme.colors.secondary, borderRadius: 6 },
 
   // Results Screen v4
+  resEliminatedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s,
+    backgroundColor: '#1A1A1A',
+    borderColor: '#333',
+    borderWidth: 1,
+    borderRadius: borderRadius.small,
+    paddingHorizontal: spacing.m,
+    paddingVertical: spacing.s,
+    marginBottom: spacing.s,
+    flexWrap: 'wrap',
+  },
   resContainer: { flex: 1, width: '100%', padding: spacing.m },
   resScroll: { paddingBottom: spacing.xl },
   resEliminatedCard: { backgroundColor: '#1A1A1A', borderColor: '#333', alignItems: 'center', padding: spacing.m, marginBottom: spacing.l },
@@ -608,7 +615,7 @@ const styles = StyleSheet.create({
   resBannerReason: { color: '#EEE', fontSize: 14, fontFamily: theme.fonts.main, marginTop: 4, textAlign: 'center' },
   resScoresCard: { padding: spacing.m },
   resScoresTitle: { fontSize: 18, fontFamily: theme.fonts.bold, color: '#333', marginBottom: spacing.m, textAlign: 'center' },
-  resScoreRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.s, borderBottomWidth: 1, borderBottomColor: '#EEE' },
+  resScoreRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#EEE' },
   resScoreRowFirst: { backgroundColor: 'rgba(218,165,32,0.1)', borderRadius: borderRadius.small },
   resScoreRank: { width: 30, color: '#888', fontFamily: theme.fonts.bold },
   resTeamStripe: { width: 4, height: '80%', borderRadius: 2, marginHorizontal: 8 },
@@ -712,5 +719,36 @@ const styles = StyleSheet.create({
     color: '#8B4513',
     fontFamily: theme.fonts.main,
     textAlign: 'center',
-  }
+  },
+
+  // Vote Tie Banner
+  tieBanner: {
+    width: '100%',
+    backgroundColor: '#FFF3CD',
+    borderWidth: 2,
+    borderColor: '#FF8C00',
+    borderRadius: borderRadius.medium,
+    padding: spacing.m,
+    alignItems: 'center',
+    gap: spacing.s,
+    marginBottom: spacing.s,
+  },
+  tieBannerTitle: {
+    fontSize: fonts.large,
+    fontFamily: theme.fonts.bold,
+    color: '#FF6600',
+    textAlign: 'center',
+  },
+  tieBannerSub: {
+    fontSize: fonts.small,
+    fontFamily: theme.fonts.main,
+    color: '#8B4513',
+    textAlign: 'center',
+  },
+  tieCandidatesRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    gap: spacing.s,
+  },
 });

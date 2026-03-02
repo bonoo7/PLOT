@@ -23,12 +23,31 @@ const GameHeader = ({ roleData, roomCode, onRefresh }) => {
     const themeMode = useGameStore(state => state.themeMode);
     const setThemeMode = useGameStore(state => state.setThemeMode);
     const t = getTheme(themeMode);
+    const toggleTheme = () => setThemeMode(themeMode === 'light' ? 'dark' : 'light');
 
-    if (!roleData) return null;
+    if (!roleData && !roomCode) return null;
 
-    const toggleTheme = () => {
-        setThemeMode(themeMode === 'light' ? 'dark' : 'light');
-    };
+    // شاشات الهوست: لا يوجد roleData، نعرض header مبسط مع كود الغرفة فقط
+    if (!roleData) {
+        return (
+            <View style={[styles.headerContainer, isDesktop && styles.headerDesktop]}>
+                <View style={[styles.card, { backgroundColor: t.cardBg, borderColor: t.cardBorder, justifyContent: 'space-between' }]}>
+                    <TouchableOpacity style={styles.refreshButton} onPress={toggleTheme}>
+                        <Text style={[styles.refreshIcon, { color: t.text }]}>
+                            {themeMode === 'light' ? '🌙' : '☀️'}
+                        </Text>
+                    </TouchableOpacity>
+                    {roomCode && (
+                        <View style={styles.codeContainer}>
+                            <Text style={[styles.codeLabel, { color: t.textMuted }]}>CODE</Text>
+                            <Text style={[styles.codeValue, { color: t.text }]}>{roomCode}</Text>
+                        </View>
+                    )}
+                    <View style={{ width: 36 }} />
+                </View>
+            </View>
+        );
+    }
 
     return (
         <View style={[styles.headerContainer, isDesktop && styles.headerDesktop]}>
@@ -78,6 +97,9 @@ const GameHeader = ({ roleData, roomCode, onRefresh }) => {
                             />
                         ) : (
                             <Text style={styles.roleEmoji}>{roleData.emoji || '👤'}</Text>
+                        )}
+                        {roleData.abilityResult && !roleData.abilityResult.isPending && (
+                            <View style={styles.abilityDot} />
                         )}
                     </TouchableOpacity>
                 </View>
@@ -142,6 +164,23 @@ const GameHeader = ({ roleData, roomCode, onRefresh }) => {
                                         }
                                         return <Text style={styles.modalText}>{JSON.stringify(si)}</Text>;
                                     })()}
+                                </>
+                            )}
+
+                            {roleData.abilityResult && !roleData.abilityResult.isPending && (
+                                <>
+                                    <View style={styles.divider} />
+                                    <Text style={styles.modalLabel}>🔍 نتيجة قدرتك:</Text>
+                                    <View style={styles.abilityResultBox}>
+                                        {roleData.abilityResult.targetName && (
+                                            <Text style={styles.abilityResultTarget}>
+                                                الهدف: {roleData.abilityResult.targetName}
+                                            </Text>
+                                        )}
+                                        <Text style={styles.abilityResultText}>
+                                            {roleData.abilityResult.result || roleData.abilityResult.message || ''}
+                                        </Text>
+                                    </View>
                                 </>
                             )}
                         </ScrollView>
@@ -324,6 +363,38 @@ const styles = StyleSheet.create({
         height: 1,
         backgroundColor: '#D2B48C',
         marginVertical: spacing.m,
+    },
+    abilityDot: {
+        position: 'absolute',
+        top: 2,
+        right: 2,
+        width: 10,
+        height: 10,
+        borderRadius: 5,
+        backgroundColor: '#DAA520',
+        borderWidth: 1.5,
+        borderColor: '#FFF',
+    },
+    abilityResultBox: {
+        backgroundColor: 'rgba(139,69,19,0.08)',
+        borderRadius: 8,
+        padding: spacing.s,
+        marginBottom: spacing.s,
+        borderLeftWidth: 3,
+        borderLeftColor: '#8B4513',
+    },
+    abilityResultTarget: {
+        fontFamily: theme.fonts.bold,
+        fontSize: fonts.small,
+        color: '#8B4513',
+        marginBottom: 4,
+        textAlign: 'right',
+    },
+    abilityResultText: {
+        fontFamily: theme.fonts.main,
+        fontSize: fonts.medium,
+        color: '#333',
+        textAlign: 'right',
     },
 });
 

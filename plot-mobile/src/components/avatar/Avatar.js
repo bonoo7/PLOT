@@ -1,60 +1,44 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Animated, StyleSheet, Easing } from 'react-native';
 import Svg from 'react-native-svg';
-import { bases, eyes, hairs, hats, mouths, accessories } from './AvatarLayers';
+import { bases, eyes, eyebrows, hairs, hats, mouths, accessories } from './AvatarLayers';
 
 /**
  * Avatar Component - Displays the customizable SVG Avatar.
- * 
- * @param {Object} config { base, eyes, hair, mouth, color }
+ *
+ * @param {Object} config { base, eyes, eyebrows, hair, hat, mouth, accessory, color }
  * @param {number} size Size of the avatar (width & height)
  * @param {boolean} isSpeaking True to enable jiggle animation
  * @param {boolean} disableAnimation True to turn off breathing/blinking
  */
 export const Avatar = ({ config, size = 60, isSpeaking = false, disableAnimation = false, style }) => {
-    // Use Animated for simplicity if reanimated is not strictly required.
     const breatheAnim = useRef(new Animated.Value(0)).current;
     const speakAnim = useRef(new Animated.Value(0)).current;
     const blinkAnim = useRef(new Animated.Value(1)).current;
 
-    // 1. Breathing Animation (slow up/down & scale)
+    // 1. Breathing Animation
     useEffect(() => {
         if (disableAnimation) return;
-
         Animated.loop(
             Animated.sequence([
-                Animated.timing(breatheAnim, {
-                    toValue: 1,
-                    duration: 2000,
-                    useNativeDriver: true,
-                    easing: Easing.inOut(Easing.sin)
-                }),
-                Animated.timing(breatheAnim, {
-                    toValue: 0,
-                    duration: 2000,
-                    useNativeDriver: true,
-                    easing: Easing.inOut(Easing.sin)
-                })
+                Animated.timing(breatheAnim, { toValue: 1, duration: 2000, useNativeDriver: true, easing: Easing.inOut(Easing.sin) }),
+                Animated.timing(breatheAnim, { toValue: 0, duration: 2000, useNativeDriver: true, easing: Easing.inOut(Easing.sin) })
             ])
         ).start();
     }, [disableAnimation]);
 
-    // 2. Blinking Animation (Random intervals)
+    // 2. Blinking Animation
     useEffect(() => {
         if (disableAnimation) return;
-
         let timeout;
         const blink = () => {
             Animated.sequence([
                 Animated.timing(blinkAnim, { toValue: 0, duration: 100, useNativeDriver: true }),
                 Animated.timing(blinkAnim, { toValue: 1, duration: 100, useNativeDriver: true }),
             ]).start(() => {
-                // Next blink between 3 to 7 seconds
-                const nextBlink = Math.random() * 4000 + 3000;
-                timeout = setTimeout(blink, nextBlink);
+                timeout = setTimeout(blink, Math.random() * 4000 + 3000);
             });
         };
-
         timeout = setTimeout(blink, 2000);
         return () => clearTimeout(timeout);
     }, [disableAnimation]);
@@ -62,7 +46,6 @@ export const Avatar = ({ config, size = 60, isSpeaking = false, disableAnimation
     // 3. Speaking Jiggle Animation
     useEffect(() => {
         if (disableAnimation) return;
-
         if (isSpeaking) {
             Animated.loop(
                 Animated.sequence([
@@ -79,29 +62,18 @@ export const Avatar = ({ config, size = 60, isSpeaking = false, disableAnimation
         }
     }, [isSpeaking, disableAnimation]);
 
-    // Interpolations
-    const breatheScaleY = breatheAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [1, 1.03]
-    });
+    const breatheScaleY = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 1.03] });
+    const breatheTranslateY = breatheAnim.interpolate({ inputRange: [0, 1], outputRange: [0, -2] });
+    const speakRotate = speakAnim.interpolate({ inputRange: [-5, 5], outputRange: ['-5deg', '5deg'] });
 
-    const breatheTranslateY = breatheAnim.interpolate({
-        inputRange: [0, 1],
-        outputRange: [0, -2]
-    });
-
-    const speakRotate = speakAnim.interpolate({
-        inputRange: [-5, 5],
-        outputRange: ['-5deg', '5deg']
-    });
-
-    // Render Parts
-    const BasePart = bases[config?.base] || bases[0];
-    const EyesPart = eyes[config?.eyes] || eyes[0];
-    const HairPart = hairs[config?.hair] || hairs[0];
-    const HatPart = hats[config?.hat] || hats[0];
-    const MouthPart = mouths[config?.mouth] || mouths[0];
-    const AccessoryPart = accessories[config?.accessory] || accessories[0];
+    // Resolve layers with safe fallbacks
+    const BasePart = bases[config?.base ?? 0] || bases[0];
+    const EyesPart = eyes[config?.eyes ?? 0] || eyes[0];
+    const EyebrowsPart = eyebrows[config?.eyebrows ?? 1] || eyebrows[1];
+    const HairPart = hairs[config?.hair ?? 0] || hairs[0];
+    const HatPart = hats[config?.hat ?? 0] || hats[0];
+    const MouthPart = mouths[config?.mouth ?? 0] || mouths[0];
+    const AccessoryPart = accessories[config?.accessory ?? 0] || accessories[0];
     const color = config?.color || '#FFF8DC';
 
     return (
@@ -116,16 +88,17 @@ export const Avatar = ({ config, size = 60, isSpeaking = false, disableAnimation
                     ]
                 }
             ]}>
+                {/* Base layers: body, hair, hat, eyebrows, mouth, accessory */}
                 <Svg width="100%" height="100%" viewBox="0 0 100 100">
                     <BasePart color={color} />
                     <HairPart />
                     <HatPart />
+                    <EyebrowsPart />
                     <MouthPart />
                     <AccessoryPart />
                 </Svg>
 
-                {/* Since React Native SVG doesn't support Animated wrapper inside SVG directly easily, 
-            we wrap eyes in a separate SVG layer to apply standard Animated transforms. */}
+                {/* Eyes layer separate for blink animation */}
                 <Animated.View style={[StyleSheet.absoluteFill, { transform: [{ scaleY: blinkAnim }] }]}>
                     <Svg width="100%" height="100%" viewBox="0 0 100 100">
                         <EyesPart />

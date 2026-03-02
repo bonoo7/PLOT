@@ -13,10 +13,11 @@ import { getTheme } from '../constants/theme';
 import { useGameStore } from '../store/useGameStore';
 
 /**
- * InvestigationNote - نتيجة تحقيق المحقق كنوتة Noir
+ * InvestigationNote - نتيجة القدرة كنوتة Noir
  * تظهر كورقة مختومة بأسلوب المحقق البيروقراطي
+ * تدعم: INVESTIGATE, SABOTAGE, REVELATION, REVELATION_SUCCESS, FLASH_MEMORY
  */
-export const InvestigationNote = ({ visible, targetName, result, isSabotaged, onDismiss }) => {
+export const InvestigationNote = ({ visible, targetName, result, isSabotaged, onDismiss, type, content, message, keywords }) => {
     const themeMode = useGameStore(state => state.themeMode);
     const t = getTheme(themeMode);
 
@@ -51,46 +52,95 @@ export const InvestigationNote = ({ visible, targetName, result, isSabotaged, on
 
     const isCrime = result && result.includes('الجريمة');
 
+    // إعداد المحتوى حسب نوع القدرة
+    const getConfig = () => {
+        switch (type) {
+            case 'SABOTAGE':
+                return {
+                    header: '◈ بلاغ سري — قسم التخريب ◈',
+                    stamp: '🧨',
+                    stampLabel: 'تم\nالتخريب',
+                    stampColor: '#8B1A1A',
+                    stampBg: 'rgba(139,26,26,0.12)',
+                    body: (
+                        <Text style={[styles.noteText, { color: t.text }]}>{message || 'تم تنفيذ عملية التخريب بنجاح.'}</Text>
+                    ),
+                };
+            case 'REVELATION':
+            case 'REVELATION_SUCCESS':
+                return {
+                    header: '◈ وحي سري — العراف ◈',
+                    stamp: '🔮',
+                    stampLabel: 'تم\nالوحي',
+                    stampColor: '#4B0082',
+                    stampBg: 'rgba(75,0,130,0.12)',
+                    body: (
+                        <Text style={[styles.noteText, { color: t.text }]}>{content || message || 'تم استلام الوحي.'}</Text>
+                    ),
+                };
+            case 'FLASH_MEMORY':
+                return {
+                    header: '◈ تقرير سري — ذاكرة الشاهد ◈',
+                    stamp: '👁️',
+                    stampLabel: 'ذاكرة\nمستعادة',
+                    stampColor: '#1A4A8B',
+                    stampBg: 'rgba(26,74,139,0.12)',
+                    body: (
+                        <>
+                            <Text style={[styles.noteText, { color: t.text }]}>الكلمات المفتاحية التي رصدتها:</Text>
+                            <View style={[styles.resultBox, { borderColor: '#1A4A8B', backgroundColor: 'rgba(26,74,139,0.08)' }]}>
+                                <Text style={[styles.resultText, { color: '#1A4A8B' }]}>
+                                    {keywords ? keywords.join(' - ') : '—'}
+                                </Text>
+                            </View>
+                        </>
+                    ),
+                };
+            default: // INVESTIGATE
+                return {
+                    header: '◈ تقرير سري — مكتب التحقيقات ◈',
+                    stamp: isCrime ? 'مشبوه\nجنائي' : 'مشبوه\nنظيف',
+                    stampLabel: null,
+                    stampColor: isCrime ? '#8B1A1A' : '#1A6B1A',
+                    stampBg: isCrime ? 'rgba(139,26,26,0.12)' : 'rgba(26,107,26,0.12)',
+                    body: (
+                        <>
+                            <Text style={[styles.noteText, { color: t.text }]}>بعد مراجعة السجلات وتحليل الأدلة المتاحة،</Text>
+                            <Text style={[styles.noteText, { color: t.text }]}>تبيّن أن المشتبه به:</Text>
+                            <View style={[styles.targetBox, { borderColor: t.cardBorder }]}>
+                                <Text style={[styles.targetName, { color: t.text, fontFamily: 'Courier', fontWeight: 'bold' }]}>「 {targetName} 」</Text>
+                            </View>
+                            <Text style={[styles.noteText, { color: t.text }]}>ينتمي إلى:</Text>
+                            <View style={[styles.resultBox, { borderColor: isCrime ? t.accent : t.accentSecondary, backgroundColor: isCrime ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)' }]}>
+                                <Text style={[styles.resultText, { color: isCrime ? t.accent : t.accentSecondary }]}>{result}</Text>
+                            </View>
+                            {isSabotaged && (
+                                <View style={styles.warningBox}>
+                                    <Text style={styles.warningText}>⚠️ تحذير: قد تكون هذه المعلومات ملفقة</Text>
+                                </View>
+                            )}
+                        </>
+                    ),
+                };
+        }
+    };
+
+    const cfg = getConfig();
+
     return (
         <Modal visible={visible} transparent animationType="none">
             <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
                 <Animated.View style={[styles.noteContainer, { backgroundColor: t.cardBg, borderColor: t.cardBorder, transform: [{ translateY: slideAnim }] }]}>
                     {/* رأس النوتة */}
                     <View style={[styles.noteHeader, { backgroundColor: t.background }]}>
-                        <Text style={[styles.noteHeaderText, { color: t.text }]}>◈ تقرير سري — مكتب التحقيقات ◈</Text>
+                        <Text style={[styles.noteHeaderText, { color: t.text }]}>{cfg.header}</Text>
                     </View>
 
                     {/* محتوى النوتة */}
                     <View style={styles.noteBody}>
                         <Text style={[styles.caseLabel, { color: t.textMuted }]}>الملف رقم: #{Math.floor(Math.random() * 9000) + 1000}</Text>
                         <View style={[styles.divider, { backgroundColor: t.cardBorder }]} />
-
-                        <Text style={[styles.noteText, { color: t.text }]}>
-                            بعد مراجعة السجلات وتحليل الأدلة المتاحة،
-                        </Text>
-                        <Text style={[styles.noteText, { color: t.text }]}>
-                            تبيّن أن المشتبه به:
-                        </Text>
-
-                        <View style={[styles.targetBox, { borderColor: t.cardBorder }]}>
-                            <Text style={[styles.targetName, { color: t.text, fontFamily: 'Courier', fontWeight: 'bold' }]}>「 {targetName} 」</Text>
-                        </View>
-
-                        <Text style={[styles.noteText, { color: t.text }]}>ينتمي إلى:</Text>
-
-                        <View style={[styles.resultBox, { borderColor: isCrime ? t.accent : t.accentSecondary, backgroundColor: isCrime ? 'rgba(239, 68, 68, 0.08)' : 'rgba(16, 185, 129, 0.08)' }]}>
-                            <Text style={[styles.resultText, { color: isCrime ? t.accent : t.accentSecondary }]}>
-                                {result}
-                            </Text>
-                        </View>
-
-                        {isSabotaged && (
-                            <View style={styles.warningBox}>
-                                <Text style={styles.warningText}>
-                                    ⚠️ تحذير: قد تكون هذه المعلومات ملفقة
-                                </Text>
-                            </View>
-                        )}
+                        {cfg.body}
                     </View>
 
                     {/* الختم المائل */}
@@ -103,9 +153,9 @@ export const InvestigationNote = ({ visible, targetName, result, isSabotaged, on
                             }
                         ]}
                     >
-                        <View style={[styles.stamp, { borderColor: isCrime ? t.accent : t.accentSecondary, backgroundColor: isCrime ? 'rgba(239, 68, 68, 0.12)' : 'rgba(16, 185, 129, 0.12)' }]}>
-                            <Text style={[styles.stampText, { color: isCrime ? t.accent : t.accentSecondary }]}>
-                                {isCrime ? 'مشبوه\nجنائي' : 'مشبوه\nنظيف'}
+                        <View style={[styles.stamp, { borderColor: cfg.stampColor, backgroundColor: cfg.stampBg }]}>
+                            <Text style={[styles.stampText, { color: cfg.stampColor }]}>
+                                {cfg.stampLabel ?? cfg.stamp}
                             </Text>
                         </View>
                     </Animated.View>

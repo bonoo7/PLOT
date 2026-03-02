@@ -8,6 +8,7 @@ import MinimalHeader from '../components/minimal/MinimalHeader';
 import MinimalCard from '../components/minimal/MinimalCard';
 import MinimalButton from '../components/minimal/MinimalButton';
 import { PlayerBadge } from '../components/minimal/PlayerBadge';
+import { ScenarioRevealCard } from '../components/ScenarioRevealCard';
 import { theme } from '../styles/theme';
 import { spacing, fonts, borderRadius, moderateScale } from '../styles/responsive';
 import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
@@ -172,18 +173,16 @@ export const CulpritVotingScreen = () => {
                   activeOpacity={0.8}
                   disabled={hasVoted || isSelf}
                 >
-                  <View style={styles.cardHeader}>
-                    <View style={styles.authorBadge}>
-                      <PlayerBadge
-                        name={scenario.playerName || scenario.author || 'مجهول'}
-                        size="small"
-                      />
-                    </View>
-                    {selected === index && !hasVoted && <Text style={styles.checkMarkDanger}>🎯</Text>}
+                  <View style={styles.culpritCardRow}>
+                    <Text style={[styles.scenarioText, { flex: 1 }]}>
+                      {scenario.answer || scenario.text || '...'}
+                    </Text>
+                    <PlayerBadge
+                      name={scenario.playerName || scenario.author || 'مجهول'}
+                      size="small"
+                    />
                   </View>
-                  <Text style={styles.scenarioText}>
-                    {scenario.answer || scenario.text || '...'}
-                  </Text>
+                  {selected === index && !hasVoted && <Text style={styles.checkMarkDanger}>🎯</Text>}
                   {isSelf && <Text style={styles.selfVoteLabel}>تصويتك</Text>}
                 </TouchableOpacity>
               );
@@ -295,6 +294,14 @@ const styles = StyleSheet.create({
     color: '#999',
     fontStyle: 'italic',
     fontFamily: theme.fonts.main,
+  },
+
+  // Author Badge + text row (RTL: text on right, badge on left)
+  culpritCardRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.s,
+    flexWrap: 'wrap',
   },
 
   // Author Badge
@@ -545,6 +552,7 @@ export const EndScreen = () => {
 };
 
 /**
+/**
  * PlayerDramaticRevealScreen - V3
  */
 export const PlayerDramaticRevealScreen = () => {
@@ -568,40 +576,28 @@ export const PlayerDramaticRevealScreen = () => {
     );
   }
 
+  const showAuthor = currentReveal?.author !== undefined;
+  const showVoters = currentReveal?.voters !== undefined;
+
   return (
     <MinimalLayout roleData={roleData} roomCode={roomCode}>
-      <View style={styles.centerContainer}>
+      <ScrollView contentContainerStyle={styles.centerContainer} showsVerticalScrollIndicator={false}>
         <Text style={styles.dramaTitle}>⚠️</Text>
         <Text style={styles.dramaText}>كشف الحقائق...</Text>
 
-        <View style={{ width: '100%', alignItems: 'center', marginTop: spacing.l }}>
-          {currentReveal?.author && (
-            <View style={{ marginVertical: spacing.s }}>
-              <PlayerBadge name={currentReveal.author} size="large" />
-            </View>
-          )}
-
-          {currentReveal?.text && (
-            <MinimalCard style={{ width: '100%', maxWidth: 500, padding: spacing.l, alignItems: 'center', borderColor: currentReveal?.author ? theme.colors.primary : '#D2B48C', borderWidth: 2 }}>
-              <Text style={{ fontSize: fonts.medium, fontFamily: theme.fonts.main, textAlign: 'center', lineHeight: 28, color: '#333' }}>
-                "{currentReveal.text}"
-              </Text>
-            </MinimalCard>
-          )}
-
-          {currentReveal?.voters && (
-            <View style={{ marginTop: spacing.s, alignItems: 'center' }}>
-              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: spacing.m, justifyContent: 'center', marginTop: spacing.s }}>
-                {currentReveal.voters.length > 0 ? (
-                  currentReveal.voters.map((v, i) => <PlayerBadge key={i} name={v} size="medium" />)
-                ) : (
-                  <Text style={{ color: '#555' }}>لا أحد</Text>
-                )}
-              </View>
-            </View>
-          )}
-        </View>
-      </View>
+        {currentReveal?.text ? (
+          <ScenarioRevealCard
+            text={currentReveal.text}
+            template={currentReveal.template}
+            author={showAuthor ? currentReveal.author : undefined}
+            voters={showVoters ? currentReveal.voters : undefined}
+            isComplete={showAuthor}
+            style={{ marginTop: spacing.l, width: '100%' }}
+          />
+        ) : (
+          <Text style={{ color: '#888', marginTop: spacing.l }}>جاري التحضير...</Text>
+        )}
+      </ScrollView>
     </MinimalLayout>
   );
 };
