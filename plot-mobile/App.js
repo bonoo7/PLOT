@@ -9,6 +9,8 @@ import * as NavigationBar from 'expo-navigation-bar';
 import { registerRootComponent } from 'expo';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { AppNavigator } from './src/navigation/AppNavigator';
+import { AppNavigatorV2 } from './src/design-v2/navigation/AppNavigatorV2';
+import { useGameStore } from './src/store/useGameStore';
 import { SocketProvider } from './src/hooks/useGameSocket';
 import { theme } from './src/styles/theme';
 import GlobalRTLWrapper from './src/components/GlobalRTLWrapper';
@@ -47,10 +49,12 @@ if (Platform.OS !== 'web') {
 export const navigationRef = createNavigationContainerRef();
 
 const AppContent = () => {
+    const designVersion = useGameStore(s => s.designVersion);
+    const ActiveNavigator = designVersion === 'v2' ? AppNavigatorV2 : AppNavigator;
     return (
         <SocketProvider navigationRef={navigationRef}>
             <NavigationContainer ref={navigationRef}>
-                <AppNavigator />
+                <ActiveNavigator />
             </NavigationContainer>
         </SocketProvider>
     );

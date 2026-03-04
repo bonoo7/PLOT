@@ -1,5 +1,75 @@
 # CHANGELOG
 
+## [3.2.0] - 2026-03-04
+
+### نظام التصميم V2 "Classified Dossier" — واجهة ثنائية المسار 🗂️🌙
+
+#### نظرة عامة:
+تصميم V2 هو نظام واجهة مستخدم كامل موازٍ لـ V1 يعمل في ملفات منفصلة تحت `plot-mobile/src/design-v2/`. يمكن التبديل بين V1 و V2 من متجر Zustand (`designVersion`). الثيم الافتراضي الآن هو **V2**.
+
+#### 1. هيكل الملفات الجديد (`design-v2/`)
+```
+tokens/
+  index.js           — ألوان light/dark، spacing، typography، useLayout() hook
+components/
+  DossierLayout.js   — غلاف التخطيط الثلاثي (topZone / centerZone / bottomZone)
+  CaseHeader.js      — محتوى topZone مع modal ملف الدور + أزرار ثيم وريفرش
+  DossierCard.js     — بطاقة بنمط ملف المحكمة
+  StampButton.js     — زر بأسلوب الختم
+  FileBadge.js       — شارة ملف
+  SecretInput.js     — حقل إدخال سري
+  ClassifiedBanner.js— شريط "سري للغاية"
+  index.js           — exports موحدة
+screens/
+  RoleSelectScreen.js    — الشاشة الرئيسية (مضيف / لاعب / تدريب / دليل)
+  HowToPlayScreen.js     — دليل اللعبة
+  HostScreens.js         — إعداد الغرفة + اللوبي (محدد النمط segmented toggle)
+  HostGameScreens.js     — 5 شاشات مرحلة اللعب للهوست
+  PlayerScreens.js       — تسجيل الدخول + لوبي اللاعب
+  GameScreen.js          — كشف الدور
+  DraftingScreen.js      — مرحلة الكتابة (Classic + Blitz)
+  DiscussionScreen.js    — مرحلة النقاش
+  VotingScreens.js       — 6 شاشات تصويت
+  TrainingScreens.js     — شاشات التدريب
+navigation/
+  AppNavigatorV2.js      — Navigator كامل لـ V2
+```
+
+#### 2. مبادئ التصميم
+- **ثلاث مناطق ثابتة**: `topZone` (الشريط العلوي) → `centerZone` (منطقة اللعب) → `bottomZone` (الأزرار)
+- **لا تمرير (No-scroll)**: جميع المعلومات تظهر في الشاشة مباشرة دون الحاجة للتمرير
+- **ثيمان أساسيان**: Light (ورق كرافت #E8DDB5) + Dark (نوار داكن #080D18)
+- **استجابة كاملة**: جوال عمودي/أفقي + ويب ديسكتوب (max-width: 900px للـ desktop فقط)
+- **RTL-first**: تصميم عربي أصيل بمحاذاة يمين-لشمال
+
+#### 3. ميزات CaseHeader (topZone)
+- **وضع host**: كود الغرفة + المرحلة الحالية + رقم الجولة
+- **وضع player**: الدور + إيموجي + رقم اللاعب — النقر يفتح **modal ملف الدور** الكامل
+- **modal ملف الدور**: يعرض الوصف + الهدف + معلومة سرية + القدرة + تلميح سري + نتيجة القدرة
+- **زر الثيم**: ☀️/🌙 يبدل بين light/dark (يظهر دائماً)
+- **زر الريفرش**: ↺ على الويب `window.location.reload()`، على النيتف navigate إلى RoleSelect
+
+#### 4. إصلاحات هذا الإصدار
+- **`contentMaxW`**: إزالة قيد الـ 680px على الأجهزة بعرض ≥ 600px — الجوال يأخذ 100% دائماً
+- **`CaseHeader`**: إصلاح أسماء حقول roleData: `roleDescription` → `description`، `abilityDescription` → `ability`؛ إضافة `goal`، `team`، `secretHint`، `abilityResult` للـ modal
+- **`DraftingScreen`**: `scenarioBlock` يأخذ `maxHeight: 110` فقط — الباقي لمنطقة الكتابة
+- **`start_fixed.js`**: عند تعارض المنفذ → قتل العملية بـ `netstat + taskkill` بدلاً من الانتقال للمنفذ التالي؛ إصلاح Ctrl+C داخل readline
+- **V2 الافتراضي**: `designVersion: 'v2'` في `useGameStore.js`
+
+#### الملفات المُعدّلة أو المضافة 📝:
+| الملف | التعديل |
+|-------|---------|
+| `plot-mobile/src/design-v2/**` | **جديد** — نظام تصميم V2 كامل (19+ ملف) |
+| `plot-mobile/src/design-v2/tokens/index.js` | إصلاح `contentMaxW` — إزالة قيد tablet |
+| `plot-mobile/src/design-v2/components/CaseHeader.js` | إصلاح حقول roleData + زر ثيم وريفرش |
+| `plot-mobile/src/design-v2/screens/DraftingScreen.js` | نسبة مساحة السيناريو مقابل الكتابة |
+| `plot-mobile/App.js` | دعم التبديل بين V1 و V2 |
+| `plot-mobile/src/store/useGameStore.js` | `designVersion: 'v2'` + `setDesignVersion()` + `pendingAbilityResult` |
+| `plot-mobile/src/screens/RoleSelectScreen.js` | زر "🆕 تصميم V2" |
+| `start_fixed.js` | قتل المنفذ المشغول + إصلاح Ctrl+C |
+
+---
+
 ## [2.9.0] - 2026-03-02
 
 ### ميزات الهوية، وضع Blitz، التعادل في التصويت، وكود الغرفة 🔍⚖️

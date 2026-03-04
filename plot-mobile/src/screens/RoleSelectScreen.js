@@ -20,6 +20,7 @@ export const RoleSelectScreen = () => {
   const setUserRole = useGameStore((state) => state.setUserRole);
   const themeMode = useGameStore(state => state.themeMode);
   const setThemeMode = useGameStore(state => state.setThemeMode);
+  const setDesignVersion = useGameStore(state => state.setDesignVersion);
 
   // Determine layout direction based on screen size/orientation
   const isHorizontalLayout = isDesktop || isLandscape;
@@ -116,6 +117,12 @@ export const RoleSelectScreen = () => {
           <View style={styles.footer}>
             <Text style={styles.footerText}>عدد اللاعبين: 4 - 8</Text>
           </View>
+          <MinimalButton
+            title="🆕 تصميم V2"
+            onPress={() => setDesignVersion('v2')}
+            variant="secondary"
+            size="small"
+          />
           <MinimalButton
             title={themeMode === 'light' ? "🌙 داكن" : "☀️ فاتح"}
             onPress={toggleTheme}

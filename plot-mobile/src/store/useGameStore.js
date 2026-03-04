@@ -12,6 +12,7 @@ export const useGameStore = create((set) => ({
 
     // UI State
     themeMode: 'light', // 'light' or 'dark'
+    designVersion: 'v2', // 'v1' | 'v2'
 
     // Game Settings/Info
     gameMode: 'BLITZ', // CLASSIC or BLITZ — الوضع الافتراضي هو Blitz
@@ -55,6 +56,7 @@ export const useGameStore = create((set) => ({
 
     // Actions
     setThemeMode: (mode) => set({ themeMode: mode }),
+    setDesignVersion: (v) => set({ designVersion: v }),
     setRoomCode: (code) => set({ roomCode: code }),
     setGeneratedRoomCode: (code) => set({ generatedRoomCode: code }),
     setPlayerName: (name) => set({ playerName: name }),

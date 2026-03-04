@@ -1,6 +1,111 @@
 # التوثيق التقني - مشروع الحبكة
 
-## حالة المشروع الحالية (الإصدار 2.9.0)
+## حالة المشروع الحالية (الإصدار 3.2.0)
+
+### آخر التحديثات (2026-03-04 — v3.2.0 — نظام التصميم V2 "Classified Dossier"):
+- ✅ **نظام تصميم V2 كامل**: 19+ ملف في `plot-mobile/src/design-v2/` — يعمل موازياً لـ V1
+- ✅ **تخطيط ثلاثي ثابت**: topZone / centerZone / bottomZone بلا تمرير
+- ✅ **ثيمان light/dark**: ألوان ورق كرافت للفاتح، نوار داكن للداكن
+- ✅ **استجابة كاملة**: جوال عمودي/أفقي + ويب ديسكتوب
+- ✅ **CaseHeader**: modal ملف الدور كامل + زر ثيم + زر ريفرش في كل شاشة
+- ✅ **V2 الافتراضي**: `designVersion: 'v2'` في `useGameStore.js`
+- ✅ **إصلاح `start_fixed.js`**: قتل المنفذ المشغول تلقائياً + Ctrl+C
+
+---
+
+## نظام التصميم V2 — التوثيق الكامل
+
+### البنية المعمارية
+
+#### 1. التخطيط الثلاثي (`DossierLayout.js`)
+```
+SafeAreaView [root] — flex: 1, backgroundColor: c.bg
+  └── View [inner] — flex: 1, width: '100%', maxWidth: contentMaxW, alignSelf: 'center'
+        ├── View [topZone]    — CaseHeader: كود الغرفة / الدور / المرحلة
+        ├── View [centerZone] — محتوى الشاشة المتغير (flex: 1)
+        └── View [bottomZone] — أزرار الإجراءات
+```
+
+**`contentMaxW`**: `isDesktop ? 900 : '100%'` — فقط web desktop بعرض ≥ 900px يُقيَّد. كل الأجهزة الأخرى تستخدم 100% من العرض.
+
+#### 2. الألوان (`tokens/index.js`)
+
+| Token | Light | Dark |
+|-------|-------|------|
+| `bg` | `#E8DDB5` (ورق كرافت) | `#080D18` (نوار) |
+| `surface` | `#F5EDD8` | `#111927` |
+| `text` | `#1A0E04` | `#D4C5A0` |
+| `red` / `accent` | `#B22222` | `#CC2200` |
+| `gold` | `#9B7A2C` | `#D4AF37` |
+| `green` | `#2E5E2E` | `#4A9B4A` |
+| `blue` | `#1A3A5C` | `#2A6FAD` |
+
+#### 3. `useLayout()` Hook
+```js
+const { width, height, isLandscape, isWeb, isDesktop, isTablet, isMobile, contentMaxW } = useLayout();
+```
+يُستخدم في كل شاشة للتكيف مع الوضع الأفقي والعمودي وحجم الشاشة.
+
+#### 4. `CaseHeader.js` — الشريط العلوي
+**الأوضاع الثلاثة:**
+- `mode='host'`: كود الغرفة (pill أحمر) + المرحلة + الجولة
+- `mode='player'`: إيموجي الدور + الاسم (قابل للنقر لـ modal) + رقم اللاعب
+- `mode='neutral'`: عنوان + subtitle + كود الغرفة اختياري
+
+**Modal ملف الدور** (يفتح عند النقر على الدور في وضع player):
+- الاسم + الإيموجي + الفريق (جريمة/عدالة)
+- الوصف (`roleData.description`)
+- الهدف (`roleData.goal`)
+- معلومة سرية (`roleData.info`)
+- القدرة (`roleData.ability`)
+- تلميح سري (`roleData.secretHint`)
+- نتيجة القدرة (`roleData.abilityResult`) — يظهر بعد استخدام القدرة
+
+**أزرار الخدمات** (تظهر دائماً في اليمين):
+- `☀️/🌙` — تبديل الثيم (`setThemeMode`)
+- `↺` — ريفرش (web: `window.location.reload()` ، native: navigate → RoleSelect)
+
+#### 5. بيانات الدور المُرسلة من الخادم
+```js
+// server/sockets/registerHandlers.js — حدث roleAssigned
+{
+  role: 'DETECTIVE',
+  roleName: 'المحقق',
+  description: '...',   // ← ليس roleDescription
+  team: 'JUSTICE',
+  emoji: '🕵️',
+  goal: '...',
+  ability: '...',        // ← ليس abilityDescription
+  info: '...',           // معلومة سرية خاصة بالسيناريو
+  secretHint: '...',
+  round: 1,
+  totalRounds: 3,
+}
+```
+
+#### 6. التبديل بين V1 و V2
+```js
+// useGameStore.js
+designVersion: 'v2',        // الافتراضي الآن
+setDesignVersion: (v) => set({ designVersion: v })
+
+// App.js
+const designVersion = useGameStore(s => s.designVersion);
+return designVersion === 'v2' ? <AppNavigatorV2 /> : <AppNavigator />;
+```
+- من V2 → V1: زر "← V1" في `RoleSelectScreen` (V2)
+- من V1 → V2: زر "🆕 تصميم V2" في `RoleSelectScreen` (V1)
+
+#### 7. `start_fixed.js` — إصلاح تعارض المنفذ
+عند تشغيل `npm start` وكان المنفذ 3000 مشغولاً:
+1. يسأل "هل تريد قتل العملية؟"
+2. يستخدم `netstat -ano` لإيجاد PID
+3. يستخدم `taskkill /PID /F` لإيقاف العملية
+4. ينتظر 800ms ثم يتحقق من تحرر المنفذ
+5. إذا فشل: ينتقل للمنفذ التالي تلقائياً
+6. إصلاح Ctrl+C داخل readline (SIGINT handler)
+
+---
 
 ### آخر التحديثات (2026-03-02 — v2.9.0 — Identity, Blitz Colors, Tie Banner):
 - ✅ **كود الغرفة دائماً ظاهر**: `GameHeader.js` يعرض header مبسط لشاشات الهوست بدون roleData.
