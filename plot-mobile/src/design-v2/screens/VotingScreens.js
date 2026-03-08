@@ -271,13 +271,23 @@ export const PlayerResultsScreen = () => {
    EndScreen
 ══════════════════════════════════════════════════════ */
 export const EndScreen = () => {
-  const c         = useTheme();
-  const resetGame = useGameStore(s => s.resetGame);
-  const { socket }= useSocket();
+  const c            = useTheme();
+  const navigation   = useNavigation();
+  const resetGame    = useGameStore(s => s.resetGame);
+  const finalResults = useGameStore(s => s.finalResults) || [];
+  const { socket }   = useSocket();
 
   const handleRestart = () => {
     if (socket) socket.disconnect();
     resetGame();
+    navigation.navigate(ROUTES.ROLE_SELECT);
+  };
+
+  const medalFor = (rank) => {
+    if (rank === 0) return '🥇';
+    if (rank === 1) return '🥈';
+    if (rank === 2) return '🥉';
+    return `${rank + 1}.`;
   };
 
   return (
@@ -287,10 +297,46 @@ export const EndScreen = () => {
         <StampButton title="عودة للرئيسية" onPress={handleRestart} variant="primary" size="sm" style={{ flex: 1 }} />
       }
     >
-      <View style={styles.center}>
-        <Text style={styles.waitEmoji}>🏁</Text>
-        <ClassifiedBanner label="النتيجة" variant="gold">انتهت اللعبة!</ClassifiedBanner>
-      </View>
+      <ScrollView contentContainerStyle={{ gap: sp.m, paddingBottom: sp.xl }}>
+        {/* Banner */}
+        <View style={styles.center}>
+          <Text style={styles.waitEmoji}>🏁</Text>
+          <ClassifiedBanner label="النتيجة" variant="gold">انتهت اللعبة!</ClassifiedBanner>
+        </View>
+        {/* Leaderboard */}
+        {finalResults.length > 0 ? (
+          <View style={[styles.leaderboard, { borderColor: c.gold, backgroundColor: c.surface }]}>
+            <Text style={[styles.leaderboardTitle, { color: c.gold, borderBottomColor: c.border }]}>
+              🏆 الترتيب النهائي
+            </Text>
+            {finalResults.map((player, idx) => (
+              <View
+                key={idx}
+                style={[
+                  styles.leaderboardRow,
+                  { borderBottomColor: c.border },
+                  idx === 0 && { backgroundColor: c.surfaceAlt },
+                ]}
+              >
+                <Text style={[styles.leaderboardMedal, { color: c.gold }]}>
+                  {medalFor(idx)}
+                </Text>
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={[styles.leaderboardName, { color: c.text }]}>
+                    {player.name}
+                  </Text>
+                  <Text style={[styles.leaderboardRole, { color: c.textMuted }]}>
+                    {getRoleEmoji(player.role)} {player.roleName || player.role}
+                  </Text>
+                </View>
+                <Text style={[styles.leaderboardScore, { color: idx === 0 ? c.gold : c.text }]}>
+                  {player.totalScore} نقطة
+                </Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
+      </ScrollView>
     </DossierLayout>
   );
 };
@@ -322,4 +368,18 @@ const styles = StyleSheet.create({
 
   hostCardBox: { borderWidth: 1.5, borderRadius: radius.m, padding: sp.l, alignItems: 'center', gap: sp.s, width: '100%', maxWidth: 340 },
   hostMsg: { fontSize: fontSize.heading, fontFamily: fontFamily.mono, fontWeight: '900', textAlign: 'center' },
+
+  leaderboard: { borderWidth: 1.5, borderRadius: radius.m, overflow: 'hidden' },
+  leaderboardTitle: {
+    fontSize: fontSize.label, fontFamily: fontFamily.mono, fontWeight: '700',
+    paddingHorizontal: sp.m, paddingVertical: sp.s, borderBottomWidth: 1, textAlign: 'center',
+  },
+  leaderboardRow: {
+    flexDirection: 'row', alignItems: 'center', gap: sp.s,
+    paddingHorizontal: sp.m, paddingVertical: sp.s, borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  leaderboardMedal: { fontSize: fontSize.body, fontFamily: fontFamily.mono, fontWeight: '700', minWidth: 30, textAlign: 'center' },
+  leaderboardName: { fontSize: fontSize.body, fontFamily: fontFamily.mono, fontWeight: '700' },
+  leaderboardRole: { fontSize: fontSize.small, fontFamily: fontFamily.mono },
+  leaderboardScore: { fontSize: fontSize.label, fontFamily: fontFamily.mono, fontWeight: '900', textAlign: 'right' },
 });

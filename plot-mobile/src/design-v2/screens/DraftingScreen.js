@@ -35,6 +35,7 @@ export const DraftingScreen = () => {
   const scenario     = useGameStore(s => s.scenario);
   const template     = useGameStore(s => s.template);
   const roleData     = useGameStore(s => s.roleData);
+  const setRoleData  = useGameStore(s => s.setRoleData);
   const players      = useGameStore(s => s.players) || [];
   const roomCode     = useGameStore(s => s.roomCode);
   const gameMode     = useGameStore(s => s.gameMode);
@@ -84,7 +85,22 @@ export const DraftingScreen = () => {
     socket.on('mastermindProxyRequest', setProxyRequest);
     socket.on('offerResult', ({ success, message }) => {
       setNotification({ text: message, ok: success });
-      if (success) { setShowOfferModal(false); setOfferAmount(''); setOfferTargetId(null); setProxyRequest(null); }
+      if (success) {
+        // تتبع العروض المُرسلة في ملف الدور
+        const sentToId = offerTargetId || proxyTargetId;
+        if (sentToId) {
+          const target = players.find(p => p.id === sentToId);
+          const prevData = useGameStore.getState().roleData;
+          if (prevData && target) {
+            const offersSent = [...(prevData.offersSent || []), {
+              targetName: target.name,
+              amount: parseInt(offerAmount) || 0
+            }];
+            setRoleData({ ...prevData, offersSent });
+          }
+        }
+        setShowOfferModal(false); setOfferAmount(''); setOfferTargetId(null); setProxyRequest(null);
+      }
     });
     socket.on('offerStatus', ({ status, targetName, amountRefunded }) => {
       if (status === 'ACCEPTED') setNotification({ text: `✅ قَبِلَ ${targetName || 'اللاعب'} العرض`, ok: true });

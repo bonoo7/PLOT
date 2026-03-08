@@ -37,6 +37,7 @@ const CaseHeader = ({
   const setThemeMode = useGameStore(s => s.setThemeMode);
   const c = getColors(themeMode);
   const roleData = useGameStore(s => s.roleData);
+  const scenario = useGameStore(s => s.scenario);
   const [showRoleModal, setShowRoleModal] = useState(false);
 
   // Navigation for native refresh (navigate to root)
@@ -77,6 +78,13 @@ const CaseHeader = ({
               <Text style={[styles.modalHeaderText, { color: c.textMuted }]}>◈ ملف الدور ◈</Text>
             </View>
             <ScrollView style={styles.modalBody} contentContainerStyle={{ gap: sp.m }}>
+              {/* اسم القضية */}
+              {scenario ? (
+                <View style={[styles.modalSection, { borderColor: c.gold }]}>
+                  <Text style={[styles.modalSectionLabel, { color: c.gold }]}>📁 القضية</Text>
+                  <Text style={[styles.modalSectionText, { color: c.text }]}>{scenario}</Text>
+                </View>
+              ) : null}
               {/* Role name + emoji */}
               <View style={styles.modalRoleRow}>
                 <Text style={styles.modalEmoji}>{roleData?.emoji || roleEmoji || '👤'}</Text>
@@ -107,18 +115,41 @@ const CaseHeader = ({
                   <Text style={[styles.modalSectionText, { color: c.text }]}>{roleData.goal}</Text>
                 </View>
               ) : null}
-              {/* Special info (scenario fragment) */}
+              {/* Secret info (roleData.info) */}
               {roleData?.info ? (
                 <View style={[styles.modalSection, { borderColor: c.gold }]}>
                   <Text style={[styles.modalSectionLabel, { color: c.gold }]}>معلومة سرية</Text>
                   <Text style={[styles.modalSectionText, { color: c.text }]}>{roleData.info}</Text>
                 </View>
               ) : null}
-              {/* Ability */}
-              {roleData?.ability ? (
-                <View style={[styles.modalSection, { borderColor: c.accent }]}>
-                  <Text style={[styles.modalSectionLabel, { color: c.accent }]}>القدرة</Text>
-                  <Text style={[styles.modalSectionText, { color: c.text }]}>{roleData.ability}</Text>
+              {/* العقل المدبر: أعضاء الفريق */}
+              {roleData?.role === 'MASTERMIND' && roleData?.specialInfo?.crimeTeam ? (
+                <View style={[styles.modalSection, { borderColor: c.red }]}>
+                  <Text style={[styles.modalSectionLabel, { color: c.red }]}>أعضاء فريق الجريمة</Text>
+                  {roleData.specialInfo.crimeTeam.map((m, i) => (
+                    <Text key={i} style={[styles.modalSectionText, { color: c.text }]}>
+                      • {m.name} — {m.roleName || m.role}
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
+              {/* الوزير: المستفيد والمحقق */}
+              {roleData?.role === 'MINISTER' && roleData?.specialInfo ? (
+                <View style={[styles.modalSection, { borderColor: c.blue }]}>
+                  <Text style={[styles.modalSectionLabel, { color: c.blue }]}>معلومات سرية</Text>
+                  {roleData.specialInfo.detective ? (
+                    <Text style={[styles.modalSectionText, { color: c.text }]}>🕵️ المحقق: {roleData.specialInfo.detective.name}</Text>
+                  ) : null}
+                  {roleData.specialInfo.beneficiary ? (
+                    <Text style={[styles.modalSectionText, { color: c.text }]}>💰 المستفيد: {roleData.specialInfo.beneficiary.name}</Text>
+                  ) : null}
+                </View>
+              ) : null}
+              {/* الشاهد: الكلمات المفتاحية */}
+              {roleData?.role === 'WITNESS' && roleData?.specialInfo?.keywords ? (
+                <View style={[styles.modalSection, { borderColor: c.gold }]}>
+                  <Text style={[styles.modalSectionLabel, { color: c.gold }]}>الكلمات المفتاحية</Text>
+                  <Text style={[styles.modalSectionText, { color: c.text }]}>{roleData.specialInfo.keywords.join(' — ')}</Text>
                 </View>
               ) : null}
               {/* Secret hint */}
@@ -128,20 +159,41 @@ const CaseHeader = ({
                   <Text style={[styles.modalSectionText, { color: c.text }]}>{roleData.secretHint}</Text>
                 </View>
               ) : null}
-              {/* Ability result */}
-              {roleData?.abilityResult ? (
+              {/* المحقق: نتيجة التحقيق */}
+              {roleData?.role === 'DETECTIVE' && roleData?.abilityResult ? (
                 <View style={[styles.modalSection, { borderColor: roleData.abilityResult.isSabotaged ? c.red : c.green }]}>
                   <Text style={[styles.modalSectionLabel, { color: roleData.abilityResult.isSabotaged ? c.red : c.green }]}>
-                    نتيجة القدرة {roleData.abilityResult.isSabotaged ? '⚠️ (ملفقة)' : '✓'}
-                  </Text>
-                  <Text style={[styles.modalSectionText, { color: c.text }]}>
-                    {roleData.abilityResult.result || roleData.abilityResult.message || roleData.abilityResult.content || '—'}
+                    🕵️ نتيجة التحقيق {roleData.abilityResult.isSabotaged ? '⚠️ (ملفقة)' : '✓'}
                   </Text>
                   {roleData.abilityResult.targetName ? (
-                    <Text style={[styles.modalSectionLabel, { color: c.textMuted }]}>
-                      الهدف: {roleData.abilityResult.targetName}
-                    </Text>
+                    <Text style={[styles.modalSectionText, { color: c.text }]}>الهدف: {roleData.abilityResult.targetName}</Text>
                   ) : null}
+                  <Text style={[styles.modalSectionText, { color: c.text }]}>
+                    النتيجة: {roleData.abilityResult.result || '—'}
+                  </Text>
+                </View>
+              ) : null}
+              {/* المخرب: الهدف المُخرَّب */}
+              {roleData?.role === 'SABOTEUR' && roleData?.abilityResult ? (
+                <View style={[styles.modalSection, { borderColor: c.red }]}>
+                  <Text style={[styles.modalSectionLabel, { color: c.red }]}>🧨 هدف التضليل</Text>
+                  {roleData.abilityResult.targetName ? (
+                    <Text style={[styles.modalSectionText, { color: c.text }]}>اللاعب: {roleData.abilityResult.targetName}</Text>
+                  ) : null}
+                  {roleData.abilityResult.message ? (
+                    <Text style={[styles.modalSectionText, { color: c.text }]}>{roleData.abilityResult.message}</Text>
+                  ) : null}
+                </View>
+              ) : null}
+              {/* المستفيد: العروض المُرسلة */}
+              {roleData?.role === 'BENEFICIARY' && roleData?.offersSent?.length > 0 ? (
+                <View style={[styles.modalSection, { borderColor: c.gold }]}>
+                  <Text style={[styles.modalSectionLabel, { color: c.gold }]}>💰 العروض المُرسلة</Text>
+                  {roleData.offersSent.map((offer, i) => (
+                    <Text key={i} style={[styles.modalSectionText, { color: c.text }]}>
+                      • {offer.targetName}: {offer.amount} نقطة
+                    </Text>
+                  ))}
                 </View>
               ) : null}
             </ScrollView>

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useMemo } from 'react';
+import { View, Text, StyleSheet, FlatList, TouchableOpacity } from 'react-native';
 import { useGameStore } from '../store/useGameStore';
 import { useSocket } from '../hooks/useGameSocket';
 
@@ -53,11 +53,13 @@ export const QualityVotingScreen = () => {
         {/* Scenarios Grid/List - Using ScrollView here as lists can be long, 
             but kept minimal visuals */}
         <View style={styles.listContainer}>
-          <ScrollView
+          <FlatList
+            data={scenarios}
+            keyExtractor={(item, index) => item.id != null ? String(item.id) : `scenario-${index}`}
+            removeClippedSubviews={true}
             showsVerticalScrollIndicator={true}
             contentContainerStyle={styles.gridContent}
-          >
-            {scenarios.map((scenario, index) => {
+            renderItem={({ item: scenario, index }) => {
               const isSelf = scenario.answer === myAnswer;
               return (
                 <TouchableOpacity
@@ -83,8 +85,8 @@ export const QualityVotingScreen = () => {
                   {isSelf && <Text style={styles.selfVoteLabel}>تصويتك</Text>}
                 </TouchableOpacity>
               );
-            })}
-          </ScrollView>
+            }}
+          />
         </View>
 
         <View style={styles.footer}>

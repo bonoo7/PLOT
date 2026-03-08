@@ -145,19 +145,29 @@ export const HostVotingScreen = ({ route }) => {
 
   const roomCode = useGameStore((state) => state.roomCode);
   const scenarios = useGameStore((state) => state.scenarios) || [];
-  const liveVotes = useGameStore((state) => state.liveVotes) || [];
+  const liveVotes = useGameStore((state) => Array.isArray(state.liveVotes) ? state.liveVotes : []);
   const players = useGameStore((state) => state.players) || [];
   const voteTieInfo = useGameStore((state) => state.voteTieInfo);
 
   const votedCount = liveVotes.length;
   const totalPlayers = players.length;
 
+  // حساب الأصوات بـ O(n) بدلاً من O(n²) داخل الـ render
+  const voteCountMap = useMemo(() => {
+    const map = {};
+    liveVotes.forEach(vote => {
+        const key = votingType === 'culprit' ? vote.choice : vote.choice;
+        map[key] = (map[key] || 0) + 1;
+    });
+    return map;
+  }, [liveVotes, votingType]);
+
   const getVotesForScenario = (index) => {
     if (votingType === 'culprit') {
       const targetId = scenarios[index]?.playerId;
-      return liveVotes.filter(vote => vote.choice === targetId).length;
+      return voteCountMap[targetId] || 0;
     }
-    return liveVotes.filter(vote => vote.choice === index).length;
+    return voteCountMap[index] || 0;
   };
 
   return (

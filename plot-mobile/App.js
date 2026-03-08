@@ -14,32 +14,17 @@ import { useGameStore } from './src/store/useGameStore';
 import { SocketProvider } from './src/hooks/useGameSocket';
 import { theme } from './src/styles/theme';
 import GlobalRTLWrapper from './src/components/GlobalRTLWrapper';
+import NotificationToast from './src/components/NotificationToast';
 
 // Force RTL (Native early enforcement)
 if (Platform.OS !== 'web') {
     try {
         I18nManager.forceRTL(true);
         I18nManager.allowRTL(true);
-        // Hide Navigation Bar on Android
+        // Hide Navigation Bar on Android (initial setup — listener managed inside App component)
         if (Platform.OS === 'android') {
             NavigationBar.setVisibilityAsync("hidden");
             NavigationBar.setBehaviorAsync("overlay-swipe");
-
-            const hideNavBar = async () => {
-                try {
-                    await NavigationBar.setVisibilityAsync("hidden");
-                    await NavigationBar.setBehaviorAsync("overlay-swipe");
-                } catch (e) {
-                    console.warn('Could not hide nav bar on unmount/remount', e);
-                }
-            };
-
-            const navBarListener = NavigationBar.addVisibilityListener(({ visibility }) => {
-                if (visibility === 'visible') {
-                    setTimeout(hideNavBar, 3000);
-                }
-            });
-            // Will leak roughly 1 listener per app boot if not cleaned up, but safe at root.
         }
     } catch (e) {
         console.error('RTL/Nav config error:', e);
@@ -51,11 +36,37 @@ export const navigationRef = createNavigationContainerRef();
 const AppContent = () => {
     const designVersion = useGameStore(s => s.designVersion);
     const ActiveNavigator = designVersion === 'v2' ? AppNavigatorV2 : AppNavigator;
+
+    // إدارة NavigationBar listener مع cleanup لمنع تسرب الذاكرة
+    useEffect(() => {
+        if (Platform.OS !== 'android') return;
+
+        const hideNavBar = async () => {
+            try {
+                await NavigationBar.setVisibilityAsync("hidden");
+                await NavigationBar.setBehaviorAsync("overlay-swipe");
+            } catch (e) {
+                console.warn('Could not hide nav bar', e);
+            }
+        };
+
+        const listener = NavigationBar.addVisibilityListener(({ visibility }) => {
+            if (visibility === 'visible') {
+                setTimeout(hideNavBar, 3000);
+            }
+        });
+
+        return () => {
+            listener?.remove?.();
+        };
+    }, []);
+
     return (
         <SocketProvider navigationRef={navigationRef}>
             <NavigationContainer ref={navigationRef}>
                 <ActiveNavigator />
             </NavigationContainer>
+            <NotificationToast />
         </SocketProvider>
     );
 };

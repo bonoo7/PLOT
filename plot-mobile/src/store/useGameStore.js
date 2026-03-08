@@ -44,6 +44,7 @@ export const useGameStore = create((set) => ({
 
     // Results
     roundResults: null,
+    finalResults: null, // نتائج نهاية اللعبة — تُحفظ بعد gameEnded ولا تُمسح في resetGame
 
     // Player specific
     roleData: null,
@@ -53,6 +54,8 @@ export const useGameStore = create((set) => ({
     pendingAbilityResult: null, // نتيجة القدرة — تُعرض مرة واحدة فقط في الجولة
     abilityResultSeen: false,   // هل تم الاطلاع على النتيجة في هذه الجولة؟
     voteTieInfo: null,          // بيانات التعادل في التصويت { candidates, message }
+    // نظام الإشعارات — بديل آمن لـ Alert.alert داخل hooks
+    notification: null, // { title, message, type: 'info'|'warning'|'error' } | null
 
     // Actions
     setThemeMode: (mode) => set({ themeMode: mode }),
@@ -80,7 +83,9 @@ export const useGameStore = create((set) => ({
     setHasVoted: (hasVoted) => set({ hasVoted }),
     setSelectedScenario: (selected) => set({ selectedScenario: selected }),
     setSelectedCulprit: (selected) => set({ selectedCulprit: selected }),
-    setLiveVotes: (liveVotes) => set({ liveVotes }),
+    setLiveVotes: (updater) => set(state => ({
+        liveVotes: typeof updater === 'function' ? updater(state.liveVotes) : updater
+    })),
 
     setRevealedScenarios: (reveals) => set({ revealedScenarios: reveals }),
     setCurrentReveal: (reveal) => set({ currentReveal: reveal }),
@@ -89,6 +94,7 @@ export const useGameStore = create((set) => ({
     setLastHint: (hint) => set({ lastHint: hint }),
 
     setRoundResults: (results) => set({ roundResults: results }),
+    setFinalResults: (results) => set({ finalResults: results }),
 
     setRoleData: (data) => set({ roleData: data }),
     setPendingAbilityResult: (result) => set({ pendingAbilityResult: result }),
@@ -97,6 +103,8 @@ export const useGameStore = create((set) => ({
     setConnecting: (connecting) => set({ connecting }),
     setReconnecting: (reconnecting) => set({ reconnecting }),
     setSelectedTrainingRole: (role) => set({ selectedTrainingRole: role }),
+    setNotification: (notification) => set({ notification }),
+    clearNotification: () => set({ notification: null }),
 
     // Helpers
     clearRoundState: () => set({
@@ -120,10 +128,14 @@ export const useGameStore = create((set) => ({
         playerName: '',
         userRole: null,
         players: [],
+        socketId: null,
         roleData: null,
         scenario: '',
         template: '',
+        gameMode: 'BLITZ',
         currentRound: 1,
+        totalRounds: 3,
+        // Round State
         answer: '',
         isSubmitted: false,
         hasVoted: false,
@@ -134,6 +146,16 @@ export const useGameStore = create((set) => ({
         currentReveal: null,
         roundResults: null,
         speakingPlayerId: null,
-        lastHint: null
+        lastHint: null,
+        waitingFor: [],
+        scenarios: [],
+        // Connection State
+        connecting: false,
+        reconnecting: false,
+        // Ability State
+        pendingAbilityResult: null,
+        abilityResultSeen: false,
+        voteTieInfo: null,
+        selectedTrainingRole: null,
     }),
 }));

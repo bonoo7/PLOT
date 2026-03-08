@@ -1,11 +1,27 @@
 const path = require('path');
 const { rooms } = require('../state');
 
+// Middleware: يتحقق من مفتاح المشرف في header أو query param
+function adminAuth(req, res, next) {
+    const adminKey = process.env.ADMIN_KEY;
+    if (!adminKey) return next(); // إذا لم يُعيَّن مفتاح، السماح (وضع التطوير)
+    const provided = req.headers['x-admin-key'] || req.query.key;
+    if (!provided || provided !== adminKey) {
+        return res.status(403).send(`<!DOCTYPE html>
+<html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>ممنوع</title>
+<style>body{background:#111;color:#E8DCC8;font-family:monospace;text-align:center;padding:80px}</style>
+</head><body><h1 style="color:#C46B6B">⛔ غير مصرح</h1>
+<p>يجب توفير مفتاح المشرف عبر header <code>x-admin-key</code> أو query param <code>?key=...</code></p>
+</body></html>`);
+    }
+    next();
+}
+
 function registerAdminRoutes(app) {
     // ============================================
     // 🛡️ ADMIN DASHBOARD
     // ============================================
-    app.get('/admin', (req, res) => {
+    app.get('/admin', adminAuth, (req, res) => {
         const roomList = Object.entries(rooms).map(([code, room]) => ({
             code,
             state: room.state,
@@ -75,7 +91,7 @@ ${roomList.map(r => `<tr>
     });
 
     // Admin JSON API
-    app.get('/admin/api/rooms', (req, res) => {
+    app.get('/admin/api/rooms', adminAuth, (req, res) => {
         const data = Object.entries(rooms).map(([code, room]) => ({
             code,
             state: room.state,

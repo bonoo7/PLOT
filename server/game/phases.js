@@ -550,6 +550,7 @@ function startCulpritVoting(roomCode) {
 
     room.state = 'CULPRIT_VOTING';
     room.culpritVotes = {}; // ✅ Reset votes to prevent carry-over/double counting
+    room.votingProcessed = false; // ✅ Reset idempotency guard for this voting round
 
     // إرسال السيناريوهات مع الأسماء — فقط اللاعبين النشطين (غير المستبعدين)
     const scenariosWithAuthors = room.players
@@ -567,7 +568,7 @@ function startCulpritVoting(roomCode) {
 
     // البوتات تصوت على الجاني
     room.players.forEach(p => {
-        if (p.isBot) {
+        if (p.isBot && !p.eliminated) {  // ✅ FIX-C: skip eliminated bots
             setTimeout(() => {
                 try {
                     // ✅ GUARD: Check if bot already voted
@@ -623,7 +624,11 @@ function checkCulpritVotingComplete(roomCode) {
 
     // Better logic: Check if all NON-ELIMINATED and CONNECTED players have voted
     const activePlayers = room.players.filter(p => !p.eliminated && p.connected !== false);
-    const voteCount = Object.keys(room.culpritVotes).length;
+    // ✅ FIX-C: count only votes from active (non-eliminated) players
+    const voteCount = Object.keys(room.culpritVotes).filter(voterId => {
+        const voter = room.players.find(p => p.id === voterId);
+        return voter && !voter.eliminated;
+    }).length;
 
     console.log(`🔍 Culprit Voting: ${voteCount}/${activePlayers.length} votes received`);
 
@@ -637,6 +642,15 @@ function checkCulpritVotingComplete(roomCode) {
 
 function handleVotingResult(roomCode) {
     const room = rooms[roomCode];
+    if (!room) return;
+
+    // ✅ Idempotency guard: prevent double-processing if called twice (race condition)
+    if (room.votingProcessed) {
+        console.log(`⚠️ handleVotingResult called again for ${roomCode} — already processed, ignoring.`);
+        return;
+    }
+    room.votingProcessed = true;
+
     // Count votes
     const counts = {};
     Object.values(room.culpritVotes).forEach(targetId => {
@@ -690,6 +704,7 @@ function handleVotingResult(roomCode) {
         // First Tie -> Revote
         room.consecutiveTies++;
         room.culpritVotes = {}; // Reset votes
+        room.votingProcessed = false; // ✅ FIX-B: allow re-vote to be processed
 
         ioInstance.to(roomCode).emit('voteTie', {
             candidates: candidates.map(id => {
@@ -817,9 +832,19 @@ function endRound(roomCode, result) {
     const room = rooms[roomCode];
     if (!room) return;
 
+    // ✅ Guard against double endRound calls in the same round
+    if (room.roundEnded) {
+        console.log(`⚠️ endRound called again for ${roomCode} round ${room.currentRound} — already ended, ignoring.`);
+        return;
+    }
+    room.roundEnded = true;
+
     room.roundOutcome = result ? result.winner : null; // Save outcome for Next Round Logic
 
-    const { scores: roundScores, breakdown, teamScores, crimeTeamWon, investigationTeamWon, culpritCaught } = calculateScores(room, result);
+    // نقاط الفوز/الخسارة تُحتسب فقط في الجولة الحاسمة (ليس CONTINUE)
+    // نقاط جودة السيناريو تُحتسب دائماً (scoring.js يتولى ذلك عند result===null)
+    const scoringResult = (result && result.winner !== 'CONTINUE') ? result : null;
+    const { scores: roundScores, breakdown, teamScores, crimeTeamWon, investigationTeamWon, culpritCaught } = calculateScores(room, scoringResult);
 
     // Update total scores
     room.players.forEach(p => {
@@ -909,21 +934,7 @@ function startTutorialLogic(socket, desiredRole) {
     rooms[roomCode] = room;
     // socket.join(roomCode); // Do not join socket yet, wait for manual join
 
-    // Add Bots - 7 Bots to make 8 players total
-    let botCount = 0;
-    while (room.players.length < 7) {
-        botCount++;
-        const botId = `bot_${Date.now()}_${botCount}`;
-        room.players.push({
-            id: botId,
-            name: `Bot ${botCount} 🤖`,
-            score: 0,
-            role: null,
-            isLeader: false,
-            connected: true,
-            isBot: true
-        });
-    }
+    // Note: bots are added when the player joins via joinRoom with desiredRole
 
     // Setup tutorial data
     if (desiredRole) {
@@ -1023,6 +1034,8 @@ function startNewRound(roomCode) {
     room.submissionTimes = {};
     room.roundOutcome = null;
     room.consecutiveTies = 0;
+    room.votingProcessed = false; // ✅ Reset for new round
+    room.roundEnded = false;       // ✅ Reset for new round
 
     // 🔄 Notify Players about New Round
     ioInstance.to(roomCode).emit('newRoundStarted', {
@@ -1085,6 +1098,36 @@ function assignRoles(room, players, passedRoomCode) {
         ROLE_TYPES.SABOTEUR, ROLE_TYPES.BENEFICIARY, ROLE_TYPES.MINISTER,
         ROLE_TYPES.SEER, ROLE_TYPES.MASTERMIND
     ];
+
+    // ===================================================
+    // 🎓 وضع التدريب: الأدوار معيّنة مسبقاً — لا تُغيَّر
+    // registerHandlers.js يعيّن player.role و bot.role قبل استدعاء هذه الدالة
+    // ===================================================
+    if (room.isTutorial) {
+        players.forEach(p => {
+            if (!p.role) p.role = ROLE_TYPES.CITIZEN;
+        });
+        // تخطّي خطوات التعيين العشوائي — الانتقال مباشرة لإعادة تعيين الأعلام والإرسال
+        const allPlayers = players;
+        // إعادة تعيين النقاط والأعلام
+        allPlayers.forEach(player => {
+            player.score = (room.currentRound === 1) ? 0 : player.score;
+            const roleInfo = getRoleInfo(player.role);
+            if (room.currentRound === 1 && roleInfo && roleInfo.startPoints) {
+                player.score = roleInfo.startPoints;
+            }
+            player.abilityUsed = false;
+            player.sabotagedBy = null;
+            player.investigatedBy = null;
+            player.investigationTarget = null;
+            player.sabotageTarget = null;
+            player.offerSentThisRound = false;
+        });
+
+        // إرسال بيانات الأدوار (نفس المنطق الموحّد أدناه)
+        _sendRoleAssignments(room, allPlayers, passedRoomCode);
+        return;
+    }
 
     // الأدوار المتاحة حسب عدد اللاعبين
     const rolesPool = getRolesForPlayerCount(players.length);
@@ -1167,6 +1210,16 @@ function assignRoles(room, players, passedRoomCode) {
     // الجمع لإرسال البيانات
     const allPlayers = [...realPlayers, ...bots, ...noPreference];
 
+    // إرسال بيانات الأدوار
+    _sendRoleAssignments(room, allPlayers, passedRoomCode);
+}
+
+// ===================================================
+// دالة مساعدة — ترسل roleAssigned لكل لاعب ثم تُطلق gameStarted
+// تُستخدم من assignRoles في كلا الوضعين (عادي وتدريب)
+// ===================================================
+function _sendRoleAssignments(room, allPlayers, passedRoomCode) {
+    const roomCode = passedRoomCode || Object.keys(rooms).find(key => rooms[key] === room);
 
     // Special Role Intel Logic
     const crimeTeam = allPlayers.filter(p => {
@@ -1178,8 +1231,6 @@ function assignRoles(room, players, passedRoomCode) {
     const detective = allPlayers.find(p => p.role === ROLE_TYPES.DETECTIVE);
 
     // Assign and send role data
-    const roomCode = passedRoomCode || room.id || Object.keys(rooms).find(key => rooms[key] === room); // Try to find ID
-
     allPlayers.forEach((player) => {
         const role = player.role;
         const roleInfo = getRoleInfo(role);
@@ -1293,7 +1344,8 @@ function endGame(roomCode) {
     const finalResults = room.players.map(p => ({
         name: p.name,
         totalScore: p.score,
-        role: p.role
+        role: p.role,
+        roleName: getRoleName(p.role)
     })).sort((a, b) => b.totalScore - a.totalScore);
 
     // Save stats to DB (wrapped in try-catch to prevent crash)

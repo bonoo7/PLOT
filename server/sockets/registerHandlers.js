@@ -26,6 +26,38 @@ const generateRandomBotAvatar = () => {
 };
 
 function registerHandlers(io) {
+
+    // ============================================
+    // 🔒 Input Validation Helpers
+    // ============================================
+
+    /** تنظيف اسم اللاعب من محتوى HTML الخبيث */
+    function sanitizePlayerName(name) {
+        if (!name || typeof name !== 'string') return '';
+        return name
+            .trim()
+            .substring(0, 50)
+            .replace(/[<>"'&]/g, '')
+            .replace(/[\x00-\x1F\x7F]/g, ''); // إزالة control characters
+    }
+
+    /** فحص صحة المدخلات العامة */
+    function validateInput(data, rules) {
+        for (const [field, rule] of Object.entries(rules)) {
+            const value = data[field];
+            if (rule.required && (value === undefined || value === null || value === '')) {
+                return `الحقل "${field}" مطلوب`;
+            }
+            if (value !== undefined && rule.type && typeof value !== rule.type) {
+                return `الحقل "${field}" يجب أن يكون ${rule.type}`;
+            }
+            if (rule.maxLength && typeof value === 'string' && value.length > rule.maxLength) {
+                return `الحقل "${field}" يتجاوز الحد الأقصى (${rule.maxLength} حرف)`;
+            }
+        }
+        return null; // لا يوجد خطأ
+    }
+
     io.on('connection', (socket) => {
         console.log('✅ User connected:', socket.id, 'from', socket.handshake.address);
         console.log('📊 Total connections:', io.engine.clientsCount);
@@ -96,6 +128,24 @@ function registerHandlers(io) {
 
         // Player joins a room
         socket.on('joinRoom', ({ roomCode, playerName, desiredRole, avatar }) => {
+            // فحص وتنظيف المدخلات
+            const validationError = validateInput(
+                { roomCode, playerName },
+                {
+                    roomCode: { required: true, type: 'string', maxLength: 10 },
+                    playerName: { required: true, type: 'string' }
+                }
+            );
+            if (validationError) {
+                socket.emit('error', validationError);
+                return;
+            }
+            playerName = sanitizePlayerName(playerName);
+            if (!playerName) {
+                socket.emit('error', 'اسم اللاعب غير صالح');
+                return;
+            }
+
             const room = rooms[roomCode.toUpperCase()];
 
             if (room) {
@@ -306,7 +356,8 @@ function registerHandlers(io) {
                             id: botId,
                             name: `Bot ${botCount} 🤖 (${botRoleName})`,
                             score: 0,
-                            role: botRole,        // الدور محدد مسبقاً
+                            role: botRole,           // الدور محدد مسبقاً
+                            preferredRole: botRole,  // ✅ يحفظ الدور في مسار assignRoles
                             isLeader: false,
                             connected: true,
                             isBot: true,
@@ -533,7 +584,9 @@ function registerHandlers(io) {
 
         // Host starts the game
         socket.on('startGame', () => {
-            phases.startGameLogic(socket, false);
+            // Preserve isTutorial flag — don't hardcode false
+            const currentRoom = Object.values(rooms).find(r => r.hostId === socket.id);
+            phases.startGameLogic(socket, currentRoom?.isTutorial || false);
         });
 
         // Start Tutorial Match
@@ -625,6 +678,18 @@ function registerHandlers(io) {
         });
 
         socket.on('submitAnswer', ({ roomCode, answer }) => {
+            // فحص المدخلات ومنع هجمات حجم البيانات
+            const validationError = validateInput(
+                { roomCode, answer },
+                {
+                    roomCode: { required: true, type: 'string', maxLength: 10 },
+                    answer: { required: true, type: 'string', maxLength: 5000 }
+                }
+            );
+            if (validationError) {
+                socket.emit('error', validationError);
+                return;
+            }
             const room = rooms[roomCode];
             if (room && room.state === 'DRAFTING') {
                 room.answers[socket.id] = answer;
@@ -812,6 +877,7 @@ function registerHandlers(io) {
 
                 socket.emit('abilityResult', {
                     type: 'SABOTAGE',
+                    targetName: targetPlayer.name,
                     message: `تم تخريب سجل ${targetPlayer.name}. سيظهر عكس حقيقته للمحقق.`
                 });
 
@@ -841,6 +907,10 @@ function registerHandlers(io) {
         // المرحلة الأولى: Quality Voting
         // ============================================
         socket.on('submitQualityVote', ({ roomCode, scenarioIndex }) => {
+            if (validateInput({ roomCode, scenarioIndex }, {
+                roomCode: { required: true, type: 'string', maxLength: 10 },
+                scenarioIndex: { required: true, type: 'number' }
+            })) { socket.emit('error', 'مدخلات غير صالحة'); return; }
             const room = rooms[roomCode];
             if (room && room.state === 'QUALITY_VOTING') {
                 const player = room.players.find(p => p.id === socket.id);
@@ -873,6 +943,10 @@ function registerHandlers(io) {
         // المرحلة الثانية: Culprit Voting
         // ============================================
         socket.on('submitCulpritVote', ({ roomCode, playerId }) => {
+            if (validateInput({ roomCode, playerId }, {
+                roomCode: { required: true, type: 'string', maxLength: 10 },
+                playerId: { required: true, type: 'string', maxLength: 100 }
+            })) { socket.emit('error', 'مدخلات غير صالحة'); return; }
             const room = rooms[roomCode];
             if (room && room.state === 'CULPRIT_VOTING') {
                 const player = room.players.find(p => p.id === socket.id);
@@ -969,6 +1043,8 @@ function registerHandlers(io) {
                 const room = rooms[roomCode];
                 if (room.roundOutcome === 'CONTINUE') {
                     room.roundOutcome = null;
+                    room.roundEnded = false;      // ✅ FIX-A: allow second endRound call in CONTINUE flow
+                    room.votingProcessed = false; // ✅ FIX-A: reset for new voting round
                     io.to(roomCode).emit('roundContinued', { round: room.currentRound });
                     phases.startDiscussion(roomCode);
                 } else {

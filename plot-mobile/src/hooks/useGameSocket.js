@@ -69,6 +69,9 @@ export const useGameSocket = (navigationRef) => {
     const [socket, setSocket] = useState(null);
     const socketRef = useRef(null);
     const reconnectInterval = useRef(null);
+    // refs لتجنب stale closure في setInterval
+    const roomCodeRef = useRef('');
+    const playerNameRef = useRef('');
 
     const {
         roomCode,
@@ -102,7 +105,13 @@ export const useGameSocket = (navigationRef) => {
         resetGame,
         setThemeMode,
         setVoteTieInfo,
+        setNotification,
+        setFinalResults,
     } = useGameStore();
+
+    // تحديث refs عند تغيير القيم حتى يقرأها الـ interval دائماً من المصدر الصحيح
+    useEffect(() => { roomCodeRef.current = roomCode; }, [roomCode]);
+    useEffect(() => { playerNameRef.current = playerName; }, [playerName]);
 
     const navigate = (routeName, params) => {
         if (navigationRef?.current && navigationRef.current.isReady()) {
@@ -150,13 +159,14 @@ export const useGameSocket = (navigationRef) => {
         newSocket.on('disconnect', (reason) => {
             console.log('❌ Disconnected:', reason);
             if (reason === 'io server disconnect' || reason === 'transport close' || reason === 'ping timeout') {
-                if (!reconnectInterval.current && roomCode && playerName) {
+                if (!reconnectInterval.current && roomCodeRef.current && playerNameRef.current) {
                     console.log('🔄 Attempting aggressive manual reconnect...');
                     reconnectInterval.current = setInterval(() => {
                         if (!newSocket.connected) {
                             console.log('🔁 Forcing reconnect...');
                             newSocket.connect();
-                            newSocket.emit('joinRoom', { roomCode, playerName });
+                            // استخدام refs بدلاً من closure لضمان القيم الحالية
+                            newSocket.emit('joinRoom', { roomCode: roomCodeRef.current, playerName: playerNameRef.current });
                         }
                     }, 3000);
                 }
@@ -235,7 +245,7 @@ export const useGameSocket = (navigationRef) => {
         newSocket.on('roundContinued', (data) => {
             console.log('🔄 Round Continued:', data);
             setRoundResults(null);
-            Alert.alert('الجولة مستمرة!', 'لم يتم القبض على الجاني.');
+            setNotification({ title: 'الجولة مستمرة!', message: 'لم يتم القبض على الجاني.', type: 'info' });
         });
 
         newSocket.on('gameStarted', (data) => {
@@ -256,6 +266,13 @@ export const useGameSocket = (navigationRef) => {
         newSocket.on('roleAssigned', (roleData) => {
             console.log('🎭 Role assigned:', roleData);
             setRoleData(roleData);
+            if (roleData?.roleName) {
+                setNotification({
+                    title: `دورك: ${roleData.roleName} ${roleData.emoji || ''}`,
+                    message: roleData.goal || roleData.description || '',
+                    type: 'info'
+                });
+            }
         });
 
         newSocket.on('startDrafting', (data) => {
@@ -290,8 +307,10 @@ export const useGameSocket = (navigationRef) => {
 
         newSocket.on('secretHint', (data) => {
             console.log('🕵️ Secret Hint received:', data);
-            setRoleData({ ...useGameStore.getState().roleData, secretHint: data.hint });
-            Alert.alert("🕵️ تلميح سري!", `بصفتك الجاني، حصلت على تلميح:\n"${data.hint}"`);
+            const currentRole = useGameStore.getState().roleData;
+            setRoleData({ ...currentRole, secretHint: data.hint });
+            const roleName = currentRole?.roleName || 'الجاني';
+            setNotification({ title: '🕵️ تلميح سري!', message: `بصفتك ${roleName}، حصلت على تلميح:\n"${data.hint}"`, type: 'info' });
         });
 
         newSocket.on('timerUpdate', (timeLeft) => {
@@ -396,7 +415,7 @@ export const useGameSocket = (navigationRef) => {
         });
 
         newSocket.on('ministerRevealAlert', (data) => {
-            Alert.alert('⚠️ تحذير للوزير', `المستفيد "${data.beneficiaryName}" حاول الاتصال بك!\nلقد كُشف لك.`);
+            setNotification({ title: '⚠️ تحذير للوزير', message: `المستفيد "${data.beneficiaryName}" حاول الاتصال بك!\nلقد كُشف لك.`, type: 'warning' });
         });
 
         newSocket.on('culpritVotingStarted', (data) => {
@@ -422,7 +441,7 @@ export const useGameSocket = (navigationRef) => {
         });
 
         newSocket.on('voteReceived', (data) => {
-            setLiveVotes([...useGameStore.getState().liveVotes, data]);
+            setLiveVotes(prev => [...prev, data]);
         });
 
         newSocket.on('roundResults', (data) => {
@@ -475,12 +494,12 @@ export const useGameSocket = (navigationRef) => {
             navigate(ROUTES.WAITING);
         });
 
-        // ✅ NEW: Handle game end (all rounds completed)
+        // Handle game end (all rounds completed)
         newSocket.on('gameEnded', (data) => {
             console.log('🏁 Game ended, final results:', data);
-            if (data.results) {
-                setRoundResults(data);
-            }
+            // ✅ حفظ النتائج النهائية قبل إعادة تعيين اللعبة
+            if (data?.results) setFinalResults(data.results);
+            resetGame();
             navigate(ROUTES.END);
         });
 
@@ -494,7 +513,7 @@ export const useGameSocket = (navigationRef) => {
         newSocket.on('error', (message) => {
             console.error('❌ Socket error:', message);
             setConnecting(false);
-            Alert.alert('خطأ', message || 'حدث خطأ غير متوقع');
+            setNotification({ title: 'خطأ', message: message || 'حدث خطأ غير متوقع', type: 'error' });
         });
 
         newSocket.on('connect_error', (error) => {
@@ -502,11 +521,6 @@ export const useGameSocket = (navigationRef) => {
             setConnecting(false);
         });
 
-        newSocket.on('gameEnded', () => {
-            console.log('🏁 Game ended — returning to main page');
-            resetGame();
-            navigate(ROUTES.ROLE_SELECT);
-        });
 
         return () => {
             if (reconnectInterval.current) {
