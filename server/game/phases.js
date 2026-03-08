@@ -1044,22 +1044,15 @@ function startNewRound(roomCode) {
         totalRounds: room.totalRounds
     });
 
-    // Select random scenario that hasn't been used
+    // Select a random scenario not used yet this session (works for both tutorial and normal)
+    if (!room.usedScenarios) room.usedScenarios = [];
     let availableScenarios = scenarios.filter(s => !room.usedScenarios.includes(s.id));
-
-    // If Tutorial, use a specific simple scenario if available, or just random
-    if (room.isTutorial) {
-        // Try to find a simple one or just pick first
-        const tutorialScenario = scenarios.find(s => s.id === 1) || scenarios[0];
-        room.currentScenario = tutorialScenario;
-    } else {
-        if (availableScenarios.length === 0) {
-            // Reset used scenarios if all used
-            room.usedScenarios = [];
-            availableScenarios = scenarios;
-        }
-        room.currentScenario = availableScenarios[Math.floor(Math.random() * availableScenarios.length)];
+    if (availableScenarios.length === 0) {
+        room.usedScenarios = [];
+        availableScenarios = scenarios;
     }
+    room.currentScenario = availableScenarios[Math.floor(Math.random() * availableScenarios.length)];
+    logger.info(`[Round ${room.currentRound}] Selected scenario: "${room.currentScenario.title}" (id=${room.currentScenario.id}), usedSoFar=${JSON.stringify(room.usedScenarios)}`);
 
     room.usedScenarios.push(room.currentScenario.id);
 

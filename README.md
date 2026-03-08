@@ -13,9 +13,15 @@
 ```bash
 git clone https://github.com/YourUsername/plot-game.git
 cd plot-game
-npm install
+
+# تثبيت جميع المكتبات دفعة واحدة
+npm run install:all
+
+# تشغيل اللعبة
 npm start
 ```
+
+> **ملاحظة:** `npm run install:all` يثبّت تلقائياً مكتبات المجلد الجذري + `server/` + `plot-mobile/`.
 
 يقوم `npm start` بـ:
 1. ✅ تشغيل خادم Node.js على المنفذ 3000
@@ -31,7 +37,31 @@ npm start
 
 ---
 
-## 🆕 آخر التحديثات (v3.2.0) — نظام التصميم V2 🗂️
+## 🆕 آخر التحديثات (v3.5.0) — سيناريوهات موسّعة + إصلاح الجولات 🎭
+
+### 🎯 تنويع السيناريوهات (59 قضية)
+- ✅ **35 سيناريو جديد** مضحك وغير متوقع — مجموع 59 قضية الآن
+- ✅ **إصلاح keywords الشاهد**: لم تعد الكلمات المفتاحية مطابقة تماماً للإجابات الصحيحة، بل تلميحات غير مباشرة
+- ✅ **إصلاح تكرار السيناريوهات**: كل جولة تختار قضية مختلفة حتى في وضع التدريب
+- ✅ **مواضيع متنوعة**: مكاتب، رياضة، علوم، سفر، حيوانات، عائلة، تكنولوجيا، طعام، سياسة
+
+### 📦 تنظيف package.json
+- ✅ إزالة مكتبات غير مستخدمة من root (`puppeteer`, `qrcode`, `expo`)
+- ✅ نقل `@types/react` من dependencies إلى devDependencies فقط في `plot-mobile`
+- ✅ إزالة تكرار `typescript` في devDependencies
+- ✅ إضافة سكريبت `install:all` لتثبيت جميع المكتبات دفعة واحدة
+
+### 🗂️ هيكل التبعيات
+
+| المجلد | المكتبات الرئيسية |
+|--------|------------------|
+| `/` (root) | `concurrently`, `qrcode-terminal` |
+| `server/` | `express`, `socket.io`, `dotenv`, `cors`, `winston`, `@sentry/node`, `axios`, `express-rate-limit` |
+| `plot-mobile/` | `expo`, `react-native`, `react-navigation`, `zustand`, `socket.io-client`, `expo-av` |
+
+---
+
+
 
 ### 🎨 نظام تصميم V2 "Classified Dossier"
 - ✅ **تصميم كامل موازٍ**: 19+ ملف في `design-v2/` — V1 و V2 يعملان جنباً إلى جنب
@@ -144,7 +174,7 @@ plot/
 
 ---
 
-- **Version**: 3.0.0
-- **Last Updated**: 2026-03-01
+- **Version**: 3.5.0
+- **Last Updated**: 2026-03-08
 
 **استمتع باللعبة! 🎉**
