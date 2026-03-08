@@ -362,7 +362,9 @@ export const DraftingScreen = () => {
           { borderColor: c.cardBorder, backgroundColor: c.cardBg },
           isLandscape && styles.scenarioBlockLandscape,
         ]}>
-          <Text style={[styles.scenarioLabel, { color: c.textMuted }]}>ملف القضية</Text>
+          <Text style={[styles.scenarioLabel, { color: c.gold }]}>
+            {scenario ? `📁 ${scenario}` : 'ملف القضية'}
+          </Text>
           <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
             <Text style={[styles.scenarioText, { color: c.text }]}>{scenario || '…'}</Text>
           </ScrollView>

@@ -78,13 +78,6 @@ const CaseHeader = ({
               <Text style={[styles.modalHeaderText, { color: c.textMuted }]}>◈ ملف الدور ◈</Text>
             </View>
             <ScrollView style={styles.modalBody} contentContainerStyle={{ gap: sp.m }}>
-              {/* اسم القضية */}
-              {scenario ? (
-                <View style={[styles.modalSection, { borderColor: c.gold }]}>
-                  <Text style={[styles.modalSectionLabel, { color: c.gold }]}>📁 القضية</Text>
-                  <Text style={[styles.modalSectionText, { color: c.text }]}>{scenario}</Text>
-                </View>
-              ) : null}
               {/* Role name + emoji */}
               <View style={styles.modalRoleRow}>
                 <Text style={styles.modalEmoji}>{roleData?.emoji || roleEmoji || '👤'}</Text>
@@ -161,16 +154,39 @@ const CaseHeader = ({
               ) : null}
               {/* المحقق: نتيجة التحقيق */}
               {roleData?.role === 'DETECTIVE' && roleData?.abilityResult ? (
-                <View style={[styles.modalSection, { borderColor: roleData.abilityResult.isSabotaged ? c.red : c.green }]}>
-                  <Text style={[styles.modalSectionLabel, { color: roleData.abilityResult.isSabotaged ? c.red : c.green }]}>
-                    🕵️ نتيجة التحقيق {roleData.abilityResult.isSabotaged ? '⚠️ (ملفقة)' : '✓'}
+                <View style={[styles.modalSection, {
+                  borderColor: roleData.abilityResult.isPending
+                    ? c.border
+                    : roleData.abilityResult.isSabotaged ? c.red : c.green
+                }]}>
+                  <Text style={[styles.modalSectionLabel, {
+                    color: roleData.abilityResult.isPending
+                      ? c.textMuted
+                      : roleData.abilityResult.isSabotaged ? c.red : c.green
+                  }]}>
+                    🕵️ نتيجة التحقيق {
+                      roleData.abilityResult.isPending
+                        ? '⏳ (قيد المعالجة)'
+                        : roleData.abilityResult.isSabotaged ? '⚠️ (ملفقة)' : '✓'
+                    }
                   </Text>
                   {roleData.abilityResult.targetName ? (
-                    <Text style={[styles.modalSectionText, { color: c.text }]}>الهدف: {roleData.abilityResult.targetName}</Text>
+                    <Text style={[styles.modalSectionText, { color: c.text }]}>
+                      🎯 الهدف: {roleData.abilityResult.targetName}
+                    </Text>
                   ) : null}
-                  <Text style={[styles.modalSectionText, { color: c.text }]}>
-                    النتيجة: {roleData.abilityResult.result || '—'}
-                  </Text>
+                  {!roleData.abilityResult.isPending ? (
+                    <Text style={[styles.modalSectionText, {
+                      color: roleData.abilityResult.isSabotaged ? c.red : c.green,
+                      fontWeight: '700'
+                    }]}>
+                      النتيجة: {roleData.abilityResult.result || '—'}
+                    </Text>
+                  ) : (
+                    <Text style={[styles.modalSectionText, { color: c.textMuted, fontStyle: 'italic' }]}>
+                      ستظهر النتيجة بعد مرحلة التصويت
+                    </Text>
+                  )}
                 </View>
               ) : null}
               {/* المخرب: الهدف المُخرَّب */}
@@ -232,6 +248,9 @@ const CaseHeader = ({
                 {roleName  ? <Text style={[styles.roleName, { color: c.text }]}>{roleName}</Text> : null}
                 <Text style={[styles.roleTapHint, { color: c.textMuted }]}>ℹ</Text>
               </TouchableOpacity>
+            ) : null}
+            {scenario ? (
+              <Text style={[styles.caseName, { color: c.textMuted }]} numberOfLines={1}>📁 {scenario}</Text>
             ) : null}
           </>
         )}
@@ -357,6 +376,13 @@ const styles = StyleSheet.create({
     fontSize: fontSize.label,
     marginLeft: sp.xxs,
     opacity: 0.6,
+  },
+  caseName: {
+    fontSize: fontSize.small,
+    fontFamily: fontFamily.mono,
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginTop: 1,
   },
   // Modal styles
   overlay: {
