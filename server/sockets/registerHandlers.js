@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 const { rooms } = require('../state');
 const scenarios = require('../scenarios');
 const { TEAMS, ROLE_TYPES, ROLES, getRoleInfo, getTeamMembers, getRolesForPlayerCount } = require('../roles');
@@ -59,16 +60,16 @@ function registerHandlers(io) {
     }
 
     io.on('connection', (socket) => {
-        console.log('✅ User connected:', socket.id, 'from', socket.handshake.address);
-        console.log('📊 Total connections:', io.engine.clientsCount);
+        logger.info('✅ User connected:', socket.id, 'from', socket.handshake.address);
+        logger.info('📊 Total connections:', io.engine.clientsCount);
 
         // Handle connection errors
         socket.on('error', (error) => {
-            console.error('❌ Socket error:', socket.id, error);
+            logger.error('❌ Socket error:', socket.id, error);
         });
 
         socket.on('connect_error', (error) => {
-            console.error('❌ Connection error:', socket.id, error);
+            logger.error('❌ Connection error:', socket.id, error);
         });
 
         // Host creates a room
@@ -86,13 +87,13 @@ function registerHandlers(io) {
             socket.join(roomCode);
             // ✅ إرسال gameMode مع الكود حتى تعكس الواجهة الوضع الصحيح فوراً
             socket.emit('roomCreated', { roomCode, gameMode: 'BLITZ' });
-            console.log(`Room created: ${roomCode} by ${socket.id} `);
+            logger.info(`Room created: ${roomCode} by ${socket.id} `);
 
             // Auto-cleanup: delete unused lobby rooms after 30 minutes
             setTimeout(() => {
                 if (rooms[roomCode] && rooms[roomCode].state === 'LOBBY') {
                     delete rooms[roomCode];
-                    console.log(`🧹 Unused lobby room ${roomCode} auto - cleaned`);
+                    logger.info(`🧹 Unused lobby room ${roomCode} auto - cleaned`);
                 }
             }, 30 * 60 * 1000);
         });
@@ -103,7 +104,7 @@ function registerHandlers(io) {
             if (room) {
                 room.hostId = socket.id;
                 socket.join(roomCode.toUpperCase());
-                console.log(`Host rejoined room ${roomCode} `);
+                logger.info(`Host rejoined room ${roomCode} `);
             }
         });
 
@@ -167,7 +168,7 @@ function registerHandlers(io) {
                         isReconnect: room.state !== 'LOBBY' && room.state !== 'END' // ← لا تُعيد لـ LOBBY إذا اللعبة جارية
                     });
 
-                    console.log(`${playerName} reconnected to room ${roomCode} `);
+                    logger.info(`${playerName} reconnected to room ${roomCode} `);
 
                     // If game is running, send current state
                     if (room.state !== 'LOBBY' && room.state !== 'END') {
@@ -314,7 +315,7 @@ function registerHandlers(io) {
 
                 // ✅ Handle Training Mode Join Logic
                 if (desiredRole) {
-                    console.log(`🎓 Training Mode Join: ${playerName} wants to be ${desiredRole} `);
+                    logger.info(`🎓 Training Mode Join: ${playerName} wants to be ${desiredRole} `);
                     room.isTutorial = true;
                     room.totalRounds = 3; // التدريب يستمر 3 جولات
                     player.role = desiredRole;
@@ -365,7 +366,7 @@ function registerHandlers(io) {
                         });
                     }
 
-                    console.log(`✅ Training Mode: Added ${botCount} bots.Total players: ${room.players.length} `);
+                    logger.info(`✅ Training Mode: Added ${botCount} bots.Total players: ${room.players.length} `);
                 } else {
                     room.players.push(player);
                     socket.join(roomCode.toUpperCase());
@@ -382,7 +383,7 @@ function registerHandlers(io) {
                 // Notify host (and everyone in room) about new player
                 io.to(roomCode.toUpperCase()).emit('playerJoined', room.players);
 
-                console.log(`${playerName} joined room ${roomCode} ${desiredRole ? '(Training Mode)' : ''} `);
+                logger.info(`${playerName} joined room ${roomCode} ${desiredRole ? '(Training Mode)' : ''} `);
 
                 // Late Join Logic
                 if (room.state !== 'LOBBY' && room.state !== 'END') {
@@ -576,7 +577,7 @@ function registerHandlers(io) {
 
                 // Notify everyone
                 io.to(roomCode).emit('playerJoined', room.players);
-                console.log(`🤖 Added 1 bot(${assignedRole}) to room ${roomCode} `);
+                logger.info(`🤖 Added 1 bot(${assignedRole}) to room ${roomCode} `);
             } else {
                 socket.emit('error', 'العدد مكتمل (الحد الأقصى 8)');
             }
@@ -591,7 +592,7 @@ function registerHandlers(io) {
 
         // Start Tutorial Match
         socket.on('startTutorial', (desiredRole) => {
-            console.log('Received startTutorial event from:', socket.id);
+            logger.info('Received startTutorial event from:', socket.id);
             phases.startTutorialLogic(socket, desiredRole);
         });
 
@@ -1035,7 +1036,7 @@ function registerHandlers(io) {
                 }
             }
 
-            console.log(`[nextRound] room = ${roomCode} socket = ${socket.id.substring(0, 8)} provided = ${providedCode} `);
+            logger.info(`[nextRound] room = ${roomCode} socket = ${socket.id.substring(0, 8)} provided = ${providedCode} `);
 
             if (roomCode) {
                 // ✅ دائماً أضف الـ socket للغرفة لضمان استلام الأحداث
@@ -1051,12 +1052,12 @@ function registerHandlers(io) {
                     phases.startNewRound(roomCode);
                 }
             } else {
-                console.warn(`[nextRound] Room not found! socket = ${socket.id} `);
+                logger.warn(`[nextRound] Room not found! socket = ${socket.id} `);
             }
         });
 
         socket.on('disconnect', () => {
-            console.log('User disconnected:', socket.id);
+            logger.info('User disconnected:', socket.id);
             // Handle disconnection logic
             for (const code in rooms) {
                 const room = rooms[code];

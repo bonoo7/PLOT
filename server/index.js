@@ -4,6 +4,7 @@ const { Server } = require('socket.io');
 const path = require('path');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const Sentry = require('@sentry/node');
 const logger = require('./utils/logger');
 const db = require('./database');
 const phases = require('./game/phases');
@@ -14,6 +15,18 @@ const { handleSendOffer, handleMastermindForward, handleOfferResponse } = requir
 const { calculateScores } = require('./logic/scoring');
 const { testConnection } = require('./githubAI'); // Note: assuming it or its proxy is here, wait I'll check its path 
 require('dotenv').config();  // تحميل متغيرات البيئة
+
+// ============================================
+// 🔍 Sentry — تتبع الأخطاء في الإنتاج
+// ============================================
+if (process.env.SENTRY_DSN) {
+    Sentry.init({
+        dsn: process.env.SENTRY_DSN,
+        tracesSampleRate: 0.1,
+        environment: process.env.NODE_ENV || 'production',
+    });
+    logger.info('✅ Sentry error tracking initialized');
+}
 
 const app = express();
 
@@ -88,6 +101,43 @@ const io = new Server(server, {
     upgrade: true,
 });
 
+// ============================================
+// 🚦 Socket.IO Rate Limiting — منع الاتصالات المفرطة
+// ============================================
+const socketConnectionCounts = new Map(); // ip → { count, resetAt }
+const SOCKET_RATE_LIMIT = parseInt(process.env.SOCKET_RATE_LIMIT || '20');  // max per window
+const SOCKET_RATE_WINDOW = 60 * 1000; // 1 minute
+
+io.use((socket, next) => {
+    const ip = socket.handshake.headers['x-forwarded-for']?.split(',')[0]?.trim()
+        || socket.handshake.address
+        || 'unknown';
+
+    const now = Date.now();
+    const entry = socketConnectionCounts.get(ip);
+
+    if (!entry || now > entry.resetAt) {
+        socketConnectionCounts.set(ip, { count: 1, resetAt: now + SOCKET_RATE_WINDOW });
+        return next();
+    }
+
+    if (entry.count >= SOCKET_RATE_LIMIT) {
+        logger.warn(`Socket rate limit exceeded for IP: ${ip} (${entry.count} connections)`);
+        return next(new Error('Rate limit exceeded. Too many connections from this IP.'));
+    }
+
+    entry.count++;
+    next();
+});
+
+// تنظيف Map كل 5 دقائق لمنع تسرب الذاكرة
+setInterval(() => {
+    const now = Date.now();
+    for (const [ip, entry] of socketConnectionCounts) {
+        if (now > entry.resetAt) socketConnectionCounts.delete(ip);
+    }
+}, 5 * 60 * 1000);
+
 // 1. تمرير كائن الـ socket server لمرحلة اللعبة
 phases.initPhases(io);
 
@@ -115,11 +165,13 @@ server.listen(PORT, async () => {
 // ============================================
 process.on('uncaughtException', (err) => {
     logger.error('uncaughtException', { message: err.message, stack: err.stack });
+    if (process.env.SENTRY_DSN) Sentry.captureException(err);
     // لا نوقف الخادم — نسجّل الخطأ فقط
 });
 
 process.on('unhandledRejection', (reason, promise) => {
     logger.error('unhandledRejection', { reason: String(reason) });
+    if (process.env.SENTRY_DSN && reason instanceof Error) Sentry.captureException(reason);
 });
 
 // ============================================

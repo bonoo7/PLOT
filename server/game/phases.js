@@ -1,3 +1,4 @@
+const logger = require('../utils/logger');
 
 const { rooms } = require('../state');
 const scenarios = require('../scenarios');
@@ -30,7 +31,7 @@ function executeBotAbilities(roomCode) {
                     targetTeam
                 };
                 bot.abilityUsed = true;
-                console.log(`🤖 [BOT] Detective ${bot.name} investigated ${target.name} (${targetTeam})`);
+                logger.info(`🤖 [BOT] Detective ${bot.name} investigated ${target.name} (${targetTeam})`);
             }
         }
 
@@ -45,7 +46,7 @@ function executeBotAbilities(roomCode) {
                 target.sabotageType = 'INVESTIGATION_FLIP';
 
                 bot.abilityUsed = true;
-                console.log(`🤖 [BOT] Saboteur ${bot.name} sabotaged ${target.name}`);
+                logger.info(`🤖 [BOT] Saboteur ${bot.name} sabotaged ${target.name}`);
             }
         }
 
@@ -55,7 +56,7 @@ function executeBotAbilities(roomCode) {
                 // استبدال إجابة العراف بالقصة الحقيقية
                 room.answers[bot.id] = `(وحي العراف): ${room.currentScenario.solution}`;
                 bot.abilityUsed = true;
-                console.log(`🤖 [BOT] Seer ${bot.name} used revelation`);
+                logger.info(`🤖 [BOT] Seer ${bot.name} used revelation`);
             }
         }
     });
@@ -253,7 +254,7 @@ async function simulateBotDrafting(roomCode, bot) {
             checkDraftingComplete(roomCode);
         }, submitDelay);
     } catch (error) {
-        console.error(`❌ Bot ${bot.name} failed to draft:`, error);
+        logger.error(`❌ Bot ${bot.name} failed to draft:`, error);
         if (!rooms[roomCode] || rooms[roomCode].state !== 'DRAFTING') return;
         // Fallback: Submit a simple answer
         room.answers[bot.id] = "لم أستطع كتابة سيناريو...";
@@ -335,7 +336,7 @@ function startQualityVoting(roomCode) {
 
                     checkQualityVotingComplete(roomCode);
                 } catch (e) {
-                    console.error(`Bot ${p.id} crashed during Quality Voting:`, e);
+                    logger.error(`Bot ${p.id} crashed during Quality Voting:`, e);
                     // Fallback to random vote
                     room.qualityVotes[p.id] = (room.players.findIndex(pl => pl.id === p.id) + 1) % room.players.length;
                     checkQualityVotingComplete(roomCode);
@@ -482,7 +483,7 @@ function startDramaticReveal(roomCode) {
 
     // بعد انتهاء العرض: الانتقال مباشرة إلى التصويت على الجاني
     setTimeout(() => {
-        console.log(`⏰ Dramatic reveal finished. Starting discussion for room ${roomCode}`);
+        logger.info(`⏰ Dramatic reveal finished. Starting discussion for room ${roomCode}`);
         startDiscussion(roomCode);
     }, currentDelay);
 }
@@ -494,7 +495,7 @@ function startDiscussion(roomCode) {
     const room = rooms[roomCode];
     if (!room) return;
 
-    console.log(`🗣️ Starting Discussion Phase for room ${roomCode}`);
+    logger.info(`🗣️ Starting Discussion Phase for room ${roomCode}`);
     room.state = 'DISCUSSION';
 
     // 🕵️‍♂️ RESOLVE DETECTIVE ABILITY (Discussion Start)
@@ -520,7 +521,7 @@ function startDiscussion(roomCode) {
                     resultTeamName = 'فريق الجريمة';
                 }
 
-                console.log(`Sabotage Effect: ${target.name} team flipped to ${resultTeamName}`);
+                logger.info(`Sabotage Effect: ${target.name} team flipped to ${resultTeamName}`);
             }
 
             // Emit result to Detective ONLY
@@ -606,7 +607,7 @@ function startCulpritVoting(roomCode) {
 
                     checkCulpritVotingComplete(roomCode);
                 } catch (e) {
-                    console.error(`Bot ${p.id} crashed during Culprit Voting:`, e);
+                    logger.error(`Bot ${p.id} crashed during Culprit Voting:`, e);
                     // Fallback to random candidate
                     const playersPublic = room.players.filter(pl => !pl.eliminated);
                     const candidates = playersPublic.filter(pl => pl.id !== p.id);
@@ -630,12 +631,12 @@ function checkCulpritVotingComplete(roomCode) {
         return voter && !voter.eliminated;
     }).length;
 
-    console.log(`🔍 Culprit Voting: ${voteCount}/${activePlayers.length} votes received`);
+    logger.info(`🔍 Culprit Voting: ${voteCount}/${activePlayers.length} votes received`);
 
     // Check if we have enough votes (considering some might have disconnected after voting)
     // Also, handle the case where voteCount > activePlayers (if someone voted then disconnected)
     if (voteCount >= activePlayers.length) {
-        console.log(`✅ All votes received, processing result...`);
+        logger.info(`✅ All votes received, processing result...`);
         handleVotingResult(roomCode);
     }
 }
@@ -646,7 +647,7 @@ function handleVotingResult(roomCode) {
 
     // ✅ Idempotency guard: prevent double-processing if called twice (race condition)
     if (room.votingProcessed) {
-        console.log(`⚠️ handleVotingResult called again for ${roomCode} — already processed, ignoring.`);
+        logger.info(`⚠️ handleVotingResult called again for ${roomCode} — already processed, ignoring.`);
         return;
     }
     room.votingProcessed = true;
@@ -751,7 +752,7 @@ function handleVotingResult(roomCode) {
 
                         checkCulpritVotingComplete(roomCode);
                     } catch (e) {
-                        console.error(`Bot ${p.id} crashed during Revote:`, e);
+                        logger.error(`Bot ${p.id} crashed during Revote:`, e);
                         const candidates = room.players.filter(pl => !pl.eliminated && pl.id !== p.id);
                         room.culpritVotes[p.id] = candidates.length > 0 ? candidates[0].id : p.id;
                         checkCulpritVotingComplete(roomCode);
@@ -834,7 +835,7 @@ function endRound(roomCode, result) {
 
     // ✅ Guard against double endRound calls in the same round
     if (room.roundEnded) {
-        console.log(`⚠️ endRound called again for ${roomCode} round ${room.currentRound} — already ended, ignoring.`);
+        logger.info(`⚠️ endRound called again for ${roomCode} round ${room.currentRound} — already ended, ignoring.`);
         return;
     }
     room.roundEnded = true;
@@ -915,11 +916,11 @@ function endRound(roomCode, result) {
 }
 
 function startTutorialLogic(socket, desiredRole) {
-    console.log('Starting tutorial logic for:', socket.id);
+    logger.info('Starting tutorial logic for:', socket.id);
 
     // Always create a new room for tutorial
     const roomCode = generateRoomCode(rooms);
-    console.log('Generated tutorial room code:', roomCode);
+    logger.info('Generated tutorial room code:', roomCode);
 
     const room = {
         hostId: socket.id,
@@ -950,11 +951,11 @@ function startTutorialLogic(socket, desiredRole) {
         message: `Tm oluşturuldu. Lütfen kodu girin: ${roomCode}`
     });
 
-    console.log(`Created tutorial room ${roomCode} with 7 bots. Waiting for user to join.`);
+    logger.info(`Created tutorial room ${roomCode} with 7 bots. Waiting for user to join.`);
 }
 
 function startGameLogic(socket, isTutorial, desiredRole = null) {
-    console.log('Received startGame request from:', socket.id);
+    logger.info('Received startGame request from:', socket.id);
 
     // Find room where this socket is host OR leader
     let roomCode = null;
@@ -982,15 +983,15 @@ function startGameLogic(socket, isTutorial, desiredRole = null) {
     }
 
     if (!room) {
-        console.log('Error: Room not found for host/leader:', socket.id);
+        logger.info('Error: Room not found for host/leader:', socket.id);
         socket.emit('error', 'حدث خطأ: لم يتم العثور على الغرفة أو ليس لديك صلاحية.');
         return;
     }
 
-    console.log(`Starting game for room ${roomCode} with ${room.players.length} players`);
+    logger.info(`Starting game for room ${roomCode} with ${room.players.length} players`);
 
     if (room.players.length < 3) {
-        console.log('Error: Not enough players');
+        logger.info('Error: Not enough players');
         socket.emit('error', 'عدد اللاعبين غير كافٍ (الحد الأدنى 3)');
         return;
     }
@@ -1149,13 +1150,13 @@ function assignRoles(room, players, passedRoomCode) {
             // ✅ الدور متاح وغير مأخوذ
             player.role = wanted;
             assignedRoles.add(wanted);
-            console.log(`✅ ${player.name} → ${wanted} (preferred)`);
+            logger.info(`✅ ${player.name} → ${wanted} (preferred)`);
         } else {
             // ⚠️ الدور مأخوذ - يأخذ أول دور متاح من الـ pool
             const fallback = rolesPool.find(r => !assignedRoles.has(r));
             player.role = fallback || ROLE_TYPES.CITIZEN;
             if (fallback) assignedRoles.add(fallback);
-            console.log(`⚠️ ${player.name} wanted ${wanted} (taken) → ${player.role}`);
+            logger.info(`⚠️ ${player.name} wanted ${wanted} (taken) → ${player.role}`);
         }
     }
 
@@ -1166,13 +1167,13 @@ function assignRoles(room, players, passedRoomCode) {
         if (bot.preferredRole && rolesPool.includes(bot.preferredRole) && !assignedRoles.has(bot.preferredRole)) {
             bot.role = bot.preferredRole;
             assignedRoles.add(bot.preferredRole);
-            console.log(`🤖 Bot ${bot.name} → ${bot.role} (preferred)`);
+            logger.info(`🤖 Bot ${bot.name} → ${bot.role} (preferred)`);
         } else {
             // البوت يأخذ أول دور متاح بالترتيب
             const fallback = PRIORITY_ORDER.find(r => rolesPool.includes(r) && !assignedRoles.has(r));
             bot.role = fallback || ROLE_TYPES.CITIZEN;
             if (fallback) assignedRoles.add(fallback);
-            console.log(`🤖 Bot ${bot.name} → ${bot.role}`);
+            logger.info(`🤖 Bot ${bot.name} → ${bot.role}`);
         }
     }
 
@@ -1183,7 +1184,7 @@ function assignRoles(room, players, passedRoomCode) {
         const fallback = PRIORITY_ORDER.find(r => rolesPool.includes(r) && !assignedRoles.has(r));
         player.role = fallback || ROLE_TYPES.CITIZEN;
         if (fallback) assignedRoles.add(fallback);
-        console.log(`👤 ${player.name} → ${player.role} (auto)`);
+        logger.info(`👤 ${player.name} → ${player.role} (auto)`);
     }
 
     // ===================================================
@@ -1236,7 +1237,7 @@ function _sendRoleAssignments(room, allPlayers, passedRoomCode) {
         const roleInfo = getRoleInfo(role);
 
         if (!roleInfo) {
-            console.error(`Role info not found for: ${role}`);
+            logger.error(`Role info not found for: ${role}`);
             return;
         }
 
@@ -1326,7 +1327,7 @@ function _sendRoleAssignments(room, allPlayers, passedRoomCode) {
             isTutorial: room.isTutorial,
             roomCode: roomCode
         });
-        console.log(`Round ${room.currentRound} started in room ${roomCode}`);
+        logger.info(`Round ${room.currentRound} started in room ${roomCode}`);
 
         // Start Drafting Phase after 5 seconds
         setTimeout(() => {
@@ -1365,7 +1366,7 @@ function endGame(roomCode) {
         db.saveMatch({ roomCode, players: room.players.map(p => ({ name: p.name, score: p.score, role: p.role })) });
         leaderboard = db.getLeaderboard() || [];
     } catch (dbErr) {
-        console.error('⚠️ endGame DB error (non-fatal):', dbErr.message);
+        logger.error('⚠️ endGame DB error (non-fatal):', dbErr.message);
     }
 
     ioInstance.to(roomCode).emit('gameEnded', {
@@ -1379,7 +1380,7 @@ function endGame(roomCode) {
             if (rooms[roomCode].timer) clearInterval(rooms[roomCode].timer);
             delete rooms[roomCode];
         }
-        console.log(`🧹 Room ${roomCode} cleaned up from memory`);
+        logger.info(`🧹 Room ${roomCode} cleaned up from memory`);
     }, 5 * 60 * 1000);
 }
 
@@ -1416,7 +1417,7 @@ function applyBlitzSabotage(room, targetId) {
         const randomIdx = candidates[Math.floor(Math.random() * candidates.length)];
         words[randomIdx] = tricksterWord; // Swap!
         room.answers[targetId] = words.join(' ');
-        console.log(`😈 Sabotage applied on ${targetPlayer.name}: Replaced word with ${tricksterWord}`);
+        logger.info(`😈 Sabotage applied on ${targetPlayer.name}: Replaced word with ${tricksterWord}`);
     } else if (words.length > 0) {
         // Fallback: replace last word
         words[words.length - 1] = tricksterWord;

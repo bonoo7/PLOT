@@ -1,31 +1,36 @@
 # CHANGELOG
 
-## [3.4.0] - 2026-03-08 (قيد التطوير)
+## [3.4.0] - 2026-03-08
 
 ### Structured Logging + Rate Limiting + Sentry + Avatar + Sound + Reconnect UI 🔧
 
-#### 1. استبدال console.log بـ winston في جميع ملفات الخادم
-- `phases.js`, `registerHandlers.js`, `database.js`, `botAI.js`, `githubAI.js`, `deepseekAI.js`
-- جميع السجلات الآن مكتوبة في `logs/combined.log` و `logs/error.log` (تدوير تلقائي)
+#### 1. Structured Logging (winston) في جميع ملفات الخادم
+- استبدال `console.log/error/warn` بـ `logger.info/error/warn` في:
+  `phases.js`, `registerHandlers.js`, `database.js`, `botAI.js`, `githubAI.js`, `deepseekAI.js`
+- جميع السجلات مكتوبة في `logs/combined.log` و `logs/error.log` (تدوير تلقائي)
 
-#### 2. Rate Limiting على Socket.IO connections
-- Middleware على `io.use(...)` يتتبع الاتصالات لكل IP
-- رفض الاتصال إذا تجاوز 20 اتصال/دقيقة من نفس IP
+#### 2. Socket.IO Rate Limiting
+- Middleware على `io.use(...)` يتتبع اتصالات كل IP في نافذة دقيقة واحدة
+- رفض الاتصال عند تجاوز 20 اتصال/دقيقة (قابل للتهيئة عبر `SOCKET_RATE_LIMIT`)
+- تنظيف تلقائي للخريطة كل 5 دقائق لمنع تسرب الذاكرة
 
 #### 3. Sentry Error Tracking
-- `@sentry/node` في الخادم مع `SENTRY_DSN` في .env
-- تسجيل uncaughtException وunhandledRejection تلقائياً
+- تكامل `@sentry/node` مع `SENTRY_DSN` في `.env`
+- تسجيل `uncaughtException` و`unhandledRejection` تلقائياً في Sentry
+- اختياري: يعمل فقط إذا تم تعيين `SENTRY_DSN`
 
-#### 4. تكامل الأفاتار مع الخادم
-- استقبال `avatarData` في `joinRoom` وحفظه في `player.avatar`
-- إرسال `avatar` مع `playerJoined` و `stateSync` لكل اللاعبين
+#### 4. تكامل الأفاتار الكامل
+- إرسال `avatar: myAvatar` في جميع حالات الانضمام وإعادة الاتصال
+- شامل: الانضمام الأول + التدريب + إعادة الاتصال التلقائية + اليدوية
 
 #### 5. مؤثرات صوتية (expo-av)
-- `soundManager.js` — مدير مركزي للأصوات
-- أصوات: بداية اللعبة، بدء التصويت، كشف النتائج، النهاية، الإقصاء
+- `soundManager.js` — مدير مركزي للأصوات مع دعم للتهيئة المسبقة
+- تشغيل أصوات عند: بداية اللعبة، التصويتين (الجودة والجاني)، الكشف الدرامي، نتائج الجولة، نهاية اللعبة
+- النظام يتجاهل بهدوء عند غياب ملفات الصوت أو عدم الدعم
 
-#### 6. إشعار إعادة الاتصال
-- `ReconnectBanner` — بانر يظهر أعلى الشاشة عند محاولة إعادة الاتصال
+#### 6. بانر إعادة الاتصال
+- `ReconnectBanner` — بانر أحمر أعلى الشاشة يظهر فور انقطاع الاتصال مع مؤشر تحميل
+- يختفي تلقائياً عند استعادة الاتصال (`reconnecting = false` في store)
 
 ---
 

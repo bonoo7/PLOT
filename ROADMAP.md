@@ -64,19 +64,19 @@
 
 ---
 
-## الإصدار الحالي: 3.4.0 (قيد التطوير) 🔧
+## الإصدار الحالي: 3.4.0 ✅ مكتمل
 
 ### مكتمل من الإصدار 3.3.x:
 - [x] جميع بنود 3.3.0 (انظر أعلاه)
 - [x] اسم القضية في هيدر اللاعب (3.3.1)
 
-### قيد التنفيذ (3.4.0):
-- [ ] Structured Logging (winston) في جميع ملفات الخادم
-- [ ] Socket.IO Rate Limiting
-- [ ] Sentry Error Tracking
-- [ ] تكامل الأفاتار مع الخادم
-- [ ] مؤثرات صوتية (expo-av)
-- [ ] إشعار إعادة الاتصال (ReconnectBanner)
+### مكتمل في 3.4.0:
+- [x] Structured Logging (winston) في جميع ملفات الخادم
+- [x] Socket.IO Rate Limiting — 20 اتصال/دقيقة لكل IP
+- [x] Sentry Error Tracking — تكامل اختياري عبر SENTRY_DSN
+- [x] تكامل الأفاتار الكامل — إرسال avatar في جميع حالات الانضمام وإعادة الاتصال
+- [x] مؤثرات صوتية (expo-av) — soundManager.js مع 6 أصوات
+- [x] إشعار إعادة الاتصال (ReconnectBanner) — بانر أحمر أعلى الشاشة
 
 ---
 
@@ -104,15 +104,15 @@
 
 ### 🔴 الأولوية العالية (High Priority):
 - [x] **اختبار وحدات (Unit Tests)**: 18 اختبار لـ `phases.js` و `scoring.js` (jest) — مكتمل ✅
-- [ ] **Sentry / Error Tracking**: دمج أداة لتتبع الأخطاء في بيئة الإنتاج
-- [ ] **Rate Limiting (Socket)**: `io.use()` middleware على Socket.IO connections
-- [ ] **Structured Logging**: استبدال `console.log` بـ `winston` في جميع ملفات الخادم
+- [x] **Sentry / Error Tracking**: دمج `@sentry/node` عبر `SENTRY_DSN` — مكتمل ✅
+- [x] **Rate Limiting (Socket)**: `io.use()` middleware — 20 conn/min — مكتمل ✅
+- [x] **Structured Logging**: استبدال `console.log` بـ `winston` — مكتمل ✅
 - [x] **تعديل الفراغات (Blitz)**: وضع Blitz يدعم الجمل الكاملة حالياً ✅
 
 ### 🟡 الأولوية المتوسطة (Medium Priority):
-- [ ] **تكامل الأفاتار مع الخادم**: حفظ الأفاتار في قاعدة البيانات وإرساله مع Socket events
-- [ ] **مؤثرات صوتية**: إضافة أصوات للعرض التشويقي وبدء اللعبة والتصويت
-- [ ] **إشعار إعادة الاتصال**: عرض `notification` state أثناء محاولة الاتصال
+- [x] **تكامل الأفاتار مع الخادم**: إرسال avatar في جميع حالات الانضمام — مكتمل ✅
+- [x] **مؤثرات صوتية**: soundManager.js مع expo-av — مكتمل ✅ (أضف ملفات MP3 في assets/sounds/)
+- [x] **إشعار إعادة الاتصال**: ReconnectBanner — بانر أحمر أعلى الشاشة — مكتمل ✅
 - [x] **إحصائيات مفصّلة**: نهاية اللعبة تعرض لوحة ترتيب كاملة (EndScreen) مع الأدوار والنقاط — مكتمل ✅
 - [ ] **دعم 10+ لاعبين**: تحسين الأداء مع عدد كبير من اللاعبين (بعد استقرار 4-8)
 

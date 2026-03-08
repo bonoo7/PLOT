@@ -1,3 +1,4 @@
+const logger = require('./utils/logger');
 const fs = require('fs');
 const fsPromises = require('fs').promises;
 const path = require('path');
@@ -19,7 +20,7 @@ function readDB() {
         const data = fs.readFileSync(DB_FILE, 'utf8');
         return JSON.parse(data);
     } catch (err) {
-        console.error('Error reading DB:', err);
+        logger.error('Error reading DB:', err);
         return { players: {}, matches: [] };
     }
 }
@@ -36,7 +37,7 @@ async function writeDB(data) {
             await fsPromises.writeFile(temp, JSON.stringify(data, null, 2), 'utf8');
             await fsPromises.rename(temp, DB_FILE); // عملية ذرية: لا يحدث تلف عند التعطل
         } catch (err) {
-            console.error('Error writing DB:', err);
+            logger.error('Error writing DB:', err);
             // تنظيف الملف المؤقت إذا فشلت العملية
             try { await fsPromises.unlink(temp); } catch (_) {}
         }

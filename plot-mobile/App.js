@@ -15,6 +15,8 @@ import { SocketProvider } from './src/hooks/useGameSocket';
 import { theme } from './src/styles/theme';
 import GlobalRTLWrapper from './src/components/GlobalRTLWrapper';
 import NotificationToast from './src/components/NotificationToast';
+import { initSounds } from './src/utils/soundManager';
+import ReconnectBanner from './src/design-v2/components/ReconnectBanner';
 
 // Force RTL (Native early enforcement)
 if (Platform.OS !== 'web') {
@@ -61,8 +63,14 @@ const AppContent = () => {
         };
     }, []);
 
+    // تهيئة مؤثرات الصوت عند تشغيل التطبيق
+    useEffect(() => {
+        initSounds();
+    }, []);
+
     return (
         <SocketProvider navigationRef={navigationRef}>
+            <ReconnectBanner />
             <NavigationContainer ref={navigationRef}>
                 <ActiveNavigator />
             </NavigationContainer>

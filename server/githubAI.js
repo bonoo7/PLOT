@@ -1,3 +1,4 @@
+const logger = require('./utils/logger');
 /**
  * 🤖 AI Integration (GitHub Models API)
  * 
@@ -100,7 +101,7 @@ ${roleInstruction}
  */
 async function generateAIAnswer(role, roleInfo, scenario, retries = 2) {
     if (!GITHUB_TOKEN) {
-        console.warn('⚠️ GitHub Token غير موجود. استخدام القوالب الافتراضية.');
+        logger.warn('⚠️ GitHub Token غير موجود. استخدام القوالب الافتراضية.');
         return null;
     }
 
@@ -144,13 +145,13 @@ async function generateAIAnswer(role, roleInfo, scenario, retries = 2) {
 
             // التحقق: يجب ألا تحتوي الإجابة على فراغات غير مملوءة
             if (answer.includes('_____')) {
-                console.warn(`⚠️ AI لم يملأ جميع الفراغات لـ ${roleInfo.nameAr}`);
+                logger.warn(`⚠️ AI لم يملأ جميع الفراغات لـ ${roleInfo.nameAr}`);
                 return null;
             }
 
             // التحقق: يجب أن تكون الإجابة ليست قصيرة جداً
             if (answer.length < 15) {
-                console.warn(`⚠️ إجابة AI قصيرة جداً لـ ${roleInfo.nameAr}`);
+                logger.warn(`⚠️ إجابة AI قصيرة جداً لـ ${roleInfo.nameAr}`);
                 return null;
             }
 
@@ -159,7 +160,7 @@ async function generateAIAnswer(role, roleInfo, scenario, retries = 2) {
                 answer = answer.substring(0, 397) + '...';
             }
 
-            console.log(`✅ GitHub AI (${GITHUB_MODEL}): ${roleInfo.nameAr} → "${answer.substring(0, 60)}..."`);
+            logger.info(`✅ GitHub AI (${GITHUB_MODEL}): ${roleInfo.nameAr} → "${answer.substring(0, 60)}..."`);
             return answer;
         }
 
@@ -167,10 +168,10 @@ async function generateAIAnswer(role, roleInfo, scenario, retries = 2) {
 
     } catch (error) {
         const errorMsg = error.response?.data?.error?.message || error.message;
-        console.error(`❌ GitHub Models API Error (${role}):`, errorMsg);
+        logger.error(`❌ GitHub Models API Error (${role}):`, errorMsg);
 
         if (retries > 0 && (error.code === 'ECONNABORTED' || error.response?.status >= 500)) {
-            console.log(`🔄 إعادة المحاولة... (${retries} محاولات متبقية)`);
+            logger.info(`🔄 إعادة المحاولة... (${retries} محاولات متبقية)`);
             await new Promise(resolve => setTimeout(resolve, 2000));
             return generateAIAnswer(role, roleInfo, scenario, retries - 1);
         }
@@ -184,7 +185,7 @@ async function generateAIAnswer(role, roleInfo, scenario, retries = 2) {
  */
 async function testConnection() {
     if (!GITHUB_TOKEN) {
-        console.warn('⚠️ GitHub Token غير موجود في .env');
+        logger.warn('⚠️ GitHub Token غير موجود في .env');
         return false;
     }
 
@@ -208,15 +209,15 @@ async function testConnection() {
 
         if (response.data?.choices?.[0]?.message?.content) {
             const testResponse = response.data.choices[0].message.content.trim();
-            console.log(`✅ GitHub Models API متصل وجاهز (${GITHUB_MODEL})`);
-            console.log(`   Test: "${testResponse.substring(0, 50)}"`);
+            logger.info(`✅ GitHub Models API متصل وجاهز (${GITHUB_MODEL})`);
+            logger.info(`   Test: "${testResponse.substring(0, 50)}"`);
             return true;
         }
 
         return false;
     } catch (error) {
         const errorMsg = error.response?.data?.error?.message || error.message;
-        console.error('❌ فشل الاتصال بـ GitHub Models API:', errorMsg);
+        logger.error('❌ فشل الاتصال بـ GitHub Models API:', errorMsg);
         return false;
     }
 }

@@ -1,3 +1,4 @@
+const logger = require('./utils/logger');
 /**
  * 🤖 محرك الذكاء الصناعي للبوتات - Bot AI Engine
  * 
@@ -111,7 +112,7 @@ async function generateBotAnswer(role, scenario, otherAnswers = [], gameMode = '
   const roleInfo = getRoleInfo(role);
   
   if (!roleInfo) {
-    console.error(`⚠️ دور غير معروف: ${role}`);
+    logger.error(`⚠️ دور غير معروف: ${role}`);
     return generateFallbackAnswer(role, scenario);
   }
 
@@ -120,11 +121,11 @@ async function generateBotAnswer(role, scenario, otherAnswers = [], gameMode = '
     try {
       const aiAnswer = await generateAIAnswer(role, roleInfo, scenario);
       if (aiAnswer) {
-        console.log(`✅ AI Answer (BLITZ) for ${roleInfo.nameAr}`);
+        logger.info(`✅ AI Answer (BLITZ) for ${roleInfo.nameAr}`);
         return aiAnswer;
       }
     } catch (error) {
-      console.warn(`⚠️ فشل AI في Blitz لـ ${roleInfo.nameAr}, استخدام Fallback`);
+      logger.warn(`⚠️ فشل AI في Blitz لـ ${roleInfo.nameAr}, استخدام Fallback`);
     }
     return generateBotBlankFill(role, scenario);
   }
@@ -134,11 +135,11 @@ async function generateBotAnswer(role, scenario, otherAnswers = [], gameMode = '
     const aiAnswer = await generateAIAnswer(role, roleInfo, scenario);
     
     if (aiAnswer) {
-      console.log(`✅ AI Answer for ${roleInfo.nameAr}: ${aiAnswer.substring(0, 60)}...`);
+      logger.info(`✅ AI Answer for ${roleInfo.nameAr}: ${aiAnswer.substring(0, 60)}...`);
       return aiAnswer;
     }
   } catch (error) {
-    console.warn(`⚠️ فشل AI لـ ${roleInfo.nameAr}, استخدام Fallback`);
+    logger.warn(`⚠️ فشل AI لـ ${roleInfo.nameAr}, استخدام Fallback`);
   }
   
   // Fallback: ملء الفراغات من القالب باستخدام الكلمات المفتاحية
@@ -675,7 +676,7 @@ function generateSmartCulpritVote(botKnowledge, playersPublic, answers, scenario
     // إذا فحص شخصاً ووجده من فريق الجريمة، يصوت له فوراً
     if (investigationResult && investigationResult.targetTeam === TEAMS.CRIME) {
       // (إلا إذا كان هناك تخريب، النتيجة قد تكون خاطئة، لكن المحقق يثق بها)
-      console.log(`🕵️ Detective found Crime Team member: ${investigationResult.targetName}`);
+      logger.info(`🕵️ Detective found Crime Team member: ${investigationResult.targetName}`);
       return investigationResult.targetId;
     }
     // إذا فحص شخصاً ووجده بريئاً، يتجنب التصويت له

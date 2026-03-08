@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { io } from 'socket.io-client';
 import { useGameStore } from '../store/useGameStore';
 import { DEV_SERVER_IP, DEV_SERVER_PORT, PROD_SERVER_URL } from '../constants/config';
+import { playSound } from '../utils/soundManager';
 
 // Compute the URL
 const isWebBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
@@ -151,7 +152,7 @@ export const useGameSocket = (navigationRef) => {
                     newSocket.emit('rejoinHost', { roomCode: state.roomCode });
                 } else if (state.playerName) {
                     console.log('🔄 Rejoining as Player...');
-                    newSocket.emit('joinRoom', { roomCode: state.roomCode, playerName: state.playerName });
+                    newSocket.emit('joinRoom', { roomCode: state.roomCode, playerName: state.playerName, avatar: state.myAvatar });
                 }
             }
         });
@@ -166,7 +167,8 @@ export const useGameSocket = (navigationRef) => {
                             console.log('🔁 Forcing reconnect...');
                             newSocket.connect();
                             // استخدام refs بدلاً من closure لضمان القيم الحالية
-                            newSocket.emit('joinRoom', { roomCode: roomCodeRef.current, playerName: playerNameRef.current });
+                            const st = useGameStore.getState();
+                            newSocket.emit('joinRoom', { roomCode: roomCodeRef.current, playerName: playerNameRef.current, avatar: st.myAvatar });
                         }
                     }, 3000);
                 }
@@ -207,7 +209,8 @@ export const useGameSocket = (navigationRef) => {
             newSocket.emit('joinRoom', {
                 roomCode,
                 playerName: state.playerName,
-                desiredRole: state.selectedTrainingRole // ✅ الاسم الصحيح الذي يفهمه الخادم
+                desiredRole: state.selectedTrainingRole, // ✅ الاسم الصحيح الذي يفهمه الخادم
+                avatar: state.myAvatar
             });
         });
 
@@ -250,6 +253,7 @@ export const useGameSocket = (navigationRef) => {
 
         newSocket.on('gameStarted', (data) => {
             console.log('🎮 Game started:', data);
+            playSound('game_start');
 
             if (data.title) setScenario(data.title);
             if (data.round) setCurrentRound(data.round);
@@ -324,6 +328,7 @@ export const useGameSocket = (navigationRef) => {
 
         newSocket.on('qualityVotingStarted', (data) => {
             console.log('🗳️ Quality voting started');
+            playSound('voting_bell');
             setScenarios(data.scenarios || []);
             setHasVoted(false);
             setSelectedScenario(null);
@@ -339,6 +344,7 @@ export const useGameSocket = (navigationRef) => {
 
         newSocket.on('dramaticRevealStarted', (data) => {
             console.log('🎬 Dramatic reveal started');
+            playSound('reveal_dramatic');
             setRevealedScenarios([]);
             setCurrentReveal(null);
 
@@ -420,6 +426,7 @@ export const useGameSocket = (navigationRef) => {
 
         newSocket.on('culpritVotingStarted', (data) => {
             console.log('🔍 Culprit voting started');
+            playSound('voting_bell');
             setScenarios(data.scenarios || []);
             setHasVoted(false);
             setSelectedCulprit(null);
@@ -456,6 +463,9 @@ export const useGameSocket = (navigationRef) => {
                 if (myResult !== undefined) {
                     const rData = useGameStore.getState().roleData;
                     if (rData) setRoleData({ ...rData, totalScore: myResult.totalScore });
+                    // صوت النتيجة بناءً على نتيجة اللاعب
+                    if (myResult.roundScore > 0) playSound('round_win');
+                    else playSound('round_loss');
                 }
             }
 
@@ -497,6 +507,7 @@ export const useGameSocket = (navigationRef) => {
         // Handle game end (all rounds completed)
         newSocket.on('gameEnded', (data) => {
             console.log('🏁 Game ended, final results:', data);
+            playSound('round_win');
             // ✅ حفظ النتائج النهائية قبل إعادة تعيين اللعبة
             if (data?.results) setFinalResults(data.results);
             resetGame();
@@ -562,8 +573,9 @@ export const useGameSocket = (navigationRef) => {
 
     const manualReconnect = () => {
         if (!newSocket || !roomCode || !playerName) return;
+        const st = useGameStore.getState();
         useGameStore.getState().setReconnecting(true);
-        newSocket.emit('joinRoom', { roomCode, playerName });
+        newSocket.emit('joinRoom', { roomCode, playerName, avatar: st.myAvatar });
         setTimeout(() => useGameStore.getState().setReconnecting(false), 2000);
     };
 
