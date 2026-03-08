@@ -64,25 +64,19 @@
 
 ---
 
-## الإصدار الحالي: 3.3.0 ✅
-- [x] إعادة هيكلة كاملة للخادم (Server Modularization v3.0.0)
-- [x] هوك Socket مخصص `useGameSocket.js`
-- [x] نظام تنقل مركزي `AppNavigator.js`
-- [x] متجر Zustand `useGameStore.js`
-- [x] نظام أفاتار البوتات (Avatar.js, AvatarEditor.js, AvatarLayers.js)
-- [x] توحيد `PlayerBadge` في جميع الشاشات
-- [x] أصول بصرية جديدة (خلفيات + صور أدوار عالية الجودة)
-- [x] إصلاح لوحة تحكم المشرف (`/admin`)
-- [x] معالج `uncaughtException` لاستقرار الخادم
-- [x] سكريبت اختبار تدفق اللعبة `test_game_flow.js`
-- [x] **نظام التصميم V2 "Classified Dossier"** — 19+ ملف، ثيمان، تخطيط ثلاثي، استجابة كاملة
-- [x] **CaseHeader** — modal ملف الدور + زر ثيم + زر ريفرش في كل شاشة
-- [x] **`start_fixed.js`** — قتل المنفذ المشغول تلقائياً + إصلاح Ctrl+C
-- [x] **إصلاحات جولات CONTINUE** — BUG-A/B/C1/C2/D/E في منطق التصويت
-- [x] **ملف الدور المحسّن** — اسم القضية + معلومات مخصصة لكل دور (بدون "القدرة")
-- [x] **لوحة النتائج النهائية** — ترتيب جميع اللاعبين بعد 3 جولات مع الميداليات
-- [x] **إصلاح زر العودة للرئيسية** في EndScreen
-- [x] **18 اختبار وحدة** (jest) لـ `phases.js` و `scoring.js` — جميعها تجتاز ✅
+## الإصدار الحالي: 3.4.0 (قيد التطوير) 🔧
+
+### مكتمل من الإصدار 3.3.x:
+- [x] جميع بنود 3.3.0 (انظر أعلاه)
+- [x] اسم القضية في هيدر اللاعب (3.3.1)
+
+### قيد التنفيذ (3.4.0):
+- [ ] Structured Logging (winston) في جميع ملفات الخادم
+- [ ] Socket.IO Rate Limiting
+- [ ] Sentry Error Tracking
+- [ ] تكامل الأفاتار مع الخادم
+- [ ] مؤثرات صوتية (expo-av)
+- [ ] إشعار إعادة الاتصال (ReconnectBanner)
 
 ---
 
@@ -111,9 +105,9 @@
 ### 🔴 الأولوية العالية (High Priority):
 - [x] **اختبار وحدات (Unit Tests)**: 18 اختبار لـ `phases.js` و `scoring.js` (jest) — مكتمل ✅
 - [ ] **Sentry / Error Tracking**: دمج أداة لتتبع الأخطاء في بيئة الإنتاج
-- [ ] **Rate Limiting**: `express-rate-limit` على `/admin` وSocket connections
-- [ ] **Structured Logging**: استبدال `console.log` بـ `winston` مع ملفات logs
-- [ ] **تعديل الفراغات (Blitz Enhancement)**: السماح للاعب بكتابة جملتين بدلاً من كلمة واحدة
+- [ ] **Rate Limiting (Socket)**: `io.use()` middleware على Socket.IO connections
+- [ ] **Structured Logging**: استبدال `console.log` بـ `winston` في جميع ملفات الخادم
+- [x] **تعديل الفراغات (Blitz)**: وضع Blitz يدعم الجمل الكاملة حالياً ✅
 
 ### 🟡 الأولوية المتوسطة (Medium Priority):
 - [ ] **تكامل الأفاتار مع الخادم**: حفظ الأفاتار في قاعدة البيانات وإرساله مع Socket events

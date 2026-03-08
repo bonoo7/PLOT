@@ -1,6 +1,46 @@
 # CHANGELOG
 
-## [3.3.0] - 2026-03-08
+## [3.4.0] - 2026-03-08 (قيد التطوير)
+
+### Structured Logging + Rate Limiting + Sentry + Avatar + Sound + Reconnect UI 🔧
+
+#### 1. استبدال console.log بـ winston في جميع ملفات الخادم
+- `phases.js`, `registerHandlers.js`, `database.js`, `botAI.js`, `githubAI.js`, `deepseekAI.js`
+- جميع السجلات الآن مكتوبة في `logs/combined.log` و `logs/error.log` (تدوير تلقائي)
+
+#### 2. Rate Limiting على Socket.IO connections
+- Middleware على `io.use(...)` يتتبع الاتصالات لكل IP
+- رفض الاتصال إذا تجاوز 20 اتصال/دقيقة من نفس IP
+
+#### 3. Sentry Error Tracking
+- `@sentry/node` في الخادم مع `SENTRY_DSN` في .env
+- تسجيل uncaughtException وunhandledRejection تلقائياً
+
+#### 4. تكامل الأفاتار مع الخادم
+- استقبال `avatarData` في `joinRoom` وحفظه في `player.avatar`
+- إرسال `avatar` مع `playerJoined` و `stateSync` لكل اللاعبين
+
+#### 5. مؤثرات صوتية (expo-av)
+- `soundManager.js` — مدير مركزي للأصوات
+- أصوات: بداية اللعبة، بدء التصويت، كشف النتائج، النهاية، الإقصاء
+
+#### 6. إشعار إعادة الاتصال
+- `ReconnectBanner` — بانر يظهر أعلى الشاشة عند محاولة إعادة الاتصال
+
+---
+
+## [3.3.1] - 2026-03-08
+
+### عرض اسم القضية في هيدر اللاعب 📁
+
+- **CaseHeader (player mode)**: اسم القضية `📁 [الاسم]` كـ subtitle دائم تحت اسم الدور
+- **CaseHeader modal**: حذف قسم "القضية" (أصبح في الهيدر الرئيسي)
+- **DraftingScreen**: لافتة "ملف القضية" أصبحت ديناميكية `📁 [اسم القضية]` بلون ذهبي
+- **ملف الدور — المحقق**: تحسين عرض النتيجة (⏳ قيد المعالجة / ✓ النتيجة الحقيقية / ⚠️ ملفقة)
+
+---
+
+
 
 ### إصلاحات منطق الجولات + ملف الدور + لوحة النتائج النهائية 🏆
 
