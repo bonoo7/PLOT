@@ -15,10 +15,12 @@
  *   subtitle    string
  */
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Modal, ScrollView, Platform, Image } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useGameStore } from '../../store/useGameStore';
 import { getColors, sp, fontSize, fontFamily, radius } from '../tokens';
+
+const STAMP_IMG = require('../../../assets/stamp_secret.png');
 
 const CaseHeader = ({
   mode = 'neutral',
@@ -219,6 +221,15 @@ const CaseHeader = ({
             >
               <Text style={[styles.modalCloseText, { color: c.textMuted }]}>— إغلاق —</Text>
             </TouchableOpacity>
+
+            {/* Stamp overlay — "سري للغاية" — wrapped in absoluteFill View for proper centering */}
+            <View style={StyleSheet.absoluteFill} pointerEvents="none">
+              <Image
+                source={STAMP_IMG}
+                style={styles.stamp}
+                resizeMode="contain"
+              />
+            </View>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -456,6 +467,14 @@ const styles = StyleSheet.create({
     fontSize: fontSize.small,
     fontFamily: fontFamily.mono,
     letterSpacing: 2,
+  },
+  stamp: {
+    width: 160,
+    height: 160,
+    opacity: 0.20,
+    alignSelf: 'center',
+    marginTop: 60,
+    transform: [{ rotate: '-15deg' }],
   },
   pillText: {
     fontSize: fontSize.label,
