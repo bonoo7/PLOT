@@ -4,6 +4,7 @@
  */
 import React from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import { playMusic } from '../../utils/soundManager';
 import { useNavigation } from '@react-navigation/native';
 import { useGameStore } from '../../store/useGameStore';
 import { useSocket, ROUTES } from '../../hooks/useGameSocket';
@@ -21,6 +22,8 @@ export const HostSetupScreen = () => {
   const setConnecting = useGameStore(s => s.setConnecting);
   const themeMode     = useGameStore(s => s.themeMode) || 'light';
   const c = getColors(themeMode);
+
+  React.useEffect(() => { playMusic('setup'); }, []);
 
   const handleCreate = () => {
     if (socket) {

@@ -9,6 +9,7 @@ import { useResponsiveLayout } from '../hooks/useResponsiveLayout';
 import { useGameStore } from '../store/useGameStore';
 import { useNavigation } from '@react-navigation/native';
 import { ROUTES } from '../hooks/useGameSocket';
+import { playMusic } from '../utils/soundManager';
 
 /**
  * RoleSelectScreen - Minimalist design.
@@ -24,6 +25,8 @@ export const RoleSelectScreen = () => {
 
   // Determine layout direction based on screen size/orientation
   const isHorizontalLayout = isDesktop || isLandscape;
+
+  React.useEffect(() => { playMusic('lobby'); }, []);
 
   const toggleTheme = () => {
     setThemeMode(themeMode === 'light' ? 'dark' : 'light');

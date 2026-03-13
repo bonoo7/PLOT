@@ -30,7 +30,9 @@ const ClassifiedBanner = ({ children, label, variant = 'info', style }) => {
         {label ? (
           <Text style={[styles.label, { color: stripe }]}>{label}</Text>
         ) : null}
-        {typeof children === 'string' ? (
+        {typeof children === 'string' || typeof children === 'number' ? (
+          <Text style={[styles.text, { color: c.text }]}>{children}</Text>
+        ) : Array.isArray(children) && children.every(item => typeof item === 'string' || typeof item === 'number') ? (
           <Text style={[styles.text, { color: c.text }]}>{children}</Text>
         ) : (
           children

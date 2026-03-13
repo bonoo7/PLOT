@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, StyleSheet, Share } from 'react-native';
+import { playMusic } from '../utils/soundManager';
 import { useNavigation } from '@react-navigation/native';
 import { useGameStore } from '../store/useGameStore';
 import { useSocket, ROUTES } from '../hooks/useGameSocket';
@@ -24,6 +25,8 @@ export const HostSetupScreen = () => {
   const setConnecting = useGameStore((state) => state.setConnecting);
   const playerName = useGameStore((state) => state.playerName);
   const { socket } = useSocket();
+
+  React.useEffect(() => { playMusic('setup'); }, []);
 
   const handleCreateRoom = () => {
     if (socket) {

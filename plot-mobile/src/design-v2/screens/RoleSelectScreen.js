@@ -9,6 +9,7 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import { useGameStore } from '../../store/useGameStore';
 import { ROUTES } from '../../hooks/useGameSocket';
+import { playMusic } from '../../utils/soundManager';
 import { DossierLayout, DossierCard, StampButton, CaseHeader } from '../components';
 import { getColors, sp, fontSize, fontFamily, radius, useLayout } from '../tokens';
 
@@ -27,6 +28,8 @@ export const RoleSelectScreen = () => {
   const setDesign   = useGameStore(s => s.setDesignVersion);
   const c = getColors(themeMode);
   const { isLandscape, isDesktop } = useLayout();
+
+  React.useEffect(() => { playMusic('lobby'); }, []);
 
   const handleSelect = (item) => {
     if (item.role) setUserRole(item.role);

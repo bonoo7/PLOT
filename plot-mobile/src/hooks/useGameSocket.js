@@ -2,17 +2,17 @@ import React, { createContext, useContext, useEffect, useRef, useState } from 'r
 import { io } from 'socket.io-client';
 import { useGameStore } from '../store/useGameStore';
 import { DEV_SERVER_IP, DEV_SERVER_PORT, PROD_SERVER_URL } from '../constants/config';
-import { playSound } from '../utils/soundManager';
+import { playSound, playMusic, stopMusic } from '../utils/soundManager';
 
 // Compute the URL
 const isWebBrowser = typeof window !== 'undefined' && typeof document !== 'undefined';
 
 let SOCKET_URL;
-if (isWebBrowser) {
-    // On web browser, connect to same origin (server serves web bundle too)
+if (isWebBrowser && !__DEV__) {
+    // Production web: bundle is served by the game server itself, so origin is correct
     SOCKET_URL = window.location.origin;
 } else if (__DEV__) {
-    // On mobile dev, connect to local IP
+    // Dev mode (web or native): connect directly to the game server IP/port
     SOCKET_URL = `http://${DEV_SERVER_IP}:${DEV_SERVER_PORT}`;
 } else {
     SOCKET_URL = PROD_SERVER_URL;
@@ -196,6 +196,7 @@ export const useGameSocket = (navigationRef) => {
             setGameMode(gameMode);               // ✅ String فقط
             setConnecting(false);
             navigate(ROUTES.HOST_LOBBY);
+            playMusic('lobby');
         });
 
         // ✅ NEW: Handle Tutorial Room Created - auto join as player
@@ -242,10 +243,11 @@ export const useGameSocket = (navigationRef) => {
             const role = useGameStore.getState().userRole;
             if (role === 'HOST') {
                 navigate(ROUTES.HOST_GAME_INTRO);
+                playMusic('game_intro');
             }
         });
 
-        newSocket.on('roundContinued', (data) => {
+        newSocket.on('roundContinued',(data) => {
             console.log('🔄 Round Continued:', data);
             setRoundResults(null);
             setNotification({ title: 'الجولة مستمرة!', message: 'لم يتم القبض على الجاني.', type: 'info' });
@@ -253,8 +255,6 @@ export const useGameSocket = (navigationRef) => {
 
         newSocket.on('gameStarted', (data) => {
             console.log('🎮 Game started:', data);
-            playSound('game_start');
-
             if (data.title) setScenario(data.title);
             if (data.round) setCurrentRound(data.round);
             if (data.totalRounds) setTotalRounds(data.totalRounds);
@@ -262,6 +262,7 @@ export const useGameSocket = (navigationRef) => {
             const role = useGameStore.getState().userRole;
             if (role === 'HOST') {
                 navigate(ROUTES.HOST_GAME_INTRO);
+                playMusic('game_intro');
             } else {
                 navigate(ROUTES.GAME);
             }
@@ -299,6 +300,7 @@ export const useGameSocket = (navigationRef) => {
             if (role === 'HOST') {
                 setWaitingFor(data.waitingFor || currentPlayers.map(p => p.id));
                 navigate(ROUTES.HOST_DRAFTING);
+                playMusic('drafting');
             } else {
                 navigate(ROUTES.DRAFTING);
             }
@@ -328,7 +330,6 @@ export const useGameSocket = (navigationRef) => {
 
         newSocket.on('qualityVotingStarted', (data) => {
             console.log('🗳️ Quality voting started');
-            playSound('voting_bell');
             setScenarios(data.scenarios || []);
             setHasVoted(false);
             setSelectedScenario(null);
@@ -337,6 +338,7 @@ export const useGameSocket = (navigationRef) => {
             if (role === 'HOST') {
                 setLiveVotes([]);
                 navigate(ROUTES.HOST_QUALITY_VOTING);
+                playMusic('quality_voting');
             } else {
                 navigate(ROUTES.QUALITY_VOTING);
             }
@@ -344,13 +346,13 @@ export const useGameSocket = (navigationRef) => {
 
         newSocket.on('dramaticRevealStarted', (data) => {
             console.log('🎬 Dramatic reveal started');
-            playSound('reveal_dramatic');
             setRevealedScenarios([]);
             setCurrentReveal(null);
 
             const role = useGameStore.getState().userRole;
             if (role === 'HOST') {
                 navigate(ROUTES.HOST_DRAMATIC_REVEAL);
+                playMusic('dramatic_reveal');
             } else {
                 navigate(ROUTES.PLAYER_DRAMATIC_REVEAL);
             }
@@ -411,12 +413,13 @@ export const useGameSocket = (navigationRef) => {
             const role = useGameStore.getState().userRole;
             if (role === 'HOST') {
                 navigate(ROUTES.HOST_DISCUSSION);
+                playMusic('discussion');
             } else {
                 navigate(ROUTES.DISCUSSION);
             }
         });
 
-        newSocket.on('speakerUpdated', (data) => {
+        newSocket.on('speakerUpdated',(data) => {
             setSpeakingPlayerId(data.playerId);
         });
 
@@ -426,7 +429,6 @@ export const useGameSocket = (navigationRef) => {
 
         newSocket.on('culpritVotingStarted', (data) => {
             console.log('🔍 Culprit voting started');
-            playSound('voting_bell');
             setScenarios(data.scenarios || []);
             setHasVoted(false);
             setSelectedCulprit(null);
@@ -435,6 +437,7 @@ export const useGameSocket = (navigationRef) => {
             if (role === 'HOST') {
                 setLiveVotes([]);
                 navigate(ROUTES.HOST_CULPRIT_VOTING);
+                playMusic('culprit_voting');
             } else {
                 navigate(ROUTES.CULPRIT_VOTING);
             }
@@ -472,6 +475,7 @@ export const useGameSocket = (navigationRef) => {
             const role = useGameStore.getState().userRole;
             if (role === 'HOST') {
                 navigate(ROUTES.HOST_RESULTS);
+                playMusic('results');
             } else {
                 navigate(ROUTES.WAITING);
             }
@@ -507,9 +511,9 @@ export const useGameSocket = (navigationRef) => {
         // Handle game end (all rounds completed)
         newSocket.on('gameEnded', (data) => {
             console.log('🏁 Game ended, final results:', data);
-            playSound('round_win');
             // ✅ حفظ النتائج النهائية قبل إعادة تعيين اللعبة
             if (data?.results) setFinalResults(data.results);
+            stopMusic();
             resetGame();
             navigate(ROUTES.END);
         });

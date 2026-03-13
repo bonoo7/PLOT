@@ -142,7 +142,7 @@ export const HostVotingScreen = ({ route }) => {
     >
       {voteTieInfo && (
         <ClassifiedBanner label="تعادل ⚖️" variant="danger">
-          إعادة التصويت بين: {(voteTieInfo.candidates || []).join(' — ')}
+          <Text>{'إعادة التصويت بين: '}{(voteTieInfo.candidates || []).join(' — ')}</Text>
         </ClassifiedBanner>
       )}
 
