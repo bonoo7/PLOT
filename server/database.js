@@ -30,18 +30,21 @@ function readDB() {
 // ============================================
 let writeLock = Promise.resolve();
 
+/** الكتابة الفعلية للملف بدون lock — تُستخدم فقط داخل writeLock callbacks */
+async function writeDBDirect(data) {
+    const temp = DB_FILE + '.tmp';
+    try {
+        await fsPromises.writeFile(temp, JSON.stringify(data, null, 2), 'utf8');
+        await fsPromises.rename(temp, DB_FILE); // عملية ذرية: لا يحدث تلف عند التعطل
+    } catch (err) {
+        logger.error('Error writing DB:', err);
+        // تنظيف الملف المؤقت إذا فشلت العملية
+        try { await fsPromises.unlink(temp); } catch (_) {}
+    }
+}
+
 async function writeDB(data) {
-    writeLock = writeLock.then(async () => {
-        const temp = DB_FILE + '.tmp';
-        try {
-            await fsPromises.writeFile(temp, JSON.stringify(data, null, 2), 'utf8');
-            await fsPromises.rename(temp, DB_FILE); // عملية ذرية: لا يحدث تلف عند التعطل
-        } catch (err) {
-            logger.error('Error writing DB:', err);
-            // تنظيف الملف المؤقت إذا فشلت العملية
-            try { await fsPromises.unlink(temp); } catch (_) {}
-        }
-    });
+    writeLock = writeLock.then(() => writeDBDirect(data));
     return writeLock;
 }
 
@@ -77,7 +80,7 @@ const db = {
             if (stats.role) {
                 p.rolesPlayed[stats.role] = (p.rolesPlayed[stats.role] || 0) + 1;
             }
-            await writeDB(data);
+            await writeDBDirect(data);
         });
         return writeLock;
     },
@@ -86,7 +89,7 @@ const db = {
         writeLock = writeLock.then(async () => {
             const data = readDB();
             data.matches.push({ ...matchData, timestamp: new Date().toISOString() });
-            await writeDB(data);
+            await writeDBDirect(data);
         });
         return writeLock;
     },

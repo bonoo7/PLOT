@@ -108,6 +108,7 @@ export const useGameSocket = (navigationRef) => {
         setVoteTieInfo,
         setNotification,
         setFinalResults,
+        setHostToken,
     } = useGameStore();
 
     // تحديث refs عند تغيير القيم حتى يقرأها الـ interval دائماً من المصدر الصحيح
@@ -149,7 +150,7 @@ export const useGameSocket = (navigationRef) => {
             if (state.roomCode) {
                 if (state.userRole === 'HOST') {
                     console.log('🔄 Rejoining as Host...');
-                    newSocket.emit('rejoinHost', { roomCode: state.roomCode });
+                    newSocket.emit('rejoinHost', { roomCode: state.roomCode, hostToken: state.hostToken });
                 } else if (state.playerName) {
                     console.log('🔄 Rejoining as Player...');
                     newSocket.emit('joinRoom', { roomCode: state.roomCode, playerName: state.playerName, avatar: state.myAvatar });
@@ -177,13 +178,15 @@ export const useGameSocket = (navigationRef) => {
 
         newSocket.on('roomCreated', (data) => {
             // ✅ استخراج آمن - دائماً String
-            let roomCode, gameMode;
+            let roomCode, gameMode, hostToken;
             if (typeof data === 'string') {
                 roomCode = data;
                 gameMode = 'BLITZ'; // الافتراضي
+                hostToken = null;
             } else if (data && typeof data === 'object') {
                 roomCode = String(data.roomCode || '');
                 gameMode = String(data.gameMode || 'BLITZ');
+                hostToken = data.hostToken || null;
             } else {
                 console.error('❌ roomCreated: unexpected data format', data);
                 return;
@@ -194,6 +197,7 @@ export const useGameSocket = (navigationRef) => {
             const { setRoomCode, setGameMode } = useGameStore.getState();
             setRoomCode(roomCode);               // ✅ String فقط
             setGameMode(gameMode);               // ✅ String فقط
+            setHostToken(hostToken);             // ✅ حفظ الرمز السري للهوست
             setConnecting(false);
             navigate(ROUTES.HOST_LOBBY);
             playMusic('lobby');
@@ -228,8 +232,47 @@ export const useGameSocket = (navigationRef) => {
                 setRoomCode(data.roomCode);
             }
             setConnecting(false);
-            navigate(ROUTES.LOBBY);
+            // Only navigate to lobby for fresh joins (not reconnects mid-game)
+            if (!data.isReconnect) {
+                navigate(ROUTES.LOBBY);
+            }
         });
+
+        newSocket.on('hostRejoined', (data) => {
+            console.log('✅ Host rejoined room:', data);
+            const { state, gameMode, totalRounds, currentRound, players,
+                    waitingFor, timeLeft, scenarios, roundResults } = data;
+
+            if (gameMode) setGameMode(gameMode);
+            if (totalRounds) setTotalRounds(totalRounds);
+            if (currentRound) setCurrentRound(currentRound);
+            if (Array.isArray(players)) setPlayers(players);
+            if (Array.isArray(waitingFor)) setWaitingFor(waitingFor);
+            if (typeof timeLeft === 'number') setTimeLeft(timeLeft);
+            if (Array.isArray(scenarios)) setScenarios(scenarios);
+            if (roundResults) setRoundResults(roundResults);
+
+            const stateToRoute = {
+                LOBBY: ROUTES.HOST_LOBBY,
+                DRAFTING: ROUTES.HOST_DRAFTING,
+                QUALITY_VOTING: ROUTES.HOST_QUALITY_VOTING,
+                DRAMATIC_REVEAL: ROUTES.HOST_DRAMATIC_REVEAL,
+                DISCUSSION: ROUTES.HOST_DISCUSSION,
+                CULPRIT_VOTING: ROUTES.HOST_CULPRIT_VOTING,
+                RESULTS: ROUTES.HOST_RESULTS,
+            };
+            navigate(stateToRoute[state] || ROUTES.HOST_LOBBY);
+            setConnecting(false);
+        });
+
+        newSocket.on('roomNotFound', () => {
+            console.log('🚫 Room not found — clearing session');
+            try { useGameStore.persist?.clearStorage?.(); } catch (e) { /* no-op on native */ }
+            resetGame();
+            navigate(ROUTES.ROLE_SELECT);
+            setNotification({ title: 'انتهت الجلسة', message: 'الغرفة لم تعد موجودة. ابدأ لعبة جديدة.', type: 'info' });
+        });
+
 
         newSocket.on('gameSettingsUpdated', (data) => {
             console.log('⚙️ Game settings updated:', data);
@@ -540,7 +583,10 @@ export const useGameSocket = (navigationRef) => {
         return () => {
             if (reconnectInterval.current) {
                 clearInterval(reconnectInterval.current);
+                reconnectInterval.current = null;
             }
+            newSocket.off('hostRejoined');
+            newSocket.off('roomNotFound');
             newSocket.off('connect');
             newSocket.off('disconnect');
             newSocket.off('roomCreated');

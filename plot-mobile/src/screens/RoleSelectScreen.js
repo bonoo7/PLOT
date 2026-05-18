@@ -127,6 +127,12 @@ export const RoleSelectScreen = () => {
             size="small"
           />
           <MinimalButton
+            title="💻 تصميم V3"
+            onPress={() => setDesignVersion('v3')}
+            variant="secondary"
+            size="small"
+          />
+          <MinimalButton
             title={themeMode === 'light' ? "🌙 داكن" : "☀️ فاتح"}
             onPress={toggleTheme}
             variant="secondary"

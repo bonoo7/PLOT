@@ -10,10 +10,12 @@ import { registerRootComponent } from 'expo';
 import { NavigationContainer, createNavigationContainerRef } from '@react-navigation/native';
 import { AppNavigator } from './src/navigation/AppNavigator';
 import { AppNavigatorV2 } from './src/design-v2/navigation/AppNavigatorV2';
+import { AppNavigatorV3 } from './src/design-v3/navigation/AppNavigatorV3';
 import { useGameStore } from './src/store/useGameStore';
 import { SocketProvider } from './src/hooks/useGameSocket';
 import { theme } from './src/styles/theme';
 import GlobalRTLWrapper from './src/components/GlobalRTLWrapper';
+import ErrorBoundary from './src/components/ErrorBoundary';
 import NotificationToast from './src/components/NotificationToast';
 import { initSounds } from './src/utils/soundManager';
 import ReconnectBanner from './src/design-v2/components/ReconnectBanner';
@@ -37,7 +39,7 @@ export const navigationRef = createNavigationContainerRef();
 
 const AppContent = () => {
     const designVersion = useGameStore(s => s.designVersion);
-    const ActiveNavigator = designVersion === 'v2' ? AppNavigatorV2 : AppNavigator;
+    const ActiveNavigator = designVersion === 'v3' ? AppNavigatorV3 : designVersion === 'v2' ? AppNavigatorV2 : AppNavigator;
 
     // إدارة NavigationBar listener مع cleanup لمنع تسرب الذاكرة
     useEffect(() => {
@@ -81,11 +83,13 @@ const AppContent = () => {
 
 export default function App() {
     return (
-        <GlobalRTLWrapper>
-            <View style={styles.container}>
-                <AppContent />
-            </View>
-        </GlobalRTLWrapper>
+        <ErrorBoundary>
+            <GlobalRTLWrapper>
+                <View style={styles.container}>
+                    <AppContent />
+                </View>
+            </GlobalRTLWrapper>
+        </ErrorBoundary>
     );
 }
 

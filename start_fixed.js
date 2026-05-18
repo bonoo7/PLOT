@@ -181,6 +181,19 @@ async function main() {
     ok('Web bundle ready');
   }
 
+  // ── QR Code — Game Server (Web Browser) ───────────────────
+  // يظهر بعد البناء مباشرةً ليبقى في أسفل التيرمنال
+  section('QR CODE  (Game Server — open in browser 🌐)');
+  try {
+    const qrcode = require('qrcode-terminal');
+    const gameUrl = `http://${localIP}:${serverPort}`;
+    console.log(`\n  ${C.bold}${C.cyan}${gameUrl}${C.reset}\n`);
+    qrcode.generate(gameUrl, { small: false });
+    console.log();
+  } catch {
+    warn('qrcode-terminal not found — skipping QR');
+  }
+
   // ── Launch ────────────────────────────────────────────────
   section('RUNNING');
   info(`Game Server  on port ${C.bold}${serverPort}${C.reset}`);

@@ -1,9 +1,23 @@
 import { create } from 'zustand';
+import { persist, createJSONStorage } from 'zustand/middleware';
 
-export const useGameStore = create((set) => ({
+// persist session data in sessionStorage on web (survives refresh, not tab close), no-op on native
+const safeSessionStorage = (() => {
+    try { return typeof sessionStorage !== 'undefined' ? sessionStorage : null; }
+    catch { return null; }
+})();
+
+const sessionStorage = safeSessionStorage
+    ? createJSONStorage(() => safeSessionStorage)
+    : createJSONStorage(() => ({ getItem: () => null, setItem: () => {}, removeItem: () => {} }));
+
+export const useGameStore = create(
+    persist(
+        (set) => ({
     // Core App State
     roomCode: '',
     generatedRoomCode: '',
+    hostToken: null, // رمز سري يُستخدم لإعادة انضمام الهوست بأمان
     playerName: '',
     userRole: null, // 'HOST' | 'PLAYER' | null
     players: [],
@@ -12,7 +26,7 @@ export const useGameStore = create((set) => ({
 
     // UI State
     themeMode: 'light', // 'light' or 'dark'
-    designVersion: 'v2', // 'v1' | 'v2'
+    designVersion: 'v3', // 'v1' | 'v2' | 'v3'
 
     // Game Settings/Info
     gameMode: 'BLITZ', // CLASSIC or BLITZ — الوضع الافتراضي هو Blitz
@@ -62,6 +76,7 @@ export const useGameStore = create((set) => ({
     setDesignVersion: (v) => set({ designVersion: v }),
     setRoomCode: (code) => set({ roomCode: code }),
     setGeneratedRoomCode: (code) => set({ generatedRoomCode: code }),
+    setHostToken: (token) => set({ hostToken: token }),
     setPlayerName: (name) => set({ playerName: name }),
     setUserRole: (role) => set({ userRole: role }),
     setPlayers: (players) => set({ players }),
@@ -125,6 +140,7 @@ export const useGameStore = create((set) => ({
     resetGame: () => set({
         roomCode: '',
         generatedRoomCode: '',
+        hostToken: null,
         playerName: '',
         userRole: null,
         players: [],
@@ -158,4 +174,19 @@ export const useGameStore = create((set) => ({
         voteTieInfo: null,
         selectedTrainingRole: null,
     }),
-}));
+    }),
+    {
+        name: 'plot-game-session',
+        storage: sessionStorage,
+        partialize: (state) => ({
+            roomCode: state.roomCode,
+            playerName: state.playerName,
+            userRole: state.userRole,
+            hostToken: state.hostToken,
+            myAvatar: state.myAvatar,
+            gameMode: state.gameMode,
+            designVersion: state.designVersion,
+            themeMode: state.themeMode,
+        }),
+    }
+));

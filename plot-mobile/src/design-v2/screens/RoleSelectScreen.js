@@ -61,6 +61,12 @@ export const RoleSelectScreen = () => {
               variant="ghost"
               size="sm"
             />
+            <StampButton
+              title="← V3"
+              onPress={() => setDesign?.('v3')}
+              variant="ghost"
+              size="sm"
+            />
           </View>
         </View>
       }

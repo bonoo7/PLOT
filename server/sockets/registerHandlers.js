@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const logger = require('../utils/logger');
 const { rooms } = require('../state');
 const scenarios = require('../scenarios');
@@ -28,6 +29,17 @@ const generateRandomBotAvatar = () => {
 
 function registerHandlers(io) {
 
+    /** تنظيف غرفة بأمان: يُوقف التايمر أولاً ثم يحذف الغرفة */
+    function safeDeleteRoom(roomCode) {
+        const room = rooms[roomCode];
+        if (!room) return;
+        if (room.timer) {
+            clearInterval(room.timer);
+            room.timer = null;
+        }
+        delete rooms[roomCode];
+    }
+
     // ============================================
     // 🔒 Input Validation Helpers
     // ============================================
@@ -39,7 +51,8 @@ function registerHandlers(io) {
             .trim()
             .substring(0, 50)
             .replace(/[<>"'&]/g, '')
-            .replace(/[\x00-\x1F\x7F]/g, ''); // إزالة control characters
+            .replace(/[\x00-\x1F\x7F]/g, '') // إزالة control characters
+            .replace(/[\u200B-\u200D\uFEFF\u202A-\u202E\u2066-\u2069]/g, ''); // إزالة zero-width وRTL override
     }
 
     /** فحص صحة المدخلات العامة */
@@ -75,8 +88,10 @@ function registerHandlers(io) {
         // Host creates a room
         socket.on('createRoom', () => {
             const roomCode = generateRoomCode(rooms);
+            const hostToken = crypto.randomUUID();
             rooms[roomCode] = {
                 hostId: socket.id,
+                hostToken,
                 players: [],
                 state: 'LOBBY', // LOBBY, PLAYING, END
                 currentRound: 0,
@@ -85,27 +100,75 @@ function registerHandlers(io) {
                 gameMode: 'BLITZ' // CLASSIC or BLITZ
             };
             socket.join(roomCode);
-            // ✅ إرسال gameMode مع الكود حتى تعكس الواجهة الوضع الصحيح فوراً
-            socket.emit('roomCreated', { roomCode, gameMode: 'BLITZ' });
+            // ✅ إرسال gameMode والـ hostToken مع الكود حتى يتمكن الهوست من إعادة الانضمام لاحقاً
+            socket.emit('roomCreated', { roomCode, gameMode: 'BLITZ', hostToken });
             logger.info(`Room created: ${roomCode} by ${socket.id} `);
 
             // Auto-cleanup: delete unused lobby rooms after 30 minutes
             setTimeout(() => {
                 if (rooms[roomCode] && rooms[roomCode].state === 'LOBBY') {
-                    delete rooms[roomCode];
+                    safeDeleteRoom(roomCode);
                     logger.info(`🧹 Unused lobby room ${roomCode} auto - cleaned`);
                 }
             }, 30 * 60 * 1000);
         });
 
-        // Host reconnect — يُحدّث hostId عند إعادة اتصال الهوست
-        socket.on('rejoinHost', ({ roomCode }) => {
-            const room = roomCode && rooms[roomCode.toUpperCase()];
-            if (room) {
-                room.hostId = socket.id;
-                socket.join(roomCode.toUpperCase());
-                logger.info(`Host rejoined room ${roomCode} `);
+        // Host reconnect — يُحدّث hostId بعد التحقق من hostToken
+        socket.on('rejoinHost', ({ roomCode, hostToken }) => {
+            const normalizedCode = roomCode && roomCode.toUpperCase();
+            const room = normalizedCode && rooms[normalizedCode];
+            if (!room) {
+                socket.emit('roomNotFound');
+                return;
             }
+
+            if (!hostToken || room.hostToken !== hostToken) {
+                logger.warn(`Unauthorized rejoinHost attempt for room ${normalizedCode} from ${socket.id}`);
+                socket.emit('error', 'غير مصرح: رمز المضيف غير صحيح');
+                return;
+            }
+
+            room.hostId = socket.id;
+            socket.join(normalizedCode);
+            logger.info(`Host rejoined room ${normalizedCode}`);
+
+            // Build phase-specific payload so host UI can restore correctly
+            const phaseData = {};
+            if (room.state === 'DRAFTING') {
+                const elapsed = Math.floor((Date.now() - (room.draftStartTime || Date.now())) / 1000);
+                phaseData.timeLeft = Math.max(0, 90 - elapsed);
+                phaseData.waitingFor = room.players
+                    .filter(p => !room.answers[p.id] && !p.eliminated)
+                    .map(p => p.id);
+            } else if (room.state === 'QUALITY_VOTING') {
+                phaseData.scenarios = room.players.map((p, index) => ({
+                    index,
+                    answer: room.answers[p.id] || '...',
+                }));
+                phaseData.liveVotes = [];
+            } else if (room.state === 'CULPRIT_VOTING') {
+                phaseData.scenarios = room.players.map((p, index) => ({
+                    index,
+                    playerId: p.id,
+                    playerName: p.name,
+                    answer: room.answers[p.id] || 'لم يكتب شيئاً...',
+                }));
+                phaseData.liveVotes = [];
+            } else if (room.state === 'RESULTS') {
+                phaseData.roundResults = room.lastRoundResult || null;
+            }
+
+            socket.emit('hostRejoined', {
+                state: room.state,
+                gameMode: room.gameMode,
+                totalRounds: room.totalRounds,
+                currentRound: room.currentRound,
+                players: room.players.map(p => ({
+                    id: p.id, name: p.name, score: p.score || 0,
+                    connected: p.connected, eliminated: p.eliminated,
+                })),
+                ...phaseData,
+            });
         });
 
         // Update Game Settings (Host Only)
@@ -409,7 +472,7 @@ function registerHandlers(io) {
                 }
 
             } else {
-                socket.emit('error', 'الغرفة غير موجودة');
+                socket.emit('roomNotFound');
             }
         });
 
