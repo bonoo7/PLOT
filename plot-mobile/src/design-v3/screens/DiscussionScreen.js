@@ -1,5 +1,5 @@
-import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useRef, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import { useGameStore } from '../../store/useGameStore';
 import { useSocket } from '../../hooks/useGameSocket';
 import { InvestigationNote } from '../../components/InvestigationNote';
@@ -24,6 +24,37 @@ export const DiscussionScreen = ({ isHost = false }) => {
   const meta = getRoleMeta(roleData?.role);
   const speakingPlayer = players.find((player) => player.id === speakingPlayerId);
 
+  // Animated sound wave bars for active speaker
+  const barHeights = useRef([
+    new Animated.Value(6), new Animated.Value(14), new Animated.Value(10),
+    new Animated.Value(18), new Animated.Value(8),
+  ]).current;
+  const barMaxes = [12, 22, 18, 28, 14];
+  const barMins  = [4,   6,  5,  8,  4];
+  const animLoops = useRef([]);
+
+  useEffect(() => {
+    if (speakingPlayerId) {
+      animLoops.current.forEach((l) => l.stop());
+      animLoops.current = barHeights.map((val, i) => {
+        const loop = Animated.loop(
+          Animated.sequence([
+            Animated.timing(val, { toValue: barMaxes[i], duration: 350, delay: i * 80, useNativeDriver: false }),
+            Animated.timing(val, { toValue: barMins[i],  duration: 350,                useNativeDriver: false }),
+          ])
+        );
+        loop.start();
+        return loop;
+      });
+    } else {
+      animLoops.current.forEach((l) => l.stop());
+      [6, 14, 10, 18, 8].forEach((v, i) =>
+        Animated.timing(barHeights[i], { toValue: v, duration: 200, useNativeDriver: false }).start()
+      );
+    }
+    return () => { animLoops.current.forEach((l) => l.stop()); };
+  }, [speakingPlayerId]);
+
   return (
     <TerminalLayout
       top={<TerminalHeader title={isHost ? 'DISCUSSION CONTROL' : 'DISCUSSION FEED'} subtitle={playerName} roomCode={roomCode} roleName={isHost ? '[HOST]' : meta.bracket} roleEmoji={isHost ? '🎙️' : meta.emoji} />}
@@ -47,7 +78,18 @@ export const DiscussionScreen = ({ isHost = false }) => {
 
         <TerminalCard title="> ACTIVE SPEAKER" tone={speakingPlayer ? 'info' : 'warning'}>
           {speakingPlayer ? (
-            <PlayerBadge name={speakingPlayer.name} index={(players.findIndex((p) => p.id === speakingPlayer.id) || 0) + 1} isSpeaking />
+            <View style={styles.speakerRow}>
+              <PlayerBadge
+                name={speakingPlayer.name}
+                index={(players.findIndex((p) => p.id === speakingPlayer.id) || 0) + 1}
+                style={{ flex: 1 }}
+              />
+              <View style={styles.soundWave}>
+                {barHeights.map((height, i) => (
+                  <Animated.View key={i} style={[styles.soundBar, { height }]} />
+                ))}
+              </View>
+            </View>
           ) : (
             <Text style={styles.emptyText}>{isHost ? 'اختر لاعباً لبدء الحديث.' : 'بانتظار أن يحدد المضيف المتحدث.'}</Text>
           )}
@@ -86,6 +128,23 @@ const styles = StyleSheet.create({
     fontSize: fontSize.body,
     color: '#00CC33',
     textAlign: 'center',
+  },
+  speakerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  soundWave: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    gap: 4,
+    paddingBottom: 4,
+    height: 36,
+  },
+  soundBar: {
+    width: 5,
+    borderRadius: 3,
+    backgroundColor: '#00FF41',
   },
   playerGrid: {
     gap: sp.s,

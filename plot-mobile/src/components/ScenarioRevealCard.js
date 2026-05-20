@@ -90,10 +90,13 @@ export const ScenarioRevealCard = ({ text, template, author, voters, isComplete 
             {/* التدفق الطبيعي يضمن أن أي عدد من الأسطر لن يغطي النص أبداً */}
             {hasVoters && (
                 <View style={styles.votersRow}>
-                    {voters.length > 0 ? (
-                        voters.map((v, i) => (
-                            <PlayerBadge key={i} name={v} size="small" />
-                        ))
+                    {Array.isArray(voters) && voters.length > 0 ? (
+                        <>
+                            <Text style={styles.votersLabel}>صوّت له:</Text>
+                            {voters.map((v, i) => (
+                                <PlayerBadge key={i} name={v} size="small" />
+                            ))}
+                        </>
                     ) : (
                         <Text style={styles.noVotes}>لا أحد</Text>
                     )}
@@ -158,8 +161,15 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'center',
+        alignItems: 'center',
         gap: spacing.xs,
         paddingHorizontal: spacing.m,
+    },
+    votersLabel: {
+        fontSize: fonts.small,
+        fontFamily: theme.fonts.bold,
+        color: '#8B4513',
+        marginRight: 4,
     },
     noVotes: {
         color: '#999',

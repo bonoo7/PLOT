@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, Modal, TouchableOpacity, TextInput as RNTextInput } from 'react-native';
 import { useGameStore } from '../../store/useGameStore';
 import { useSocket } from '../../hooks/useGameSocket';
@@ -36,6 +36,7 @@ export const DraftingScreen = () => {
     const players = useGameStore((state) => state.players);
     const roomCode = useGameStore((state) => state.roomCode);
     const gameMode = useGameStore((state) => state.gameMode);
+    const currentRound = useGameStore((state) => state.currentRound);
 
     // Socket
     const { socket } = useSocket();
@@ -70,13 +71,13 @@ export const DraftingScreen = () => {
     const minutes = Math.floor(timeLeft / 60);
     const seconds = timeLeft % 60;
 
-    // إعادة تعيين الحالة عند كل جولة جديدة
+    // إعادة تعيين الحالة عند كل جولة جديدة (currentRound من Store موثوق أكثر من roleData?.round)
     useEffect(() => {
         setAbilityUsed(false);
         setTargetId(null);
         setFilledBlanks({});
         setOfferSent(false);
-    }, [roleData?.round]);
+    }, [currentRound]);
 
     // Socket events
     useEffect(() => {
@@ -396,7 +397,11 @@ export const DraftingScreen = () => {
                     </MinimalCard>
 
                     <MinimalCard flex style={styles.inputCard}>
-                        {gameMode === 'BLITZ' ? renderBlitzInput() : (
+                        {gameMode === 'BLITZ' ? (
+                            template
+                                ? renderBlitzInput()
+                                : <Text style={styles.blitzWaiting}>⏳ جاري تحميل النموذج...</Text>
+                        ) : (
                             <MinimalInput
                                 value={answer}
                                 onChangeText={setAnswer}

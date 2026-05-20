@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Animated } from 'react-native';
 import { useGameStore } from '../store/useGameStore';
 import { useSocket, ROUTES } from '../hooks/useGameSocket';
 import { useNavigation } from '@react-navigation/native';
@@ -37,6 +37,44 @@ export const DiscussionScreen = ({ isHost = false }) => {
     const setAbilityResultSeen = useGameStore((state) => state.setAbilityResultSeen);
 
     const speakingPlayer = players.find(p => p.id === speakingPlayerId);
+
+    // Animated sound wave bars
+    const barHeights = useRef([
+        new Animated.Value(20),
+        new Animated.Value(40),
+        new Animated.Value(30),
+        new Animated.Value(50),
+        new Animated.Value(25),
+    ]).current;
+    const barMaxes = [35, 55, 45, 65, 40];
+    const barMins  = [10, 20, 15, 25, 12];
+    const animLoops = useRef([]);
+
+    useEffect(() => {
+        if (speakingPlayerId) {
+            // Stop any existing loops
+            animLoops.current.forEach(l => l.stop());
+            // Start staggered looping animation per bar
+            animLoops.current = barHeights.map((val, i) => {
+                const loop = Animated.loop(
+                    Animated.sequence([
+                        Animated.timing(val, { toValue: barMaxes[i], duration: 350, delay: i * 80, useNativeDriver: false }),
+                        Animated.timing(val, { toValue: barMins[i],  duration: 350, useNativeDriver: false }),
+                    ])
+                );
+                loop.start();
+                return loop;
+            });
+        } else {
+            // Stop all loops and reset to resting heights
+            animLoops.current.forEach(l => l.stop());
+            const resting = [20, 40, 30, 50, 25];
+            barHeights.forEach((val, i) =>
+                Animated.timing(val, { toValue: resting[i], duration: 200, useNativeDriver: false }).start()
+            );
+        }
+        return () => { animLoops.current.forEach(l => l.stop()); };
+    }, [speakingPlayerId]);
 
     const handleSelectSpeaker = (playerId) => {
         if (!socket || !roomCode) return;
@@ -95,11 +133,9 @@ export const DiscussionScreen = ({ isHost = false }) => {
                                         <PlayerBadge name={speakingPlayer.name} size="large" isActive={true} />
                                     </View>
                                     <View style={styles.soundWave}>
-                                        <View style={[styles.bar, { height: 20 }]} />
-                                        <View style={[styles.bar, { height: 40 }]} />
-                                        <View style={[styles.bar, { height: 30 }]} />
-                                        <View style={[styles.bar, { height: 50 }]} />
-                                        <View style={[styles.bar, { height: 25 }]} />
+                                        {barHeights.map((animVal, i) => (
+                                            <Animated.View key={i} style={[styles.bar, { height: animVal }]} />
+                                        ))}
                                     </View>
                                 </>
                             ) : (

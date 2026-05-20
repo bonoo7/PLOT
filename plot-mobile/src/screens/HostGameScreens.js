@@ -327,13 +327,11 @@ export const HostResultsScreen = () => {
           {/* ── خطوة 2: النتيجة الكاملة ── */}
           {revealStep >= 2 && (
             <>
-              {/* لافتة الفائز — تُخفى عند استمرار الجولة */}
-              {!isContinue && (
-                <View style={[styles.resBanner, { backgroundColor: bannerBg }]}>
-                  <Text style={styles.resBannerTitle}>{winnerText}</Text>
-                  {reason ? <Text style={styles.resBannerReason}>{reason}</Text> : null}
-                </View>
-              )}
+              {/* لافتة نتيجة الجولة — تظهر دائماً */}
+              <View style={[styles.resBanner, { backgroundColor: bannerBg }]}>
+                <Text style={styles.resBannerTitle}>{winnerText}</Text>
+                {reason ? <Text style={styles.resBannerReason}>{reason}</Text> : null}
+              </View>
 
               {/* ترتيب النقاط مع طريقة الكسب */}
               <MinimalCard style={styles.resScoresCard}>

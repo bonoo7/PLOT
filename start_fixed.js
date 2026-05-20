@@ -212,6 +212,33 @@ async function main() {
     { cwd: path.join(__dirname, 'plot-mobile'), stdio: 'inherit', shell: true, env }
   );
 
+  // ── Watch src/ and auto-rebuild on changes ─────────────
+  section('WATCH');
+  info(`Watching ${C.bold}plot-mobile/src/${C.reset} — auto-rebuild on changes`);
+  info(`Tip: refresh the browser after rebuild to see updates`);
+  console.log();
+
+  let rebuildTimer   = null;
+  let isBuilding     = false;
+  const srcDir       = path.join(__dirname, 'plot-mobile', 'src');
+
+  fs.watch(srcDir, { recursive: true }, (eventType, filename) => {
+    if (isBuilding || !filename) return;
+    if (rebuildTimer) clearTimeout(rebuildTimer);
+    rebuildTimer = setTimeout(() => {
+      console.log(`\n  ${C.cyan}›${C.reset}  Changed: ${C.bold}${filename}${C.reset} — rebuilding…`);
+      isBuilding = true;
+      const result = spawnSync(npmCmd, ['run', 'build:web'],
+        { cwd: path.join(__dirname, 'plot-mobile'), stdio: 'inherit', shell: true });
+      if (result.status !== 0) {
+        warn('Rebuild failed — check errors above');
+      } else {
+        ok(`Rebuild done  →  refresh browser to see changes`);
+      }
+      isBuilding = false;
+    }, 600); // debounce: wait 600ms after last change before building
+  });
+
   const cleanup = (code) => {
     try { server.kill(); } catch {}
     try { expo.kill();   } catch {}

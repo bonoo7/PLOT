@@ -138,7 +138,11 @@ export const HostResultsScreen = () => {
           variant={isContinue ? 'info' : winner === 'CRIME' ? 'error' : 'success'}
           label="VERDICT"
         >
-          {isContinue ? 'لم تُحسم الجولة بعد. استمروا في النقاش.' : roundResults.reason || 'تم احتساب النتيجة النهائية لهذه الجولة.'}
+          {isContinue
+            ? '⚖️ اللعبة مستمرة — لم تُحسم الجولة بعد.'
+            : winner === 'CRIME'
+              ? `🔴 فاز فريق الجريمة — ${roundResults.reason || ''}`
+              : `🔵 فاز فريق العدالة — ${roundResults.reason || ''}`}
         </TerminalBanner>
         <ResultCard players={mappedScores} />
       </ScrollView>
@@ -164,6 +168,16 @@ export const HostDramaticRevealScreen = () => {
             <TerminalCard key={index} title={`> REVEAL ${index + 1}`} tone="info">
               <Text style={styles.voteText}>{scenario.text || '...'}</Text>
               {scenario.author ? <Text style={styles.metaText}>{`— ${scenario.author}`}</Text> : null}
+              {Array.isArray(scenario.voters) && scenario.voters.length > 0 && (
+                <View style={styles.votersRow}>
+                  <Text style={styles.votersLabel}>صوّت له:</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.votersList}>
+                    {scenario.voters.map((voter, vi) => (
+                      <Text key={vi} style={styles.voterChip}>{voter.name || voter}</Text>
+                    ))}
+                  </ScrollView>
+                </View>
+              )}
             </TerminalCard>
           ))}
         </ScrollView>
@@ -225,5 +239,31 @@ const styles = StyleSheet.create({
     fontSize: fontSize.small,
     color: '#00FF41',
     textAlign: 'left',
+  },
+  votersRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: sp.xs,
+    gap: sp.xs,
+  },
+  votersLabel: {
+    fontFamily: fontFamily.mono,
+    fontSize: fontSize.small,
+    color: '#00CC33',
+    fontWeight: 'bold',
+  },
+  votersList: {
+    flexDirection: 'row',
+    gap: sp.xs,
+  },
+  voterChip: {
+    fontFamily: fontFamily.mono,
+    fontSize: fontSize.small,
+    color: '#00FF41',
+    borderWidth: 1,
+    borderColor: '#00CC33',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 3,
   },
 });

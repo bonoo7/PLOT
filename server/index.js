@@ -177,21 +177,33 @@ process.on('unhandledRejection', (reason, promise) => {
 // ============================================
 // 🔒 Graceful Shutdown — إغلاق نظيف عند إيقاف الخادم
 // ============================================
+let isShuttingDown = false;
 function gracefulShutdown(signal) {
+    if (isShuttingDown) return;
+    isShuttingDown = true;
     logger.info(`${signal} received — closing server gracefully...`);
-    io.close(() => {
-        logger.info('All Socket.IO connections closed');
-        server.close(() => {
-            logger.info('HTTP server closed');
-            process.exit(0);
-        });
-    });
-    // إجبار الخروج بعد 10 ثوانٍ في حال لم تُغلق الاتصالات
-    setTimeout(() => {
+
+    // إجبار الخروج بعد 5 ثوانٍ
+    const forceExit = setTimeout(() => {
         logger.warn('Forced shutdown after timeout');
         process.exit(1);
-    }, 10000);
+    }, 5000);
+    forceExit.unref(); // لا يمنع Node من الخروج الطبيعي
+
+    // إغلاق اتصالات Socket.IO
+    io.close(() => logger.info('All Socket.IO connections closed'));
+
+    // إغلاق جميع اتصالات HTTP المفتوحة فوراً ثم إيقاف الخادم
+    if (typeof server.closeAllConnections === 'function') {
+        server.closeAllConnections();
+    }
+    server.close(() => {
+        logger.info('HTTP server closed');
+        clearTimeout(forceExit);
+        process.exit(0);
+    });
 }
 
 process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
-process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGINT',  () => gracefulShutdown('SIGINT'));
+process.on('SIGBREAK', () => gracefulShutdown('SIGBREAK')); // Windows Ctrl+C

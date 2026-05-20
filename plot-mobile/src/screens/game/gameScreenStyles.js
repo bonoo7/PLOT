@@ -194,18 +194,18 @@ export const gameScreenStyles = StyleSheet.create({
         textAlign: 'center',
     },
     abilityBox: {
-        backgroundColor: '#FFF',
+        backgroundColor: 'rgba(255, 255, 255, 0.07)',
         padding: 15,
         borderRadius: 8,
         borderWidth: 1,
-        borderColor: '#DDD',
+        borderColor: '#DAA520',
         marginTop: 10,
     },
     abilityTitle: {
         fontFamily: theme.fonts.bold,
         marginBottom: 10,
         fontSize: 16,
-        color: '#333',
+        color: '#DAA520',
     },
     targetList: {
         flexDirection: 'row',
@@ -216,21 +216,28 @@ export const gameScreenStyles = StyleSheet.create({
     targetChip: {
         paddingVertical: 8,
         paddingHorizontal: 12,
-        backgroundColor: '#F0F0F0',
+        backgroundColor: 'rgba(255,255,255,0.08)',
         borderRadius: 20,
         borderWidth: 1,
-        borderColor: '#CCC',
+        borderColor: 'rgba(255,255,255,0.25)',
     },
     targetChipSelected: {
-        backgroundColor: '#2F4F4F',
-        borderColor: '#2F4F4F',
+        backgroundColor: '#DAA520',
+        borderColor: '#DAA520',
     },
     targetText: {
         fontFamily: theme.fonts.main,
-        color: '#333',
+        color: '#EEE',
     },
     targetTextSelected: {
-        color: '#FFF',
+        color: '#1A1A1A',
+    },
+    blitzWaiting: {
+        color: '#888',
+        fontFamily: theme.fonts.main,
+        fontSize: 14,
+        textAlign: 'center',
+        padding: 20,
     },
     // Offers Styles
     modalOverlay: {
