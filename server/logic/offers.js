@@ -143,17 +143,11 @@ function handleOfferResponse(io, room, player, { offerId, accepted }) {
         if (player.acceptedOffer) {
             // User Rule: If he accepts a second one... refund the first one... accept the second
             const prevOffer = player.acceptedOffer;
-            const prevSender = room.players.find(p => p.id === prevOffer.senderId); // Direct Sender
+            const originalSender = room.players.find(p => p.id === prevOffer.originalSenderId);
             
-            if (prevSender) {
-                 // Refund Logic
-                 if (prevOffer.type === OFFER_TYPES.DIRECT) {
-                      prevSender.score += prevOffer.amount;
-                      io.to(prevSender.id).emit('offerRefunded', { amount: prevOffer.amount });
-                 } else {
-                      // Proxy Refund: Refund to Mastermind/Sender
-                      prevSender.score += prevOffer.amount; 
-                 }
+            if (originalSender) {
+                 originalSender.score += prevOffer.amount;
+                 io.to(originalSender.id).emit('offerRefunded', { amount: prevOffer.amount });
             }
         }
 
@@ -182,11 +176,18 @@ function handleOfferResponse(io, room, player, { offerId, accepted }) {
 
     } else {
         // Rejected
-        // Refund the sender
-        const sender = room.players.find(p => p.id === offer.senderId);
-        if (sender) {
-            sender.score += offer.amount;
-            io.to(sender.id).emit('offerStatus', { status: 'REJECTED', amountRefunded: offer.amount });
+        // Refund the original sender (true origin)
+        const originalSender = room.players.find(p => p.id === offer.originalSenderId);
+        if (originalSender) {
+            originalSender.score += offer.amount;
+            io.to(originalSender.id).emit('offerStatus', { status: 'REJECTED', amountRefunded: offer.amount });
+        }
+        // Also notify the direct sender (e.g. Mastermind) so their UI updates
+        if (offer.senderId !== offer.originalSenderId) {
+            const directSender = room.players.find(p => p.id === offer.senderId);
+            if (directSender) {
+                io.to(directSender.id).emit('offerStatus', { status: 'REJECTED', targetName: player.name });
+            }
         }
     }
 }

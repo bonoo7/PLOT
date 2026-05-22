@@ -199,3 +199,32 @@ export const useLayout = () => {
     contentMaxW: isDesktop ? 980 : '100%',
   };
 };
+
+export const getHighlightedParts = (text, template) => {
+  if (!text) return [];
+  if (!template || !template.includes('_____')) return [{ text, filled: false }];
+  const parts = template.split('_____');
+  const result = [];
+  let remaining = text;
+
+  for (let i = 0; i < parts.length; i++) {
+    const part = parts[i];
+    if (!part) continue; // empty blank at start of template
+    const idx = remaining.indexOf(part);
+    if (idx === -1) {
+      result.push({ text: remaining, filled: false });
+      remaining = '';
+      break;
+    }
+    if (idx > 0) {
+      result.push({ text: remaining.substring(0, idx), filled: true });
+    }
+    result.push({ text: part, filled: false });
+    remaining = remaining.substring(idx + part.length);
+  }
+  if (remaining.length > 0) {
+    result.push({ text: remaining, filled: true });
+  }
+  return result;
+};
+

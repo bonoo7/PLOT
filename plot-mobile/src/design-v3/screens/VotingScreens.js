@@ -3,8 +3,25 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-nati
 import { useNavigation } from '@react-navigation/native';
 import { ROUTES, useSocket } from '../../hooks/useGameSocket';
 import { useGameStore } from '../../store/useGameStore';
-import { BlinkCursor, PlayerBadge, ResultCard, TerminalBanner, TerminalButton, TerminalCard, TerminalHeader, TerminalLayout } from '../components';
-import { getRoleMeta, sp, fontFamily, fontSize } from '../tokens';
+import { BlinkCursor, PlayerBadge, ResultCard, TerminalBanner, TerminalButton, TerminalCard, TerminalHeader, TerminalLayout, TerminalTypewriter } from '../components';
+import { getRoleMeta, sp, fontFamily, fontSize, getHighlightedParts } from '../tokens';
+
+const renderBlitzText = (text, template, baseStyle, highlightStyle) => {
+  if (!template || !template.includes('_____')) {
+    return <Text style={baseStyle}>{text}</Text>;
+  }
+  const parts = getHighlightedParts(text, template);
+  return (
+    <Text style={baseStyle}>
+      {parts.map((p, idx) => (
+        <Text key={idx} style={p.filled ? highlightStyle : undefined}>
+          {p.text}
+        </Text>
+      ))}
+    </Text>
+  );
+};
+
 
 const mapScores = (scores = []) =>
   [...scores]
@@ -44,7 +61,12 @@ export const QualityVotingScreen = () => {
           return (
             <TouchableOpacity key={index} disabled={hasVoted || isMine} activeOpacity={0.85} onPress={() => setSelected(index)}>
               <TerminalCard title={`> [${String(index + 1).padStart(2, '0')}]`} tone={active ? 'success' : 'info'} style={{ opacity: hasVoted || isMine ? 0.55 : 1 }}>
-                <Text style={styles.text}>{scenario.answer || scenario.text || '...'}</Text>
+                {renderBlitzText(
+                  scenario.answer || scenario.text || '...',
+                  scenario.template,
+                  styles.text,
+                  { color: '#FFFF00', fontWeight: '700', textDecorationLine: 'underline' }
+                )}
                 {isMine ? <Text style={styles.meta}>هذا النص يعود لك</Text> : null}
               </TerminalCard>
             </TouchableOpacity>
@@ -87,7 +109,12 @@ export const CulpritVotingScreen = () => {
             <TouchableOpacity key={index} disabled={hasVoted || isSelf} activeOpacity={0.85} onPress={() => setSelected(index)}>
               <TerminalCard title={`> SUSPECT ${index + 1}`} tone={active ? 'danger' : 'warning'} style={{ opacity: hasVoted || isSelf ? 0.45 : 1 }}>
                 <PlayerBadge name={scenario.playerName || scenario.author || 'مجهول'} index={index + 1} />
-                <Text style={styles.text}>{scenario.answer || scenario.text || '...'}</Text>
+                {renderBlitzText(
+                  scenario.answer || scenario.text || '...',
+                  scenario.template,
+                  styles.text,
+                  { color: '#FFFF00', fontWeight: '700', textDecorationLine: 'underline' }
+                )}
                 {isSelf ? <Text style={styles.meta}>لا يمكنك اتهام نفسك</Text> : null}
               </TerminalCard>
             </TouchableOpacity>
@@ -117,6 +144,8 @@ export const PlayerDramaticRevealScreen = () => {
   const roomCode = useGameStore((s) => s.roomCode);
   const playerName = useGameStore((s) => s.playerName);
   const currentReveal = useGameStore((s) => s.currentReveal);
+  const players = useGameStore((s) => s.players) || [];
+  const playerId = useGameStore((s) => s.playerId);
   const meta = useMeta();
 
   if (!currentReveal) return <WaitingRevealScreen message="جاري تحضير الكشف..." />;
@@ -134,10 +163,37 @@ export const PlayerDramaticRevealScreen = () => {
     <TerminalLayout top={<TerminalHeader title="DRAMATIC REVEAL" subtitle={playerName} roomCode={roomCode} roleName={meta.bracket} roleEmoji={meta.emoji} />}>
       <View style={styles.list}>
         <TerminalCard title="> LIVE REVEAL" tone="warning">
-          <Text style={styles.text}>{currentReveal.text}</Text>
+          <TerminalTypewriter
+            text={currentReveal.text}
+            template={currentReveal.template}
+            speed={20}
+            style={styles.typewriterWrapper}
+            textStyle={styles.text}
+          />
           {currentReveal.author ? <Text style={styles.meta}>{`— ${currentReveal.author}`}</Text> : null}
         </TerminalCard>
-        {currentReveal.voters?.length ? <TerminalBanner variant="info" label="VOTERS">{currentReveal.voters.map((item) => (typeof item === 'object' ? item.name : item)).join(' — ')}</TerminalBanner> : null}
+        {currentReveal.voters?.length ? (
+          <TerminalCard title="> المصوتون / VOTERS" tone="info">
+            <View style={styles.votersGrid}>
+              {currentReveal.voters.map((item, idx) => {
+                const name = typeof item === 'object' ? item.name : item;
+                const playerObj = players.find((p) => p.name === name || (item.id && p.id === item.id));
+                const isMe = playerObj ? playerObj.id === playerId : false;
+                const plIndex = playerObj ? players.indexOf(playerObj) + 1 : idx + 1;
+                return (
+                  <PlayerBadge
+                    key={idx}
+                    name={name}
+                    index={plIndex}
+                    isMe={isMe}
+                    isActive={true}
+                    style={styles.voterBadge}
+                  />
+                );
+              })}
+            </View>
+          </TerminalCard>
+        ) : null}
       </View>
     </TerminalLayout>
   );
@@ -147,6 +203,7 @@ export const PlayerResultsScreen = () => {
   const roomCode = useGameStore((s) => s.roomCode);
   const playerName = useGameStore((s) => s.playerName);
   const roundResults = useGameStore((s) => s.roundResults);
+  const players = useGameStore((s) => s.players) || [];
   const meta = useMeta();
 
   if (!roundResults) return <WaitingRevealScreen message="جاري حساب النتائج..." />;
@@ -155,7 +212,47 @@ export const PlayerResultsScreen = () => {
     <TerminalLayout top={<TerminalHeader title="ROUND RESULTS" subtitle={playerName} roomCode={roomCode} roleName={meta.bracket} roleEmoji={meta.emoji} />}>
       <ScrollView contentContainerStyle={styles.list} showsVerticalScrollIndicator={false}>
         <TerminalBanner variant="success" label="SYNC COMPLETE">تم تحديث شاشة اللاعب بنتائج الجولة.</TerminalBanner>
-        <ResultCard players={mapScores(roundResults.scores || [])} />
+        
+        <ResultCard players={mapScores(roundResults.scores || [])} hideDetails={roundResults.winner === 'CONTINUE'} />
+
+        {/* Quality Votes map */}
+        {roundResults.qualityVotes && Object.keys(roundResults.qualityVotes).length > 0 && (
+          <TerminalCard title="> أصوات الجودة / QUALITY VOTES" tone="info">
+            <View style={styles.voteMapList}>
+              {Object.entries(roundResults.qualityVotes).map(([voterId, scenarioIndex], vi) => {
+                const voter = players.find(p => p.id === voterId);
+                if (!voter) return null;
+                return (
+                  <View key={voterId} style={styles.voteMapRow}>
+                    <Text style={styles.voteMapText}>
+                      {voter.name} ➔ السيناريو {parseInt(scenarioIndex) + 1}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </TerminalCard>
+        )}
+
+        {/* Culprit Votes map */}
+        {roundResults.culpritVotes && Object.keys(roundResults.culpritVotes).length > 0 && (
+          <TerminalCard title="> اتهامات الجاني / CULPRIT ACCUSATIONS" tone="danger">
+            <View style={styles.voteMapList}>
+              {Object.entries(roundResults.culpritVotes).map(([voterId, accusedId], vi) => {
+                const voter = players.find(p => p.id === voterId);
+                const accused = players.find(p => p.id === accusedId);
+                if (!voter || !accused) return null;
+                return (
+                  <View key={voterId} style={styles.voteMapRow}>
+                    <Text style={styles.voteMapText}>
+                      {voter.name} ➔ اتهم {accused.name}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </TerminalCard>
+        )}
       </ScrollView>
     </TerminalLayout>
   );
@@ -199,6 +296,9 @@ const styles = StyleSheet.create({
     writingDirection: 'rtl',
     textAlign: 'right',
   },
+  typewriterWrapper: {
+    width: '100%',
+  },
   meta: {
     marginTop: sp.xs,
     fontFamily: fontFamily.mono,
@@ -216,4 +316,29 @@ const styles = StyleSheet.create({
     fontSize: fontSize.body,
     color: '#00FF41',
   },
+  votersGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: sp.s,
+    marginTop: sp.xs,
+  },
+  voterBadge: {
+    width: '48%',
+    minWidth: 140,
+  },
+  voteMapList: {
+    gap: sp.xs,
+  },
+  voteMapRow: {
+    paddingVertical: sp.s,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(57, 255, 20, 0.1)',
+  },
+  voteMapText: {
+    fontFamily: fontFamily.mono,
+    fontSize: fontSize.small,
+    color: '#00FF41',
+    textAlign: 'right',
+  },
 });
+

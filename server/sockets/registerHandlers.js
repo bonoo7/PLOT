@@ -144,6 +144,7 @@ function registerHandlers(io) {
                 phaseData.scenarios = room.players.map((p, index) => ({
                     index,
                     answer: room.answers[p.id] || '...',
+                    template: room.gameMode === 'BLITZ' ? (room.currentScenario?.template || null) : null
                 }));
                 phaseData.liveVotes = [];
             } else if (room.state === 'CULPRIT_VOTING') {
@@ -152,6 +153,7 @@ function registerHandlers(io) {
                     playerId: p.id,
                     playerName: p.name,
                     answer: room.answers[p.id] || 'لم يكتب شيئاً...',
+                    template: room.gameMode === 'BLITZ' ? (room.currentScenario?.template || null) : null
                 }));
                 phaseData.liveVotes = [];
             } else if (room.state === 'RESULTS') {
@@ -191,7 +193,7 @@ function registerHandlers(io) {
         });
 
         // Player joins a room
-        socket.on('joinRoom', ({ roomCode, playerName, desiredRole, avatar }) => {
+        socket.on('joinRoom', ({ roomCode, playerName, desiredRole, avatar, playerToken }) => {
             // فحص وتنظيف المدخلات
             const validationError = validateInput(
                 { roomCode, playerName },
@@ -217,6 +219,20 @@ function registerHandlers(io) {
                 const existingPlayer = room.players.find(p => p.name === playerName);
 
                 if (existingPlayer) {
+                    // التحقق من الجلسة لمنع انتحال الشخصية
+                    const isTokenValid = playerToken && existingPlayer.token === playerToken;
+                    const canReconnect = isTokenValid || (!existingPlayer.connected && !playerToken);
+
+                    if (existingPlayer.connected && !isTokenValid) {
+                        socket.emit('error', 'اسم اللاعب مستخدم بالفعل ونشط حالياً في اللعبة!');
+                        return;
+                    }
+
+                    if (!canReconnect) {
+                        socket.emit('error', 'فشل في إعادة الاتصال: رمز الجلسة غير صالح!');
+                        return;
+                    }
+
                     // Update socket ID
                     existingPlayer.id = socket.id;
                     existingPlayer.connected = true;
@@ -228,7 +244,8 @@ function registerHandlers(io) {
                         playerId: socket.id,
                         isLeader: existingPlayer.isLeader,
                         gameMode: room.gameMode,
-                        isReconnect: room.state !== 'LOBBY' && room.state !== 'END' // ← لا تُعيد لـ LOBBY إذا اللعبة جارية
+                        isReconnect: room.state !== 'LOBBY' && room.state !== 'END', // ← لا تُعيد لـ LOBBY إذا اللعبة جارية
+                        playerToken: existingPlayer.token // إرجاع التوكن للعميل لحفظه
                     });
 
                     logger.info(`${playerName} reconnected to room ${roomCode} `);
@@ -317,7 +334,8 @@ function registerHandlers(io) {
                         } else if (room.state === 'QUALITY_VOTING') {
                             const anonymousAnswers = room.players.map(p => ({
                                 index: room.players.indexOf(p),
-                                answer: room.answers[p.id] || "..."
+                                answer: room.answers[p.id] || "...",
+                                template: room.gameMode === 'BLITZ' ? (room.currentScenario?.template || null) : null
                             }));
                             socket.emit('qualityVotingStarted', {
                                 scenarios: anonymousAnswers
@@ -332,7 +350,8 @@ function registerHandlers(io) {
                                 index: index,
                                 playerId: p.id,
                                 playerName: p.name,
-                                answer: room.answers[p.id] || "لم يكتب شيئاً..."
+                                answer: room.answers[p.id] || "لم يكتب شيئاً...",
+                                template: room.gameMode === 'BLITZ' ? (room.currentScenario?.template || null) : null
                             }));
                             socket.emit('culpritVotingStarted', {
                                 scenarios: scenariosWithAuthors
@@ -365,6 +384,7 @@ function registerHandlers(io) {
 
                 // New Player
                 const isLeader = room.players.length === 0;
+                const playerTokenGenerated = crypto.randomUUID();
 
                 const player = {
                     id: socket.id,
@@ -373,11 +393,17 @@ function registerHandlers(io) {
                     role: null, // Will be set later or if desiredRole is present
                     isLeader: isLeader,
                     connected: true,
-                    avatar: avatar || null
+                    avatar: avatar || null,
+                    token: playerTokenGenerated
                 };
 
                 // ✅ Handle Training Mode Join Logic
                 if (desiredRole) {
+                    // التحقق من صحة الدور المفضل
+                    if (!Object.values(ROLE_TYPES).includes(desiredRole)) {
+                        socket.emit('error', 'الدور المفضل الممرر غير صالح!');
+                        return;
+                    }
                     logger.info(`🎓 Training Mode Join: ${playerName} wants to be ${desiredRole} `);
                     room.isTutorial = true;
                     room.totalRounds = 3; // التدريب يستمر 3 جولات
@@ -440,7 +466,8 @@ function registerHandlers(io) {
                     roomCode: roomCode.toUpperCase(),
                     playerId: socket.id,
                     isLeader: isLeader,
-                    gameMode: room.gameMode
+                    gameMode: room.gameMode,
+                    playerToken: player.token
                 });
 
                 // Notify host (and everyone in room) about new player
@@ -798,6 +825,18 @@ function registerHandlers(io) {
 
             const player = room.players.find(p => p.id === socket.id);
             if (!player) return;
+
+            // Check if player accepted a bribe (offer) in this round
+            if (player.acceptedOffer) {
+                socket.emit('error', 'تم تعطيل قدرتك الخاصة في هذه الجولة بسبب قبولك للرشوة!');
+                return;
+            }
+
+            // Check if player already used their ability in this round
+            if (player.abilityUsed) {
+                socket.emit('error', 'لقد استخدمت قدرتك الخاصة بالفعل في هذه الجولة!');
+                return;
+            }
 
             // Check Round Restriction (Abilities start from Round 2, except Seer and Witness)
             // Seer and Witness use abilities implicitly or explicitly at different times.

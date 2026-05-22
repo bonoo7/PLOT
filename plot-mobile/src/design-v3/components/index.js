@@ -10,3 +10,5 @@ export { default as GlitchText } from './GlitchText';
 export { default as BlinkCursor } from './BlinkCursor';
 export { default as ProgressBar } from './ProgressBar';
 export { default as ScanLines } from './ScanLines';
+export { default as TerminalTypewriter } from './TerminalTypewriter';
+

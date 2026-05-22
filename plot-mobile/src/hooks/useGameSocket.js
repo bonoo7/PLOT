@@ -109,6 +109,8 @@ export const useGameSocket = (navigationRef) => {
         setNotification,
         setFinalResults,
         setHostToken,
+        playerToken,
+        setPlayerToken,
     } = useGameStore();
 
     // تحديث refs عند تغيير القيم حتى يقرأها الـ interval دائماً من المصدر الصحيح
@@ -153,7 +155,7 @@ export const useGameSocket = (navigationRef) => {
                     newSocket.emit('rejoinHost', { roomCode: state.roomCode, hostToken: state.hostToken });
                 } else if (state.playerName) {
                     console.log('🔄 Rejoining as Player...');
-                    newSocket.emit('joinRoom', { roomCode: state.roomCode, playerName: state.playerName, avatar: state.myAvatar });
+                    newSocket.emit('joinRoom', { roomCode: state.roomCode, playerName: state.playerName, avatar: state.myAvatar, playerToken: state.playerToken });
                 }
             }
         });
@@ -169,7 +171,7 @@ export const useGameSocket = (navigationRef) => {
                             newSocket.connect();
                             // استخدام refs بدلاً من closure لضمان القيم الحالية
                             const st = useGameStore.getState();
-                            newSocket.emit('joinRoom', { roomCode: roomCodeRef.current, playerName: playerNameRef.current, avatar: st.myAvatar });
+                            newSocket.emit('joinRoom', { roomCode: roomCodeRef.current, playerName: playerNameRef.current, avatar: st.myAvatar, playerToken: st.playerToken });
                         }
                     }, 3000);
                 }
@@ -215,7 +217,8 @@ export const useGameSocket = (navigationRef) => {
                 roomCode,
                 playerName: state.playerName,
                 desiredRole: state.selectedTrainingRole, // ✅ الاسم الصحيح الذي يفهمه الخادم
-                avatar: state.myAvatar
+                avatar: state.myAvatar,
+                playerToken: state.playerToken
             });
         });
 
@@ -230,6 +233,9 @@ export const useGameSocket = (navigationRef) => {
             if (data.roomCode) {
                 const { setRoomCode } = useGameStore.getState();
                 setRoomCode(data.roomCode);
+            }
+            if (data.playerToken) {
+                setPlayerToken(data.playerToken);
             }
             setConnecting(false);
             // Only navigate to lobby for fresh joins (not reconnects mid-game)
@@ -622,10 +628,10 @@ export const useGameSocket = (navigationRef) => {
     }, []); // Run once
 
     const manualReconnect = () => {
-        if (!newSocket || !roomCode || !playerName) return;
+        if (!socketRef.current || !roomCode || !playerName) return;
         const st = useGameStore.getState();
         useGameStore.getState().setReconnecting(true);
-        newSocket.emit('joinRoom', { roomCode, playerName, avatar: st.myAvatar });
+        socketRef.current.emit('joinRoom', { roomCode, playerName, avatar: st.myAvatar, playerToken: st.playerToken });
         setTimeout(() => useGameStore.getState().setReconnecting(false), 2000);
     };
 

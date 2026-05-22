@@ -4,7 +4,12 @@ const { rooms } = require('../state');
 // Middleware: يتحقق من مفتاح المشرف في header أو query param
 function adminAuth(req, res, next) {
     const adminKey = process.env.ADMIN_KEY;
-    if (!adminKey) return next(); // إذا لم يُعيَّن مفتاح، السماح (وضع التطوير)
+    if (!adminKey) {
+        if (process.env.NODE_ENV === 'production') {
+            return res.status(500).send('خطأ في إعدادات الخادم: لم يتم تعيين مفتاح المشرف ADMIN_KEY في بيئة الإنتاج.');
+        }
+        return next(); // يسمح بالوصول في وضع التطوير المحلي فقط في حال عدم تعيين مفتاح
+    }
     const provided = req.headers['x-admin-key'] || req.query.key;
     if (!provided || provided !== adminKey) {
         return res.status(403).send(`<!DOCTYPE html>

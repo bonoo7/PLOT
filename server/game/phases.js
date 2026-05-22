@@ -288,6 +288,7 @@ function startQualityVoting(roomCode) {
     const anonymousScenarios = room.players.map((p, index) => ({
         index: index,
         answer: room.answers[p.id] || "لم يكتب شيئاً...",
+        template: room.gameMode === 'BLITZ' ? (room.currentScenario?.template || null) : null
         // ❌ بدون name
     }));
 
@@ -560,7 +561,8 @@ function startCulpritVoting(roomCode) {
             index: index,
             playerId: p.id,
             playerName: p.name,
-            answer: room.answers[p.id] || "لم يكتب شيئاً..."
+            answer: room.answers[p.id] || "لم يكتب شيئاً...",
+            template: room.gameMode === 'BLITZ' ? (room.currentScenario?.template || null) : null
         }));
 
     ioInstance.to(roomCode).emit('culpritVotingStarted', {
@@ -907,7 +909,9 @@ function endRound(roomCode, result) {
         eliminatedPlayer: result ? result.eliminatedPlayer : null,
         round: room.currentRound,
         totalRounds: room.totalRounds,
-        isLastRound: room.currentRound >= room.totalRounds
+        isLastRound: room.currentRound >= room.totalRounds,
+        qualityVotes: room.qualityVotes || {},
+        culpritVotes: room.culpritVotes || {},
     };
 
     room.lastRoundResult = resultPayload; // Store for reconnection

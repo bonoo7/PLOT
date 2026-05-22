@@ -18,6 +18,7 @@ export const useGameStore = create(
     roomCode: '',
     generatedRoomCode: '',
     hostToken: null, // رمز سري يُستخدم لإعادة انضمام الهوست بأمان
+    playerToken: null, // رمز سري يُستخدم لإعادة انضمام اللاعب بأمان
     playerName: '',
     userRole: null, // 'HOST' | 'PLAYER' | null
     players: [],
@@ -77,6 +78,7 @@ export const useGameStore = create(
     setRoomCode: (code) => set({ roomCode: code }),
     setGeneratedRoomCode: (code) => set({ generatedRoomCode: code }),
     setHostToken: (token) => set({ hostToken: token }),
+    setPlayerToken: (token) => set({ playerToken: token }),
     setPlayerName: (name) => set({ playerName: name }),
     setUserRole: (role) => set({ userRole: role }),
     setPlayers: (players) => set({ players }),
@@ -141,6 +143,7 @@ export const useGameStore = create(
         roomCode: '',
         generatedRoomCode: '',
         hostToken: null,
+        playerToken: null,
         playerName: '',
         userRole: null,
         players: [],
@@ -183,6 +186,7 @@ export const useGameStore = create(
             playerName: state.playerName,
             userRole: state.userRole,
             hostToken: state.hostToken,
+            playerToken: state.playerToken,
             myAvatar: state.myAvatar,
             gameMode: state.gameMode,
             designVersion: state.designVersion,

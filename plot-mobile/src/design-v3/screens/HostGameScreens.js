@@ -2,8 +2,25 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useGameStore } from '../../store/useGameStore';
 import { useSocket } from '../../hooks/useGameSocket';
-import { PlayerBadge, ProgressBar, ResultCard, TerminalBanner, TerminalButton, TerminalCard, TerminalHeader, TerminalLayout } from '../components';
-import { formatTime, getColors, sp, fontFamily, fontSize, useLayout } from '../tokens';
+import { PlayerBadge, ProgressBar, ResultCard, TerminalBanner, TerminalButton, TerminalCard, TerminalHeader, TerminalLayout, TerminalTypewriter } from '../components';
+import { formatTime, getColors, sp, fontFamily, fontSize, useLayout, getHighlightedParts } from '../tokens';
+
+const renderBlitzText = (text, template, baseStyle, highlightStyle) => {
+  if (!template || !template.includes('_____')) {
+    return <Text style={baseStyle}>{text}</Text>;
+  }
+  const parts = getHighlightedParts(text, template);
+  return (
+    <Text style={baseStyle}>
+      {parts.map((p, idx) => (
+        <Text key={idx} style={p.filled ? highlightStyle : undefined}>
+          {p.text}
+        </Text>
+      ))}
+    </Text>
+  );
+};
+
 
 const mapScores = (scores = []) =>
   [...scores]
@@ -102,7 +119,12 @@ export const HostVotingScreen = ({ route }) => {
           {scenarios.map((scenario, index) => (
             <TerminalCard key={index} title={`> ${votingType === 'quality' ? `ENTRY ${index + 1}` : `PLAYER ${index + 1}`}`} tone={votingType === 'quality' ? 'info' : 'danger'}>
               {votingType === 'culprit' ? <PlayerBadge name={scenario.playerName || scenario.author || 'مجهول'} index={index + 1} /> : null}
-              <Text style={styles.voteText}>{scenario.answer || scenario.text || '...'}</Text>
+              {renderBlitzText(
+                scenario.answer || scenario.text || '...',
+                scenario.template,
+                styles.voteText,
+                { color: '#FFFF00', fontWeight: '700', textDecorationLine: 'underline' }
+              )}
               <ProgressBar value={getVotes(index)} max={total} label="> VOTES" showTime timeText={`${getVotes(index)} صوت`} />
             </TerminalCard>
           ))}
@@ -119,6 +141,7 @@ export const HostResultsScreen = () => {
   const currentRound = useGameStore((s) => s.currentRound);
   const totalRounds = useGameStore((s) => s.totalRounds);
   const playerName = useGameStore((s) => s.playerName);
+  const players = useGameStore((s) => s.players) || [];
 
   if (!roundResults) return null;
 
@@ -144,7 +167,47 @@ export const HostResultsScreen = () => {
               ? `🔴 فاز فريق الجريمة — ${roundResults.reason || ''}`
               : `🔵 فاز فريق العدالة — ${roundResults.reason || ''}`}
         </TerminalBanner>
-        <ResultCard players={mappedScores} />
+        
+        <ResultCard players={mappedScores} hideDetails={isContinue} />
+
+        {/* Quality Votes map */}
+        {roundResults.qualityVotes && Object.keys(roundResults.qualityVotes).length > 0 && (
+          <TerminalCard title="> أصوات الجودة / QUALITY VOTES" tone="info">
+            <View style={styles.voteMapList}>
+              {Object.entries(roundResults.qualityVotes).map(([voterId, scenarioIndex], vi) => {
+                const voter = players.find(p => p.id === voterId);
+                if (!voter) return null;
+                return (
+                  <View key={voterId} style={styles.voteMapRow}>
+                    <Text style={styles.voteMapText}>
+                      {voter.name} ➔ السيناريو {parseInt(scenarioIndex) + 1}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </TerminalCard>
+        )}
+
+        {/* Culprit Votes map */}
+        {roundResults.culpritVotes && Object.keys(roundResults.culpritVotes).length > 0 && (
+          <TerminalCard title="> اتهامات الجاني / CULPRIT ACCUSATIONS" tone="danger">
+            <View style={styles.voteMapList}>
+              {Object.entries(roundResults.culpritVotes).map(([voterId, accusedId], vi) => {
+                const voter = players.find(p => p.id === voterId);
+                const accused = players.find(p => p.id === accusedId);
+                if (!voter || !accused) return null;
+                return (
+                  <View key={voterId} style={styles.voteMapRow}>
+                    <Text style={styles.voteMapText}>
+                      {voter.name} ➔ اتهم {accused.name}
+                    </Text>
+                  </View>
+                );
+              })}
+            </View>
+          </TerminalCard>
+        )}
       </ScrollView>
     </TerminalLayout>
   );
@@ -155,27 +218,50 @@ export const HostDramaticRevealScreen = () => {
   const revealedScenarios = useGameStore((s) => s.revealedScenarios) || [];
   const currentReveal = useGameStore((s) => s.currentReveal);
   const playerName = useGameStore((s) => s.playerName);
+  const players = useGameStore((s) => s.players) || [];
   const c = getColors();
 
   return (
     <TerminalLayout top={<TerminalHeader title="DRAMATIC REVEAL" subtitle={playerName || 'المضيف'} roomCode={roomCode} roleEmoji="🖥️" roleName="[HOST]" />}>
       <View style={styles.body}>
         <TerminalCard title="> LIVE FEED" tone="warning">
-          <Text style={[styles.voteText, { color: c.textPrimary }]}>{currentReveal?.text || 'بانتظار العنصر التالي...'}</Text>
+          <TerminalTypewriter
+            text={currentReveal?.text || 'بانتظار العنصر التالي...'}
+            template={currentReveal?.template}
+            speed={20}
+            textStyle={[styles.voteText, { color: c.textPrimary }]}
+            style={styles.typewriterWrapper}
+          />
         </TerminalCard>
         <ScrollView contentContainerStyle={styles.resultList} showsVerticalScrollIndicator={false}>
           {revealedScenarios.map((scenario, index) => (
             <TerminalCard key={index} title={`> REVEAL ${index + 1}`} tone="info">
-              <Text style={styles.voteText}>{scenario.text || '...'}</Text>
+              {renderBlitzText(
+                scenario.text || '...',
+                scenario.template,
+                styles.voteText,
+                { color: '#FFFF00', fontWeight: '700', textDecorationLine: 'underline' }
+              )}
               {scenario.author ? <Text style={styles.metaText}>{`— ${scenario.author}`}</Text> : null}
               {Array.isArray(scenario.voters) && scenario.voters.length > 0 && (
-                <View style={styles.votersRow}>
-                  <Text style={styles.votersLabel}>صوّت له:</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.votersList}>
-                    {scenario.voters.map((voter, vi) => (
-                      <Text key={vi} style={styles.voterChip}>{voter.name || voter}</Text>
-                    ))}
-                  </ScrollView>
+                <View style={styles.scenarioVotersWrapper}>
+                  <Text style={styles.votersLabel}>المصوتون / VOTERS:</Text>
+                  <View style={styles.scenarioVotersGrid}>
+                    {scenario.voters.map((voter, vi) => {
+                      const name = typeof voter === 'object' ? voter.name : voter;
+                      const playerObj = players.find(p => p.name === name || (voter.id && p.id === voter.id));
+                      const plIndex = playerObj ? players.indexOf(playerObj) + 1 : vi + 1;
+                      return (
+                        <PlayerBadge
+                          key={vi}
+                          name={name}
+                          index={plIndex}
+                          isActive={true}
+                          style={styles.scenarioVoterBadge}
+                        />
+                      );
+                    })}
+                  </View>
                 </View>
               )}
             </TerminalCard>
@@ -233,6 +319,9 @@ const styles = StyleSheet.create({
     writingDirection: 'rtl',
     textAlign: 'right',
   },
+  typewriterWrapper: {
+    width: '100%',
+  },
   metaText: {
     marginTop: sp.xs,
     fontFamily: fontFamily.mono,
@@ -240,30 +329,38 @@ const styles = StyleSheet.create({
     color: '#00FF41',
     textAlign: 'left',
   },
-  votersRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: sp.xs,
-    gap: sp.xs,
-  },
   votersLabel: {
     fontFamily: fontFamily.mono,
     fontSize: fontSize.small,
     color: '#00CC33',
     fontWeight: 'bold',
+    marginBottom: sp.xs,
   },
-  votersList: {
-    flexDirection: 'row',
+  scenarioVotersWrapper: {
+    marginTop: sp.s,
     gap: sp.xs,
   },
-  voterChip: {
+  scenarioVotersGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: sp.s,
+  },
+  scenarioVoterBadge: {
+    width: '48%',
+    minWidth: 140,
+  },
+  voteMapList: {
+    gap: sp.xs,
+  },
+  voteMapRow: {
+    paddingVertical: sp.s,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(57, 255, 20, 0.1)',
+  },
+  voteMapText: {
     fontFamily: fontFamily.mono,
     fontSize: fontSize.small,
     color: '#00FF41',
-    borderWidth: 1,
-    borderColor: '#00CC33',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 3,
+    textAlign: 'right',
   },
 });
