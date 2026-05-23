@@ -2,7 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, ScrollView } from 'react-native';
 import { useGameStore } from '../../store/useGameStore';
 import { useSocket } from '../../hooks/useGameSocket';
-import { PlayerBadge, ProgressBar, ResultCard, TerminalBanner, TerminalButton, TerminalCard, TerminalHeader, TerminalLayout, TerminalTypewriter } from '../components';
+import { BlinkCursor, PlayerBadge, ProgressBar, ResultCard, TerminalBanner, TerminalButton, TerminalCard, TerminalHeader, TerminalLayout, TerminalTypewriter } from '../components';
 import { formatTime, getColors, sp, fontFamily, fontSize, useLayout, getHighlightedParts } from '../tokens';
 
 const renderBlitzText = (text, template, baseStyle, highlightStyle) => {
@@ -86,6 +86,7 @@ export const HostDraftingScreen = () => {
 };
 
 export const HostVotingScreen = ({ route }) => {
+  const { socket } = useSocket();
   const roomCode = useGameStore((s) => s.roomCode);
   const scenarios = useGameStore((s) => s.scenarios) || [];
   const liveVotes = useGameStore((s) => s.liveVotes) || [];
@@ -104,6 +105,43 @@ export const HostVotingScreen = ({ route }) => {
     }
     return liveVotes.filter((vote) => vote.choice === index).length;
   };
+
+  if (voteTieInfo && votingType === 'culprit') {
+    return (
+      <TerminalLayout
+        top={<TerminalHeader title="VOTE TIE DETECTED" subtitle={playerName || 'المضيف'} roomCode={roomCode} round={round} totalRounds={totalRounds} roleEmoji="🖥️" roleName="[HOST]" />}
+        bottom={<TerminalButton title="بدء إعادة التصويت" onPress={() => socket?.emit('hostStartRevote', { roomCode })} variant="danger" size="sm" style={{ flex: 1 }} />}
+      >
+        <View style={styles.body}>
+          <TerminalBanner variant="error" label="TIE EVENT">
+            تعادل في الأصوات! لم يتم حسم الجاني.
+          </TerminalBanner>
+
+          <TerminalCard title="> المشتبه بهم المتعادلون / TIED CANDIDATES" tone="danger">
+            <View style={{ gap: sp.s, paddingVertical: sp.s }}>
+              {(voteTieInfo.candidates || []).map((candidateName, index) => (
+                <PlayerBadge key={index} name={candidateName} index={index + 1} isActive={true} />
+              ))}
+            </View>
+          </TerminalCard>
+
+          <TerminalCard title="> العواقب والتحذير / WARNING & DETAILS" tone="warning">
+            <Text style={[styles.voteText, { color: '#FFFF00', textAlign: 'right', writingDirection: 'rtl' }]}>
+              ⚠️ تنبيه هام:
+              {"\n"}
+              لقد تعادل التصويت لتحديد الجاني. يجب إعادة التصويت لحسم الجولة.
+              {"\n\n"}
+              ⚠️ عواقب التعادل مجدداً:
+              {"\n"}
+              إذا تعادل التصويت مرة أخرى (للمرة الثانية على التوالي)، سيفوز فريق الجريمة (Crime Team) مباشرة بالجولة وتخسر العدالة!
+              {"\n\n"}
+              اضغط على زر "بدء إعادة التصويت" بالأسفل لفتح باب التصويت مجدداً للاعبين.
+            </Text>
+          </TerminalCard>
+        </View>
+      </TerminalLayout>
+    );
+  }
 
   return (
     <TerminalLayout top={<TerminalHeader title={votingType === 'quality' ? 'QUALITY MONITOR' : 'CULPRIT MONITOR'} subtitle={playerName || 'المضيف'} roomCode={roomCode} round={round} totalRounds={totalRounds} roleEmoji="🖥️" roleName="[HOST]" />}>
@@ -170,8 +208,8 @@ export const HostResultsScreen = () => {
         
         <ResultCard players={mappedScores} hideDetails={isContinue} />
 
-        {/* Quality Votes map */}
-        {roundResults.qualityVotes && Object.keys(roundResults.qualityVotes).length > 0 && (
+        {/* Quality Votes map - only shown if game is decided (not CONTINUE) */}
+        {!isContinue && roundResults.qualityVotes && Object.keys(roundResults.qualityVotes).length > 0 && (
           <TerminalCard title="> أصوات الجودة / QUALITY VOTES" tone="info">
             <View style={styles.voteMapList}>
               {Object.entries(roundResults.qualityVotes).map(([voterId, scenarioIndex], vi) => {
@@ -189,8 +227,8 @@ export const HostResultsScreen = () => {
           </TerminalCard>
         )}
 
-        {/* Culprit Votes map */}
-        {roundResults.culpritVotes && Object.keys(roundResults.culpritVotes).length > 0 && (
+        {/* Culprit Votes map - only shown if game is decided (not CONTINUE) */}
+        {!isContinue && roundResults.culpritVotes && Object.keys(roundResults.culpritVotes).length > 0 && (
           <TerminalCard title="> اتهامات الجاني / CULPRIT ACCUSATIONS" tone="danger">
             <View style={styles.voteMapList}>
               {Object.entries(roundResults.culpritVotes).map(([voterId, accusedId], vi) => {
@@ -215,58 +253,66 @@ export const HostResultsScreen = () => {
 
 export const HostDramaticRevealScreen = () => {
   const roomCode = useGameStore((s) => s.roomCode);
-  const revealedScenarios = useGameStore((s) => s.revealedScenarios) || [];
   const currentReveal = useGameStore((s) => s.currentReveal);
   const playerName = useGameStore((s) => s.playerName);
   const players = useGameStore((s) => s.players) || [];
   const c = getColors();
+
+  if (!currentReveal) {
+    return (
+      <TerminalLayout top={<TerminalHeader title="DRAMATIC REVEAL" subtitle={playerName || 'المضيف'} roomCode={roomCode} roleEmoji="🖥️" roleName="[HOST]" />}>
+        <View style={styles.centered}>
+          <Text style={[styles.largeTitle, { color: c.textMuted }]}>جاري تحضير الكشف...</Text>
+          <BlinkCursor />
+        </View>
+      </TerminalLayout>
+    );
+  }
+
+  if (currentReveal.type === 'HINT') {
+    return (
+      <TerminalLayout top={<TerminalHeader title="SECRET HINT" subtitle={playerName || 'المضيف'} roomCode={roomCode} roleEmoji="🖥️" roleName="[HOST]" />}>
+        <View style={styles.body}>
+          <TerminalBanner variant="warning" label="HINT">{currentReveal.text}</TerminalBanner>
+        </View>
+      </TerminalLayout>
+    );
+  }
 
   return (
     <TerminalLayout top={<TerminalHeader title="DRAMATIC REVEAL" subtitle={playerName || 'المضيف'} roomCode={roomCode} roleEmoji="🖥️" roleName="[HOST]" />}>
       <View style={styles.body}>
         <TerminalCard title="> LIVE FEED" tone="warning">
           <TerminalTypewriter
-            text={currentReveal?.text || 'بانتظار العنصر التالي...'}
-            template={currentReveal?.template}
+            text={currentReveal.text}
+            template={currentReveal.template}
             speed={20}
             textStyle={[styles.voteText, { color: c.textPrimary }]}
             style={styles.typewriterWrapper}
           />
+          {currentReveal.author ? <Text style={styles.metaText}>{`— ${currentReveal.author}`}</Text> : null}
         </TerminalCard>
-        <ScrollView contentContainerStyle={styles.resultList} showsVerticalScrollIndicator={false}>
-          {revealedScenarios.map((scenario, index) => (
-            <TerminalCard key={index} title={`> REVEAL ${index + 1}`} tone="info">
-              {renderBlitzText(
-                scenario.text || '...',
-                scenario.template,
-                styles.voteText,
-                { color: '#FFFF00', fontWeight: '700', textDecorationLine: 'underline' }
-              )}
-              {scenario.author ? <Text style={styles.metaText}>{`— ${scenario.author}`}</Text> : null}
-              {Array.isArray(scenario.voters) && scenario.voters.length > 0 && (
-                <View style={styles.scenarioVotersWrapper}>
-                  <Text style={styles.votersLabel}>المصوتون / VOTERS:</Text>
-                  <View style={styles.scenarioVotersGrid}>
-                    {scenario.voters.map((voter, vi) => {
-                      const name = typeof voter === 'object' ? voter.name : voter;
-                      const playerObj = players.find(p => p.name === name || (voter.id && p.id === voter.id));
-                      const plIndex = playerObj ? players.indexOf(playerObj) + 1 : vi + 1;
-                      return (
-                        <PlayerBadge
-                          key={vi}
-                          name={name}
-                          index={plIndex}
-                          isActive={true}
-                          style={styles.scenarioVoterBadge}
-                        />
-                      );
-                    })}
-                  </View>
-                </View>
-              )}
-            </TerminalCard>
-          ))}
-        </ScrollView>
+        
+        {currentReveal.voters?.length ? (
+          <TerminalCard title="> المصوتون / VOTERS" tone="info">
+            <View style={styles.scenarioVotersGrid}>
+              {currentReveal.voters.map((item, idx) => {
+                const name = typeof item === 'object' ? item.name : item;
+                const playerObj = players.find((p) => p.name === name || (item.id && p.id === item.id));
+                const plIndex = playerObj ? players.indexOf(playerObj) + 1 : idx + 1;
+                return (
+                  <PlayerBadge
+                    key={idx}
+                    name={name}
+                    index={plIndex}
+                    isActive={true}
+                    style={styles.scenarioVoterBadge}
+                  />
+                );
+              })}
+            </View>
+          </TerminalCard>
+        ) : null}
       </View>
     </TerminalLayout>
   );

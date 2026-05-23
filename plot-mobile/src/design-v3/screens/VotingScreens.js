@@ -85,6 +85,7 @@ export const CulpritVotingScreen = () => {
   const playerName = useGameStore((s) => s.playerName);
   const setHasVoted = useGameStore((s) => s.setHasVoted);
   const setSelectedCulprit = useGameStore((s) => s.setSelectedCulprit);
+  const voteTieInfo = useGameStore((s) => s.voteTieInfo);
   const meta = useMeta();
   const [selected, setSelected] = useState(null);
 
@@ -95,6 +96,43 @@ export const CulpritVotingScreen = () => {
     const choice = scenarios[selected]?.playerId || selected;
     socket.emit('submitCulpritVote', { roomCode, playerId: choice });
   };
+
+  if (voteTieInfo) {
+    return (
+      <TerminalLayout
+        top={<TerminalHeader title="VOTE TIE WARNING" subtitle={playerName} roomCode={roomCode} roleName={meta.bracket} roleEmoji={meta.emoji} />}
+        bottom={<TerminalBanner variant="warning" label="STANDBY">بانتظار أن يبدأ المضيف إعادة التصويت...</TerminalBanner>}
+      >
+        <View style={styles.list}>
+          <TerminalBanner variant="error" label="TIE DETECTED">
+            تعادل الأصوات بين المشتبه بهم!
+          </TerminalBanner>
+
+          <TerminalCard title="> المشتبه بهم المتعادلون / TIED SUSPECTS" tone="danger">
+            <View style={styles.votersGrid}>
+              {(voteTieInfo.candidates || []).map((candidateName, index) => (
+                <PlayerBadge key={index} name={candidateName} index={index + 1} isActive={true} style={styles.voterBadge} />
+              ))}
+            </View>
+          </TerminalCard>
+
+          <TerminalCard title="> عواقب التعادل / CONSEQUENCES" tone="warning">
+            <Text style={[styles.text, { color: '#FFFF00', textAlign: 'right', writingDirection: 'rtl' }]}>
+              ⚠️ تنبيه هام:
+              {"\n"}
+              لقد تعادل التصويت لتحديد الجاني في هذه الجولة.
+              {"\n\n"}
+              ⚠️ العواقب:
+              {"\n"}
+              إذا انتهى التصويت القادم بالتعادل مرة أخرى، سيفوز فريق الجريمة (Crime Team) مباشرة بالجولة وتخسر العدالة!
+              {"\n\n"}
+              الرجاء التنسيق والنقاش جيداً لتجنب التعادل في المرة القادمة.
+            </Text>
+          </TerminalCard>
+        </View>
+      </TerminalLayout>
+    );
+  }
 
   return (
     <TerminalLayout
@@ -143,57 +181,17 @@ export const WaitingRevealScreen = ({ message = 'في انتظار الكشف...
 export const PlayerDramaticRevealScreen = () => {
   const roomCode = useGameStore((s) => s.roomCode);
   const playerName = useGameStore((s) => s.playerName);
-  const currentReveal = useGameStore((s) => s.currentReveal);
-  const players = useGameStore((s) => s.players) || [];
-  const playerId = useGameStore((s) => s.playerId);
   const meta = useMeta();
-
-  if (!currentReveal) return <WaitingRevealScreen message="جاري تحضير الكشف..." />;
-  if (currentReveal.type === 'HINT') {
-    return (
-      <TerminalLayout top={<TerminalHeader title="SECRET HINT" subtitle={playerName} roomCode={roomCode} roleName={meta.bracket} roleEmoji={meta.emoji} />}>
-        <View style={styles.waitState}>
-          <TerminalBanner variant="warning" label="HINT">{currentReveal.text}</TerminalBanner>
-        </View>
-      </TerminalLayout>
-    );
-  }
 
   return (
     <TerminalLayout top={<TerminalHeader title="DRAMATIC REVEAL" subtitle={playerName} roomCode={roomCode} roleName={meta.bracket} roleEmoji={meta.emoji} />}>
-      <View style={styles.list}>
-        <TerminalCard title="> LIVE REVEAL" tone="warning">
-          <TerminalTypewriter
-            text={currentReveal.text}
-            template={currentReveal.template}
-            speed={20}
-            style={styles.typewriterWrapper}
-            textStyle={styles.text}
-          />
-          {currentReveal.author ? <Text style={styles.meta}>{`— ${currentReveal.author}`}</Text> : null}
+      <View style={styles.waitState}>
+        <TerminalCard title="> انتبه للشاشة الرئيسية / LOOK AT HOST SCREEN" tone="warning" style={{ width: '100%' }}>
+          <Text style={[styles.text, { color: '#00FF41', textAlign: 'center', writingDirection: 'rtl', fontSize: fontSize.medium, marginVertical: sp.m }]}>
+            🖥️ أنظر إلى شاشة المضيف (Host Screen) لمتابعة الكشف الدرامي للأصوات والقصص الجاري كشفها حالياً!
+          </Text>
+          <BlinkCursor />
         </TerminalCard>
-        {currentReveal.voters?.length ? (
-          <TerminalCard title="> المصوتون / VOTERS" tone="info">
-            <View style={styles.votersGrid}>
-              {currentReveal.voters.map((item, idx) => {
-                const name = typeof item === 'object' ? item.name : item;
-                const playerObj = players.find((p) => p.name === name || (item.id && p.id === item.id));
-                const isMe = playerObj ? playerObj.id === playerId : false;
-                const plIndex = playerObj ? players.indexOf(playerObj) + 1 : idx + 1;
-                return (
-                  <PlayerBadge
-                    key={idx}
-                    name={name}
-                    index={plIndex}
-                    isMe={isMe}
-                    isActive={true}
-                    style={styles.voterBadge}
-                  />
-                );
-              })}
-            </View>
-          </TerminalCard>
-        ) : null}
       </View>
     </TerminalLayout>
   );
@@ -215,8 +213,8 @@ export const PlayerResultsScreen = () => {
         
         <ResultCard players={mapScores(roundResults.scores || [])} hideDetails={roundResults.winner === 'CONTINUE'} />
 
-        {/* Quality Votes map */}
-        {roundResults.qualityVotes && Object.keys(roundResults.qualityVotes).length > 0 && (
+        {/* Quality Votes map - only shown if game is decided (not CONTINUE) */}
+        {roundResults.winner !== 'CONTINUE' && roundResults.qualityVotes && Object.keys(roundResults.qualityVotes).length > 0 && (
           <TerminalCard title="> أصوات الجودة / QUALITY VOTES" tone="info">
             <View style={styles.voteMapList}>
               {Object.entries(roundResults.qualityVotes).map(([voterId, scenarioIndex], vi) => {
@@ -234,8 +232,8 @@ export const PlayerResultsScreen = () => {
           </TerminalCard>
         )}
 
-        {/* Culprit Votes map */}
-        {roundResults.culpritVotes && Object.keys(roundResults.culpritVotes).length > 0 && (
+        {/* Culprit Votes map - only shown if game is decided (not CONTINUE) */}
+        {roundResults.winner !== 'CONTINUE' && roundResults.culpritVotes && Object.keys(roundResults.culpritVotes).length > 0 && (
           <TerminalCard title="> اتهامات الجاني / CULPRIT ACCUSATIONS" tone="danger">
             <View style={styles.voteMapList}>
               {Object.entries(roundResults.culpritVotes).map(([voterId, accusedId], vi) => {

@@ -8,11 +8,18 @@ const TYPE_COLORS = {
     error:   { bg: '#4a1a1a', border: '#c0392b', text: '#f5a5a5' },
 };
 
+const TYPE_COLORS_V3 = {
+    info:    { bg: '#030712', border: '#00FF41', text: '#00FF41' },
+    warning: { bg: '#030712', border: '#FFCC00', text: '#FFCC00' },
+    error:   { bg: '#030712', border: '#FF3B30', text: '#FF3B30' },
+};
+
 const AUTO_DISMISS_MS = 3000;
 
 export default function NotificationToast() {
     const notification = useGameStore(s => s.notification);
     const clearNotification = useGameStore(s => s.clearNotification);
+    const designVersion = useGameStore(s => s.designVersion);
 
     const opacity = useRef(new Animated.Value(0)).current;
     const translateY = useRef(new Animated.Value(-20)).current;
@@ -50,12 +57,16 @@ export default function NotificationToast() {
 
     if (!notification) return null;
 
-    const colors = TYPE_COLORS[notification.type] || TYPE_COLORS.info;
+    const isV3 = designVersion === 'v3';
+    const colors = isV3
+        ? (TYPE_COLORS_V3[notification.type] || TYPE_COLORS_V3.info)
+        : (TYPE_COLORS[notification.type] || TYPE_COLORS.info);
 
     return (
         <Animated.View
             style={[
                 styles.container,
+                isV3 ? styles.containerV3 : null,
                 {
                     backgroundColor: colors.bg,
                     borderColor: colors.border,
@@ -71,12 +82,12 @@ export default function NotificationToast() {
                 activeOpacity={0.8}
             >
                 {notification.title ? (
-                    <Text style={[styles.title, { color: colors.text }]}>
-                        {notification.title}
+                    <Text style={[isV3 ? styles.titleV3 : styles.title, { color: colors.text }]}>
+                        {isV3 ? `> ${notification.title}` : notification.title}
                     </Text>
                 ) : null}
                 {notification.message ? (
-                    <Text style={[styles.message, { color: colors.text }]}>
+                    <Text style={[isV3 ? styles.messageV3 : styles.message, { color: colors.text }]}>
                         {notification.message}
                     </Text>
                 ) : null}
@@ -100,6 +111,10 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.4,
         shadowRadius: 6,
     },
+    containerV3: {
+        borderRadius: 0,
+        borderWidth: 2,
+    },
     inner: {
         paddingVertical: 12,
         paddingHorizontal: 16,
@@ -110,9 +125,22 @@ const styles = StyleSheet.create({
         fontWeight: '700',
         textAlign: 'right',
     },
+    titleV3: {
+        fontSize: 14,
+        fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+        fontWeight: '700',
+        textAlign: 'right',
+    },
     message: {
         fontSize: 12,
         textAlign: 'right',
         opacity: 0.9,
+    },
+    messageV3: {
+        fontSize: 12,
+        fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+        textAlign: 'right',
+        opacity: 0.95,
+        marginTop: 4,
     },
 });

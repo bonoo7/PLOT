@@ -25,8 +25,10 @@ const renderBlitzText = (text, template, baseStyle, highlightStyle) => {
 
 export const DiscussionScreen = ({ isHost = false }) => {
   const { socket } = useSocket();
-  const [showHint, setShowHint] = useState(true);
-  const [showScenarios, setShowScenarios] = useState(true);
+  const [showHint, setShowHint] = useState(false);
+  const [showScenarios, setShowScenarios] = useState(false);
+  const [showPlayerHint, setShowPlayerHint] = useState(false);
+  const [showPlayerScenarios, setShowPlayerScenarios] = useState(false);
   const roomCode = useGameStore((s) => s.roomCode);
   const roleData = useGameStore((s) => s.roleData);
   const players = useGameStore((s) => s.players) || [];
@@ -92,8 +94,7 @@ export const DiscussionScreen = ({ isHost = false }) => {
       />
 
       <View style={styles.body}>
-        {timeLeft > 0 ? <ProgressBar value={timeLeft} max={90} label="> DISCUSSION TIMER" showTime timeText={formatTime(timeLeft)} /> : null}
-        {!isHost && hint ? <TerminalBanner variant="info" label="HINT">{hint}</TerminalBanner> : null}
+        {!isHost && hint && showPlayerHint ? <TerminalBanner variant="info" label="HINT">{hint}</TerminalBanner> : null}
 
         <TerminalCard
           title="> ACTIVE SPEAKER"
@@ -131,17 +132,38 @@ export const DiscussionScreen = ({ isHost = false }) => {
         {isHost && (
           <View style={styles.toggleRow}>
             <TerminalButton
-              title={showHint ? "🙈 إخفاء التلميح" : "👁️ إظهار التلميح"}
+              title={showHint ? "[- إخفاء التلميح]" : "[+ إظهار التلميح]"}
               onPress={() => setShowHint(!showHint)}
               size="sm"
               variant={showHint ? "primary" : "ghost"}
               style={{ flex: 1 }}
             />
             <TerminalButton
-              title={showScenarios ? "🙈 إخفاء الكتابات" : "👁️ إظهار الكتابات"}
+              title={showScenarios ? "[- إخفاء الكتابات]" : "[+ إظهار الكتابات]"}
               onPress={() => setShowScenarios(!showScenarios)}
               size="sm"
               variant={showScenarios ? "primary" : "ghost"}
+              style={{ flex: 1 }}
+            />
+          </View>
+        )}
+
+        {!isHost && (
+          <View style={styles.toggleRow}>
+            {hint ? (
+              <TerminalButton
+                title={showPlayerHint ? "[- إخفاء التلميح]" : "[+ إظهار التلميح]"}
+                onPress={() => setShowPlayerHint(!showPlayerHint)}
+                size="sm"
+                variant={showPlayerHint ? "primary" : "ghost"}
+                style={{ flex: 1 }}
+              />
+            ) : null}
+            <TerminalButton
+              title={showPlayerScenarios ? "[- إخفاء كتابات اللاعبين]" : "[+ إظهار كتابات اللاعبين]"}
+              onPress={() => setShowPlayerScenarios(!showPlayerScenarios)}
+              size="sm"
+              variant={showPlayerScenarios ? "primary" : "ghost"}
               style={{ flex: 1 }}
             />
           </View>
@@ -196,19 +218,21 @@ export const DiscussionScreen = ({ isHost = false }) => {
             ))}
           </ScrollView>
         ) : (
-          <ScrollView contentContainerStyle={styles.scenarioList} showsVerticalScrollIndicator={false}>
-            {revealedScenarios.map((scenario, index) => (
-              <TerminalCard key={index} title={`> LOG ${index + 1}`} tone="info">
-                {renderBlitzText(
-                  scenario.text || scenario.answer || '...',
-                  scenario.template,
-                  styles.scenarioText,
-                  { color: '#FFFF00', fontWeight: '700', textDecorationLine: 'underline' }
-                )}
-                {scenario.author ? <Text style={styles.scenarioMeta}>{`— ${scenario.author}`}</Text> : null}
-              </TerminalCard>
-            ))}
-          </ScrollView>
+          showPlayerScenarios ? (
+            <ScrollView contentContainerStyle={styles.scenarioList} showsVerticalScrollIndicator={false}>
+              {revealedScenarios.map((scenario, index) => (
+                <TerminalCard key={index} title={`> LOG ${index + 1}`} tone="info">
+                  {renderBlitzText(
+                    scenario.text || scenario.answer || '...',
+                    scenario.template,
+                    styles.scenarioText,
+                    { color: '#FFFF00', fontWeight: '700', textDecorationLine: 'underline' }
+                  )}
+                  {scenario.author ? <Text style={styles.scenarioMeta}>{`— ${scenario.author}`}</Text> : null}
+                </TerminalCard>
+              ))}
+            </ScrollView>
+          ) : null
         )}
       </View>
     </TerminalLayout>

@@ -320,13 +320,6 @@ export const useGameSocket = (navigationRef) => {
         newSocket.on('roleAssigned', (roleData) => {
             console.log('🎭 Role assigned:', roleData);
             setRoleData(roleData);
-            if (roleData?.roleName) {
-                setNotification({
-                    title: `دورك: ${roleData.roleName} ${roleData.emoji || ''}`,
-                    message: roleData.goal || roleData.description || '',
-                    type: 'info'
-                });
-            }
         });
 
         newSocket.on('startDrafting', (data) => {
@@ -493,10 +486,14 @@ export const useGameSocket = (navigationRef) => {
         });
 
         newSocket.on('voteTie', (data) => {
+            setVoteTieInfo(data); // عرض التعادل بدلاً من Alert عادي
+        });
+
+        newSocket.on('revoteStarted', () => {
             setHasVoted(false);
             setSelectedCulprit(null);
             setLiveVotes([]);
-            setVoteTieInfo(data); // عرض التعادل بدلاً من Alert عادي
+            setVoteTieInfo(null);
         });
 
         newSocket.on('voteReceived', (data) => {
@@ -606,6 +603,7 @@ export const useGameSocket = (navigationRef) => {
             newSocket.off('qualityVotingStarted');
             newSocket.off('culpritVotingStarted');
             newSocket.off('voteTie');
+            newSocket.off('revoteStarted');
             newSocket.off('voteReceived');
             newSocket.off('roundResults');
             newSocket.off('abilityResult');

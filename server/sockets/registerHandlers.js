@@ -27,6 +27,25 @@ const generateRandomBotAvatar = () => {
     };
 };
 
+// Helper to sequentially rename and re-index bots in a room
+const reindexBots = (room) => {
+    const ROLE_NAMES_AR = {
+        CULPRIT: 'الجاني', WITNESS: 'الشاهد', DETECTIVE: 'المحقق',
+        SABOTEUR: 'المخرب', BENEFICIARY: 'المستفيد', MINISTER: 'الوزير',
+        SEER: 'العراف', MASTERMIND: 'العقل المدبر'
+    };
+    let botCount = 0;
+    room.players.forEach(p => {
+        if (p.isBot || (p.id && p.id.startsWith('bot_'))) {
+            botCount++;
+            const botRoleName = ROLE_NAMES_AR[p.role] || p.role || '';
+            const roleSuffix = botRoleName ? ` (${botRoleName})` : '';
+            p.name = `Bot ${botCount} 🤖${roleSuffix}`;
+        }
+    });
+};
+
+
 function registerHandlers(io) {
 
     /** تنظيف غرفة بأمان: يُوقف التايمر أولاً ثم يحذف الغرفة */
@@ -398,23 +417,16 @@ function registerHandlers(io) {
                 };
 
                 // ✅ Handle Training Mode Join Logic
-                if (desiredRole) {
+                if (desiredRole !== undefined || room.isTutorial) {
+                    room.isTutorial = true;
                     // التحقق من صحة الدور المفضل
-                    if (!Object.values(ROLE_TYPES).includes(desiredRole)) {
+                    if (desiredRole && !Object.values(ROLE_TYPES).includes(desiredRole)) {
                         socket.emit('error', 'الدور المفضل الممرر غير صالح!');
                         return;
                     }
-                    logger.info(`🎓 Training Mode Join: ${playerName} wants to be ${desiredRole} `);
-                    room.isTutorial = true;
+                    
                     room.totalRounds = 3; // التدريب يستمر 3 جولات
-                    player.role = desiredRole;
-                    player.preferredRole = desiredRole; // Persist preference
 
-                    // Add player first
-                    room.players.push(player);
-                    socket.join(roomCode.toUpperCase());
-
-                    // ✅ وضع التدريب: إضافة 3 بوتات بترتيب الأدوار (مع تجاهل دور اللاعب)
                     const TRAINING_ROLE_ORDER = [
                         ROLE_TYPES.CULPRIT,      // 1. الجاني
                         ROLE_TYPES.WITNESS,      // 2. الشاهد
@@ -432,30 +444,73 @@ function registerHandlers(io) {
                         SEER: 'العراف', MASTERMIND: 'العقل المدبر'
                     };
 
-                    // الأدوار المتاحة للبوتات (باستثناء دور اللاعب)
-                    const availableRoles = TRAINING_ROLE_ORDER.filter(r => r !== desiredRole);
-
-                    let botCount = 0;
-                    const BOTS_TO_ADD = 3; // يضاف 3 بوتات تلقائياً فقط
-                    for (let i = 0; i < BOTS_TO_ADD && i < availableRoles.length; i++) {
-                        botCount++;
-                        const botRole = availableRoles[i];
-                        const botRoleName = ROLE_NAMES_AR[botRole] || botRole;
-                        const botId = `bot_${Date.now()}_${botCount} `;
-                        room.players.push({
-                            id: botId,
-                            name: `Bot ${botCount} 🤖 (${botRoleName})`,
-                            score: 0,
-                            role: botRole,           // الدور محدد مسبقاً
-                            preferredRole: botRole,  // ✅ يحفظ الدور في مسار assignRoles
-                            isLeader: false,
-                            connected: true,
-                            isBot: true,
-                            avatar: generateRandomBotAvatar()
-                        });
+                    // تعيين دور اللاعب
+                    if (desiredRole) {
+                        player.role = desiredRole;
+                        player.preferredRole = desiredRole;
+                    } else {
+                        // اختيار دور عشوائي غير مأخوذ من البشر الحاليين في الغرفة
+                        const realPlayersInRoom = room.players.filter(p => !p.isBot);
+                        const realRoles = realPlayersInRoom.map(p => p.role).filter(Boolean);
+                        const availableRoles = TRAINING_ROLE_ORDER.filter(r => !realRoles.includes(r));
+                        const randomRole = availableRoles[Math.floor(Math.random() * availableRoles.length)] || ROLE_TYPES.WITNESS;
+                        player.role = randomRole;
+                        player.preferredRole = randomRole;
                     }
 
-                    logger.info(`✅ Training Mode: Added ${botCount} bots.Total players: ${room.players.length} `);
+                    // تحقق إذا كان هذا هو أول لاعب حقيقي ينضم
+                    const isFirstHuman = room.players.filter(p => !p.isBot).length === 0;
+
+                    if (isFirstHuman) {
+                        logger.info(`🎓 Training Mode (First Player): ${playerName} wants to be ${player.role}`);
+                        // مسح البوتات السابقة لإعادة التوزيع ديناميكياً
+                        room.players = room.players.filter(p => !p.isBot);
+                        room.players.push(player);
+                        socket.join(roomCode.toUpperCase());
+
+                        const realPlayersInRoom = room.players.filter(p => !p.isBot);
+                        const realRoles = realPlayersInRoom.map(p => p.role).filter(Boolean);
+                        const availableBotRoles = TRAINING_ROLE_ORDER.filter(r => !realRoles.includes(r));
+                        const botsNeeded = Math.max(0, 4 - realPlayersInRoom.length);
+
+                        let botsAdded = 0;
+                        for (let i = 0; i < botsNeeded && i < availableBotRoles.length; i++) {
+                            botsAdded++;
+                            const botRole = availableBotRoles[i];
+                            const botRoleName = ROLE_NAMES_AR[botRole] || botRole;
+                            const botId = `bot_${Date.now()}_${botsAdded}`;
+                            room.players.push({
+                                id: botId,
+                                name: `Bot ${botsAdded} 🤖 (${botRoleName})`,
+                                score: 0,
+                                role: botRole,
+                                preferredRole: botRole,
+                                isLeader: false,
+                                connected: true,
+                                isBot: true,
+                                avatar: generateRandomBotAvatar()
+                            });
+                        }
+                        logger.info(`✅ Training Mode: First Player populated ${botsAdded} bots. Total players: ${room.players.length}`);
+                    } else {
+                        logger.info(`🎓 Training Mode (Subsequent Player): ${playerName} joins with role ${player.role}`);
+                        room.players.push(player);
+                        socket.join(roomCode.toUpperCase());
+
+                        // إزالة أي بوت يمتلك نفس دور اللاعب الجديد لمنع التعارض
+                        const newPlayerRole = player.role;
+                        const botsBefore = room.players.filter(p => p.isBot).length;
+                        room.players = room.players.filter(p => !(p.isBot && p.role === newPlayerRole));
+                        const botsAfter = room.players.filter(p => p.isBot).length;
+
+                        if (botsBefore !== botsAfter) {
+                            logger.info(`🚨 Training Mode: Removed clashing bot with role ${newPlayerRole}`);
+                        }
+
+                        // إعادة ترقيم البوتات المتبقية
+                        reindexBots(room);
+                        logger.info(`✅ Training Mode: Subsequent Player ${playerName} joined. No new bots added.`);
+                    }
                 } else {
                     room.players.push(player);
                     socket.join(roomCode.toUpperCase());
@@ -477,7 +532,7 @@ function registerHandlers(io) {
 
                 // Late Join Logic
                 if (room.state !== 'LOBBY' && room.state !== 'END') {
-                    player.role = 'CITIZEN'; // Assign default role
+                    player.role = 'WITNESS'; // Assign default role
 
                     // Send game started info
                     socket.emit('gameStarted', {
@@ -488,10 +543,10 @@ function registerHandlers(io) {
 
                     // Send role info
                     socket.emit('roleAssigned', {
-                        role: 'CITIZEN',
-                        roleName: getRoleName('CITIZEN'),
-                        description: getRoleDescription('CITIZEN'),
-                        info: "لقد انضممت متأخراً. حاول المساعدة في التصويت.",
+                        role: 'WITNESS',
+                        roleName: getRoleName('WITNESS'),
+                        description: getRoleDescription('WITNESS'),
+                        info: "لقد انضممت متأخراً كشاهد. حاول المساعدة في التصويت.",
                         round: room.currentRound,
                         totalRounds: room.totalRounds,
                         isTutorial: room.isTutorial
@@ -524,130 +579,33 @@ function registerHandlers(io) {
             // Add ONE bot if space available (Max 8)
             if (room.players.length < 8) {
                 const botCount = room.players.filter(p => p.isBot).length + 1;
-                const botId = `bot_${Date.now()}_${botCount} `;
+                const botId = `bot_${Date.now()}_${botCount}`;
 
                 // Determine preferred role for this bot based on current count and existing preferences
-                // 1. Get ideal role distribution for (current count + 1)
                 const targetCount = room.players.length + 1;
                 const idealRoles = getRolesForPlayerCount(targetCount);
 
-                // 2. Identify roles already "taken" by players with preferredRole
                 const takenRoles = room.players
                     .filter(p => p.preferredRole)
                     .map(p => p.preferredRole);
 
-                // 3. Find first role in idealRoles that isn't taken
-                // We need to match the specific "slot" logic if possible, or just fill gaps.
-                // The assignRoles logic fills linearly from idealRoles list, skipping taken ones.
-                // So if we want this bot to "be" the next role, we should assign it as preferredRole?
-                // Actually, if we assign preferredRole to the bot, it LOCKS it.
-                // If we don't, it might get shuffled.
-                // The user wants to "add bots one by one according to roles". 
-                // This implies visual feedback or certainty.
-                // Let's assign preferredRole to the bot to guarantee the distribution order.
-
-                let nextRole = null;
-
-                // Filter out roles that are already preferred by others
-                const availableRoles = [...idealRoles];
-                takenRoles.forEach(taken => {
-                    const idx = availableRoles.indexOf(taken);
-                    if (idx !== -1) availableRoles.splice(idx, 1);
-                });
-
-                // The bot takes the next available role from the ideal list
-                // However, ideal list grows. 
-                // E.g. 3 players: [C, D, W]. 4 players: [C, D, W, M].
-                // If we have 3 players (C, D, W taken), and add 4th.
-                // idealRoles(4) = [C, D, W, M].
-                // Available = [M]. So bot gets Mastermind.
-
-                // What if we have 1 player (no pref). Add bot 1.
-                // idealRoles(2) = [C, D]. 
-                // taken = []. 
-                // available = [C, D]. 
-                // Bot gets C? Then Human gets D?
-                // If we assign C to bot, it's locked. Human is forced to D.
-                // This seems to be what is requested: "Add bot... according to roles".
-
-                // BUT: randomized shuffling in assignRoles might be desired for humans?
-                // "Upon adding bots manually... add one by one... according to basic roles... respecting existing players"
-                // If the user wants to CONSTRUCT the game composition, we should lock roles.
-
-                // Let's try to find the "new" role introduced by incrementing count.
-                // roles(n) vs roles(n+1). The difference is usually the last one, but not always if priority changes.
-                // In getRolesForPlayerCount, it adds sequentially.
-                // So the "new" role is the last one in idealRoles.
-
-                // Wait, if I have 1 player (Human).
-                // Add Bot 1 -> Count 2. roles=[C, D]. Human has no pref.
-                // Should Bot be C or D?
-                // If I assume Human fills one slot, Bot fills the other.
-                // If I lock Bot to C, Human is D.
-                // If I lock Bot to D, Human is C.
-                // The previous logic didn't lock bots in Lobby.
-
-                // If the user request implies "I want to add a Detective Bot", then I should lock it.
-                // The UI shows " + Bot (Detective) ".
-                // So yes, I should lock it.
-
-                // Which role to lock?
-                // The UI uses `nextRole` logic: `ROLE_ORDER[players.length]`.
-                // Let's use the SAME logic as UI to be consistent.
-
-                // UI Logic:
                 const ROLE_ORDER = [
                     ROLE_TYPES.CULPRIT,     // 1. الجاني
                     ROLE_TYPES.WITNESS,     // 2. الشاهد
                     ROLE_TYPES.DETECTIVE,   // 3. المحقق
                     ROLE_TYPES.SABOTEUR,    // 4. المخرب
-                    ROLE_TYPES.MINISTER,    // 5. الوزير (كان المستفيد)
-                    ROLE_TYPES.BENEFICIARY, // 6. المستفيد (كان الوزير)
+                    ROLE_TYPES.MINISTER,    // 5. الوزير
+                    ROLE_TYPES.BENEFICIARY, // 6. المستفيد
                     ROLE_TYPES.SEER,        // 7. العراف
                     ROLE_TYPES.MASTERMIND   // 8. العقل المدبر
                 ];
 
-                // We need to find the first role in ROLE_ORDER that is NOT taken by any existing player (preferred)
-                // AND we want to fill up to current count.
-
-                // Actually, simply assigning the `nextRole` from the list based on current count is risky if players have random prefs.
-                // But usually players don't have prefs in Host mode.
-                // In Training mode, they do.
-
-                // Algorithm:
-                // 1. Get set of preferred roles from existing players.
-                // 2. Iterate ROLE_ORDER.
-                // 3. Skip roles that are taken.
-                // 4. Assign the first available role to the new bot.
-                // 5. BUT: We only want to assign ONE role.
-                // And we want it to be consistent with "adding one by one".
-
-                // If I have 1 player (preferred=Detective).
-                // ROLE_ORDER: C, D, W, M...
-                // C is free. D is taken. W is free.
-                // Should the new bot be C? Yes.
-                // Next bot? W.
-
-                // If I have 1 player (No pref).
-                // C is free.
-                // Bot 1 -> C.
-                // Bot 2 -> D.
-                // Human -> ? (Will be assigned leftover, e.g. W).
-
-                // This seems fair.
-
                 let assignedRole = null;
-                let assignedRoleName = "";
-
                 for (const roleCode of ROLE_ORDER) {
                     if (!takenRoles.includes(roleCode)) {
-                        // Check if this role is already assigned to a bot we just added?
-                        // We need to check all players in room.
                         const isAssigned = room.players.some(p => p.preferredRole === roleCode);
                         if (!isAssigned) {
                             assignedRole = roleCode;
-                            const info = getRoleInfo(roleCode);
-                            assignedRoleName = info ? `(${info.nameAr})` : "";
                             break;
                         }
                     }
@@ -655,7 +613,7 @@ function registerHandlers(io) {
 
                 room.players.push({
                     id: botId,
-                    name: `Bot ${botCount} 🤖 ${assignedRoleName} `,
+                    name: `Bot 🤖`,
                     score: 0,
                     role: assignedRole, // Set as role (will be preferredRole in logic)
                     preferredRole: assignedRole, // Lock it
@@ -665,12 +623,81 @@ function registerHandlers(io) {
                     avatar: generateRandomBotAvatar()
                 });
 
+                reindexBots(room);
+
                 // Notify everyone
                 io.to(roomCode).emit('playerJoined', room.players);
-                logger.info(`🤖 Added 1 bot(${assignedRole}) to room ${roomCode} `);
+                logger.info(`🤖 Added 1 bot(${assignedRole}) to room ${roomCode}`);
             } else {
                 socket.emit('error', 'العدد مكتمل (الحد الأقصى 8)');
             }
+        });
+
+        // ✅ Add Bot with Chosen Role (Host Action)
+        socket.on('addBotWithRole', ({ roomCode, role }) => {
+            const room = rooms[roomCode];
+            if (!room) return;
+
+            if (room.hostId !== socket.id) {
+                socket.emit('error', 'غير مسموح للمستخدم غير المضيف بإضافة بوتات');
+                return;
+            }
+
+            if (room.players.length >= 8) {
+                socket.emit('error', 'العدد مكتمل (الحد الأقصى 8)');
+                return;
+            }
+
+            if (role && !Object.values(ROLE_TYPES).includes(role)) {
+                socket.emit('error', 'دور البوت غير صالح');
+                return;
+            }
+
+            const botCount = room.players.filter(p => p.isBot).length + 1;
+            const botId = `bot_${Date.now()}_${botCount}`;
+
+            room.players.push({
+                id: botId,
+                name: `Bot 🤖`,
+                score: 0,
+                role: role,
+                preferredRole: role,
+                isLeader: false,
+                connected: true,
+                isBot: true,
+                avatar: generateRandomBotAvatar()
+            });
+
+            reindexBots(room);
+
+            io.to(roomCode).emit('playerJoined', room.players);
+            logger.info(`🤖 Host manually added bot (${role}) to room ${roomCode}`);
+        });
+
+        // ✅ Remove Specific Bot (Host Action)
+        socket.on('removeBot', ({ roomCode, botId }) => {
+            const room = rooms[roomCode];
+            if (!room) return;
+
+            if (room.hostId !== socket.id) {
+                socket.emit('error', 'غير مسموح للمستخدم غير المضيف بإزالة بوتات');
+                return;
+            }
+
+            const botToRemove = room.players.find(p => p.id === botId);
+            if (!botToRemove) return;
+
+            if (!botToRemove.isBot && !botToRemove.id.startsWith('bot_')) {
+                socket.emit('error', 'لا يمكن إزالة لاعب حقيقي عبر هذا الإجراء');
+                return;
+            }
+
+            room.players = room.players.filter(p => p.id !== botId);
+
+            reindexBots(room);
+
+            io.to(roomCode).emit('playerJoined', room.players);
+            logger.info(`🤖 Host manually removed bot (${botId}) from room ${roomCode}`);
         });
 
         // Host starts the game
@@ -1084,6 +1111,16 @@ function registerHandlers(io) {
                 });
 
                 phases.checkCulpritVotingComplete(roomCode);
+            }
+        });
+
+        socket.on('hostStartRevote', ({ roomCode }) => {
+            if (validateInput({ roomCode }, {
+                roomCode: { required: true, type: 'string', maxLength: 10 }
+            })) { socket.emit('error', 'مدخلات غير صالحة'); return; }
+            const room = rooms[roomCode];
+            if (room && room.hostId === socket.id && room.state === 'CULPRIT_VOTING') {
+                phases.triggerRevote(roomCode);
             }
         });
 

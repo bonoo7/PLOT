@@ -74,6 +74,18 @@ export const GameScreen = () => {
           <Text style={[styles.roleName, { color: c.textPrimary }]}>{meta.name}</Text>
           <Text style={[styles.roleDescription, { color: c.textSub }]}>{typedDescription}{typedLength < (roleData.description || '').length ? '▋' : ''}</Text>
         </TerminalCard>
+
+        <TerminalCard title="> دليل النظام / SYSTEM GUIDE" tone="warning">
+          <Text style={[styles.tutorialText, { color: c.accentYellow }]}>
+            💡 يمكنك في أي وقت خلال اللعب استعراض ملف دورك الكامل (الأهداف، التلميحات السرية، والشركاء) عبر الضغط على بطاقة دورك في الشريط العلوي للشاشة:
+          </Text>
+          <View style={styles.tutorialBadgeWrapper}>
+            <Text style={[styles.tutorialBadgeMock, { color: c.accentYellow }]}>
+              {`${meta.emoji} ${meta.bracket} 📁`}
+            </Text>
+          </View>
+        </TerminalCard>
+
         {intel ? <TerminalBanner variant="info" label="INTEL">{intel}</TerminalBanner> : null}
       </ScrollView>
     </TerminalLayout>
@@ -120,5 +132,26 @@ const styles = StyleSheet.create({
     lineHeight: fontSize.body * 1.6,
     writingDirection: 'rtl',
     textAlign: 'center',
+  },
+  tutorialText: {
+    fontFamily: fontFamily.mono,
+    fontSize: fontSize.small,
+    lineHeight: fontSize.small * 1.5,
+    writingDirection: 'rtl',
+    textAlign: 'right',
+  },
+  tutorialBadgeWrapper: {
+    marginTop: sp.xs,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: sp.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 204, 0, 0.2)',
+    backgroundColor: 'rgba(255, 204, 0, 0.05)',
+  },
+  tutorialBadgeMock: {
+    fontFamily: fontFamily.mono,
+    fontSize: fontSize.small,
+    textDecorationLine: 'underline',
   },
 });

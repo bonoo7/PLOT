@@ -102,21 +102,11 @@ const ROLES = {
         goal: 'توجيه المحقق وحماية فريق العدالة.',
         startPoints: 1000,
         ability: 'KNOWS_KEY_ROLES'
-    },
-    [ROLE_TYPES.CITIZEN]: {
-        id: ROLE_TYPES.CITIZEN,
-        nameAr: 'مواطن',
-        nameEn: 'Citizen',
-        description: 'ليس لديك معلومات خاصة. اعتمد على ذكائك وتحليلك للنقاش.',
-        team: TEAMS.JUSTICE,
-        emoji: '👤',
-        goal: 'كشف الجاني.',
-        ability: 'NONE'
     }
 };
 
 function getRoleInfo(roleId) {
-    return ROLES[roleId] || ROLES[ROLE_TYPES.CITIZEN];
+    return ROLES[roleId] || ROLES[ROLE_TYPES.WITNESS];
 }
 
 function getTeamMembers(team) {
@@ -163,7 +153,7 @@ function getRolesForPlayerCount(count) {
         if (i < priorityList.length) {
             distribution.push(priorityList[i]);
         } else {
-            distribution.push(ROLE_TYPES.CITIZEN); // Fallback if count > 8
+            distribution.push(ROLE_TYPES.WITNESS); // Fallback if count > 8
         }
     }
     

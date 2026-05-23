@@ -212,7 +212,7 @@ export const DraftingScreen = () => {
   const showAbilityControls = !isSubmitted && roleData && !abilityUsed &&
     ['DETECTIVE', 'SABOTEUR', 'SEER'].includes(roleData.role);
 
-  const canSendOffers = !isSubmitted && roleData &&
+  const canSendOffers = roleData &&
     ['BENEFICIARY', 'MINISTER'].includes(roleData.role);
 
   const isCulprit = roleData?.role === 'CULPRIT';
@@ -266,7 +266,20 @@ export const DraftingScreen = () => {
       top={<TerminalHeader title="DRAFTING PHASE" subtitle={playerName} roomCode={roomCode} roleName={meta.bracket} roleEmoji={meta.emoji} />}
       bottom={
         isSubmitted ? (
-          <TerminalBanner variant="success" label="UPLINK" style={{ flex: 1 }}>تم إرسال إجابتك. انتظر بقية اللاعبين.</TerminalBanner>
+          <View style={styles.bottomButtons}>
+            {canSendOffers && (
+              <TerminalButton
+                title="💰 عرض سري"
+                onPress={() => setShowOfferModal(true)}
+                variant="warning"
+                size="sm"
+                style={{ flex: 0.4 }}
+              />
+            )}
+            <TerminalBanner variant="success" label="UPLINK" style={{ flex: canSendOffers ? 0.6 : 1 }}>
+              تم إرسال إجابتك. انتظر بقية اللاعبين.
+            </TerminalBanner>
+          </View>
         ) : (
           <View style={styles.bottomButtons}>
             {canSendOffers && (
@@ -324,9 +337,11 @@ export const DraftingScreen = () => {
             <TerminalBanner variant="error" label="AUTO-SUBMIT">⚠️ كجزء من دور الجاني، سيتم إرسال القصة الحقيقية تلقائياً.</TerminalBanner>
           )}
 
-          <TerminalCard title={template ? '> TEMPLATE' : '> SCENARIO'} tone="info">
-            <TerminalBanner variant="info" label="المطلوب">{template || scenario || 'اكتب روايتك الآن.'}</TerminalBanner>
-          </TerminalCard>
+          {!template && (
+            <TerminalCard title="> SCENARIO" tone="info">
+              <TerminalBanner variant="info" label="المطلوب">{scenario || 'اكتب روايتك الآن.'}</TerminalBanner>
+            </TerminalCard>
+          )}
 
           <ProgressBar value={timeLeft} max={90} label="> TIMER" showTime timeText={formatTime(timeLeft)} />
 

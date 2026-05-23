@@ -35,7 +35,9 @@ const ResultCard = ({ players = [], style, hideDetails = false }) => {
             >
               <Text style={[styles.cell, styles.rank, { color: isWinner ? c.accentGreen : c.textSub }]}>{index + 1}</Text>
               <Text style={[styles.cell, styles.name, { color: c.textPrimary }]} numberOfLines={1}>{player.name}</Text>
-              <Text style={[styles.cell, styles.role, { color: meta.color }]} numberOfLines={1}>{meta.emoji} {meta.name}</Text>
+              <Text style={[styles.cell, styles.role, { color: hideDetails ? c.textMuted : meta.color }]} numberOfLines={1}>
+                {hideDetails ? '📂 [مُشفر]' : `${meta.emoji} ${meta.name}`}
+              </Text>
               <View style={styles.scoreWrapper}>
                 <Text style={[styles.cell, styles.score, { color: isWinner ? c.accentGreen : c.textPrimary }]}>{player.totalScore ?? player.score ?? 0}</Text>
                 {hasBreakdown && (

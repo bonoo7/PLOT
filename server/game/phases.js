@@ -704,63 +704,16 @@ function handleVotingResult(roomCode) {
             return;
         }
 
-        // First Tie -> Revote
+        // First Tie -> Register tie but do not revote immediately. Let clients display the Warning screen first.
         room.consecutiveTies++;
-        room.culpritVotes = {}; // Reset votes
-        room.votingProcessed = false; // ✅ FIX-B: allow re-vote to be processed
-
+        
         ioInstance.to(roomCode).emit('voteTie', {
             candidates: candidates.map(id => {
                 const p = room.players.find(pl => pl.id === id);
                 return p ? p.name : 'Unknown';
             }),
+            consecutiveTies: room.consecutiveTies,
             message: 'تعادل في الأصوات! سيتم إعادة التصويت.'
-        });
-
-        // Restart bot votes if needed
-        room.players.forEach(p => {
-            if (p.isBot) {
-                setTimeout(() => {
-                    try {
-                        // Trigger bot vote again
-                        const botKnowledge = buildBotKnowledge(p, room);
-                        // ⛔ استبعاد اللاعبين المستبعدين
-                        const playersPublic = room.players.filter(pl => !pl.eliminated).map(pl => ({ id: pl.id, name: pl.name }));
-                        const answers = {};
-                        room.players.filter(pl => !pl.eliminated).forEach(pl => { answers[pl.id] = room.answers[pl.id] || ''; });
-
-                        let culpritVoteId = generateSmartCulpritVote(
-                            botKnowledge,
-                            playersPublic,
-                            answers,
-                            room.currentScenario
-                        );
-
-                        if (!culpritVoteId) {
-                            const availableCandidates = playersPublic.filter(pl => pl.id !== p.id);
-                            culpritVoteId = availableCandidates.length > 0 ? availableCandidates[Math.floor(Math.random() * availableCandidates.length)].id : p.id;
-                        }
-
-                        room.culpritVotes[p.id] = culpritVoteId;
-
-                        ioInstance.to(room.hostId).emit('voteReceived', {
-                            phase: 'CULPRIT',
-                            playerId: p.id,
-                            playerName: p.name,
-                            choice: culpritVoteId,
-                            totalVotes: Object.keys(room.culpritVotes).length,
-                            totalPlayers: room.players.length
-                        });
-
-                        checkCulpritVotingComplete(roomCode);
-                    } catch (e) {
-                        logger.error(`Bot ${p.id} crashed during Revote:`, e);
-                        const candidates = room.players.filter(pl => !pl.eliminated && pl.id !== p.id);
-                        room.culpritVotes[p.id] = candidates.length > 0 ? candidates[0].id : p.id;
-                        checkCulpritVotingComplete(roomCode);
-                    }
-                }, 3000 + Math.random() * 5000);
-            }
         });
 
         return;
@@ -1103,7 +1056,7 @@ function assignRoles(room, players, passedRoomCode) {
     // ===================================================
     if (room.isTutorial) {
         players.forEach(p => {
-            if (!p.role) p.role = ROLE_TYPES.CITIZEN;
+            if (!p.role) p.role = ROLE_TYPES.WITNESS;
         });
         // تخطّي خطوات التعيين العشوائي — الانتقال مباشرة لإعادة تعيين الأعلام والإرسال
         const allPlayers = players;
@@ -1120,6 +1073,7 @@ function assignRoles(room, players, passedRoomCode) {
             player.investigationTarget = null;
             player.sabotageTarget = null;
             player.offerSentThisRound = false;
+            player.acceptedOffer = null;
         });
 
         // إرسال بيانات الأدوار (نفس المنطق الموحّد أدناه)
@@ -1151,7 +1105,7 @@ function assignRoles(room, players, passedRoomCode) {
         } else {
             // ⚠️ الدور مأخوذ - يأخذ أول دور متاح من الـ pool
             const fallback = rolesPool.find(r => !assignedRoles.has(r));
-            player.role = fallback || ROLE_TYPES.CITIZEN;
+            player.role = fallback || ROLE_TYPES.WITNESS;
             if (fallback) assignedRoles.add(fallback);
             logger.info(`⚠️ ${player.name} wanted ${wanted} (taken) → ${player.role}`);
         }
@@ -1168,7 +1122,7 @@ function assignRoles(room, players, passedRoomCode) {
         } else {
             // البوت يأخذ أول دور متاح بالترتيب
             const fallback = PRIORITY_ORDER.find(r => rolesPool.includes(r) && !assignedRoles.has(r));
-            bot.role = fallback || ROLE_TYPES.CITIZEN;
+            bot.role = fallback || ROLE_TYPES.WITNESS;
             if (fallback) assignedRoles.add(fallback);
             logger.info(`🤖 Bot ${bot.name} → ${bot.role}`);
         }
@@ -1179,7 +1133,7 @@ function assignRoles(room, players, passedRoomCode) {
     // ===================================================
     for (const player of noPreference) {
         const fallback = PRIORITY_ORDER.find(r => rolesPool.includes(r) && !assignedRoles.has(r));
-        player.role = fallback || ROLE_TYPES.CITIZEN;
+        player.role = fallback || ROLE_TYPES.WITNESS;
         if (fallback) assignedRoles.add(fallback);
         logger.info(`👤 ${player.name} → ${player.role} (auto)`);
     }
@@ -1203,6 +1157,7 @@ function assignRoles(room, players, passedRoomCode) {
         player.investigationTarget = null;
         player.sabotageTarget = null;
         player.offerSentThisRound = false;
+        player.acceptedOffer = null;
     });
 
     // الجمع لإرسال البيانات
@@ -1424,13 +1379,70 @@ function applyBlitzSabotage(room, targetId) {
 
 
 
+function triggerRevote(roomCode) {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    logger.info(`🔄 triggerRevote initiated by host for room ${roomCode}`);
+    room.culpritVotes = {}; // Clear votes
+    room.votingProcessed = false; 
+
+    // Emit event to notify clients to clear tie screens and start voting again
+    ioInstance.to(roomCode).emit('revoteStarted');
+
+    // Trigger bot votes again
+    room.players.forEach(p => {
+        if (p.isBot && !p.eliminated) {
+            setTimeout(() => {
+                try {
+                    const botKnowledge = buildBotKnowledge(p, room);
+                    const playersPublic = room.players.filter(pl => !pl.eliminated).map(pl => ({ id: pl.id, name: pl.name }));
+                    const answers = {};
+                    room.players.filter(pl => !pl.eliminated).forEach(pl => { answers[pl.id] = room.answers[pl.id] || ''; });
+
+                    let culpritVoteId = generateSmartCulpritVote(
+                        botKnowledge,
+                        playersPublic,
+                        answers,
+                        room.currentScenario
+                    );
+
+                    if (!culpritVoteId) {
+                        const availableCandidates = playersPublic.filter(pl => pl.id !== p.id);
+                        culpritVoteId = availableCandidates.length > 0 ? availableCandidates[Math.floor(Math.random() * availableCandidates.length)].id : p.id;
+                    }
+
+                    room.culpritVotes[p.id] = culpritVoteId;
+
+                    ioInstance.to(room.hostId).emit('voteReceived', {
+                        phase: 'CULPRIT',
+                        playerId: p.id,
+                        playerName: p.name,
+                        choice: culpritVoteId,
+                        totalVotes: Object.keys(room.culpritVotes).length,
+                        totalPlayers: room.players.length
+                    });
+
+                    checkCulpritVotingComplete(roomCode);
+                } catch (e) {
+                    logger.error(`Bot ${p.id} crashed during Revote:`, e);
+                    const candidates = room.players.filter(pl => !pl.eliminated && pl.id !== p.id);
+                    room.culpritVotes[p.id] = candidates.length > 0 ? candidates[0].id : p.id;
+                    checkCulpritVotingComplete(roomCode);
+                }
+            }, 2000 + Math.random() * 3000); // 2-5 seconds timeout
+        }
+    });
+}
+
 module.exports = {
     initPhases,
     executeBotAbilities, checkDraftingComplete, startDraftingPhase, simulateBotDrafting,
     startPresentationPhase, startVotingPhase, startQualityVoting, checkQualityVotingComplete,
     startDramaticReveal, startDiscussion, startCulpritVoting, checkCulpritVotingComplete,
     handleVotingResult, resolveElimination, endRound,
-    startTutorialLogic, startGameLogic, startNewRound, assignRoles, endGame, applyBlitzSabotage
+    startTutorialLogic, startGameLogic, startNewRound, assignRoles, endGame, applyBlitzSabotage,
+    triggerRevote
 };
 
 

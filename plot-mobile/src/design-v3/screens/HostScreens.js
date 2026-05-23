@@ -62,6 +62,8 @@ export const HostLobbyScreen = () => {
   const canStart = players.length >= 4 && players.length <= 8;
   const needsMore = Math.max(0, 4 - players.length);
 
+  const [showRolePicker, setShowRolePicker] = React.useState(false);
+
   const handleClose = () => {
     resetGame();
     navigation.navigate(ROUTES.ROLE_SELECT);
@@ -69,11 +71,18 @@ export const HostLobbyScreen = () => {
 
   return (
     <TerminalLayout
-      top={<TerminalHeader title="HOST LOBBY" subtitle={playerName || 'المضيف'} roomCode={roomCode} round={players.length ? `${players.length}/8` : null} roleEmoji="🖥️" roleName="[HOST]" />}
+      top={<TerminalHeader title="HOST LOBBY" subtitle={playerName || 'المضّيف'} roomCode={roomCode} round={players.length ? `${players.length}/8` : null} roleEmoji="🖥️" roleName="[HOST]" />}
       bottom={
         <View style={styles.footerRow}>
           <TerminalButton title="إغلاق" onPress={handleClose} variant="ghost" size="sm" />
-          {players.length < 8 ? <TerminalButton title="+ BOT" onPress={() => socket?.emit('fillBots')} variant="secondary" size="sm" /> : null}
+          {players.length < 8 ? (
+            <TerminalButton
+              title={showRolePicker ? 'إلغاء البوت' : '+ BOT'}
+              onPress={() => setShowRolePicker(!showRolePicker)}
+              variant={showRolePicker ? 'ghost' : 'secondary'}
+              size="sm"
+            />
+          ) : null}
           <TerminalButton title={canStart ? 'بدء الجولة' : `${needsMore} متبقٍ`} onPress={() => socket?.emit('startGame')} disabled={!canStart} size="sm" style={{ flex: 1 }} />
         </View>
       }
@@ -102,10 +111,57 @@ export const HostLobbyScreen = () => {
           {canStart ? 'عدد اللاعبين مناسب. يمكنك بدء الجولة الآن.' : `بانتظار ${needsMore} لاعبين إضافيين على الأقل.`}
         </TerminalBanner>
 
+        {showRolePicker && players.length < 8 && (
+          <TerminalCard title="> إضافة بوت بدور محدد / ADD BOT ROLE" tone="warning">
+            <View style={styles.rolePickerGrid}>
+              {[
+                { code: 'CULPRIT', label: 'جاني 🎭' },
+                { code: 'WITNESS', label: 'شاهد 👁️' },
+                { code: 'DETECTIVE', label: 'محقق 🔎' },
+                { code: 'SABOTEUR', label: 'مخرب 🧨' },
+                { code: 'BENEFICIARY', label: 'مستفيد 💰' },
+                { code: 'MINISTER', label: 'وزير 📜' },
+                { code: 'SEER', label: 'عراف 🔮' },
+                { code: 'MASTERMIND', label: 'مدبر 🧠' },
+                { code: null, label: 'عشوائي 🎲' }
+              ].map((roleOpt) => (
+                <TouchableOpacity
+                  key={roleOpt.code || 'random'}
+                  style={[styles.rolePickerBtn, { borderColor: c.border, backgroundColor: c.bgAlt }]}
+                  onPress={() => {
+                    if (roleOpt.code) {
+                      socket?.emit('addBotWithRole', { roomCode, role: roleOpt.code });
+                    } else {
+                      socket?.emit('fillBots');
+                    }
+                    setShowRolePicker(false);
+                  }}
+                >
+                  <Text style={[styles.rolePickerText, { color: c.textPrimary }]}>{roleOpt.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <TerminalButton title="إلغاء / CANCEL" onPress={() => setShowRolePicker(false)} variant="ghost" size="xs" style={{ marginTop: sp.s }} />
+          </TerminalCard>
+        )}
+
         <ScrollView contentContainerStyle={[styles.playerGrid, wide && styles.playerGridWide]} showsVerticalScrollIndicator={false}>
-          {players.map((player, index) => (
-            <PlayerBadge key={player.id || index} name={player.name} index={index + 1} style={wide ? styles.playerBadgeWide : null} />
-          ))}
+          {players.map((player, index) => {
+            const isBot = player.isBot || player.id?.startsWith('bot_');
+            return (
+              <View key={player.id || index} style={[styles.playerRow, wide && styles.playerRowWide]}>
+                <PlayerBadge name={player.name} index={index + 1} style={{ flex: 1 }} />
+                {isBot && (
+                  <TouchableOpacity
+                    style={[styles.removeBotBtn, { borderColor: c.accentRed }]}
+                    onPress={() => socket?.emit('removeBot', { roomCode, botId: player.id })}
+                  >
+                    <Text style={[styles.removeBotText, { color: c.accentRed }]}>[- حذف]</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })}
         </ScrollView>
       </View>
     </TerminalLayout>
@@ -164,8 +220,47 @@ const styles = StyleSheet.create({
   playerGridWide: {
     flexDirection: 'row',
     flexWrap: 'wrap',
+    justifyContent: 'space-between',
   },
-  playerBadgeWide: {
+  playerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: sp.s,
+    width: '100%',
+  },
+  playerRowWide: {
     width: '48%',
+  },
+  removeBotBtn: {
+    borderWidth: 1,
+    paddingVertical: sp.s,
+    paddingHorizontal: sp.m,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 65, 0, 0.05)',
+  },
+  removeBotText: {
+    fontFamily: fontFamily.mono,
+    fontSize: fontSize.small,
+    fontWeight: '700',
+  },
+  rolePickerGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: sp.s,
+    justifyContent: 'center',
+    paddingVertical: sp.s,
+  },
+  rolePickerBtn: {
+    borderWidth: 1,
+    paddingVertical: sp.s,
+    paddingHorizontal: sp.m,
+    minWidth: '28%',
+    alignItems: 'center',
+  },
+  rolePickerText: {
+    fontFamily: fontFamily.mono,
+    fontSize: fontSize.small,
+    fontWeight: '700',
   },
 });
