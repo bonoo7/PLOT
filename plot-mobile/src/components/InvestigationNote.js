@@ -11,6 +11,12 @@ import { theme } from '../styles/theme';
 import { fonts, spacing, borderRadius } from '../styles/responsive';
 import { getTheme } from '../constants/theme';
 import { useGameStore } from '../store/useGameStore';
+import { getColors as getColorsV3, fontFamily as fontFamilyV3, fontSize as fontSizeV3, sp as spV3 } from '../design-v3/tokens';
+import ScanLines from '../design-v3/components/ScanLines';
+import TerminalCard from '../design-v3/components/TerminalCard';
+import TerminalButton from '../design-v3/components/TerminalButton';
+import TerminalBanner from '../design-v3/components/TerminalBanner';
+
 
 /**
  * InvestigationNote - نتيجة القدرة كنوتة Noir
@@ -125,7 +131,112 @@ export const InvestigationNote = ({ visible, targetName, result, isSabotaged, on
         }
     };
 
+    const designVersion = useGameStore(state => state.designVersion);
     const cfg = getConfig();
+
+    if (designVersion === 'v3') {
+        const c3 = getColorsV3();
+        const isCrime = result && result.includes('الجريمة');
+
+        let title = 'DECRYPTED LOG';
+        let bannerLabel = 'INFO';
+        let bannerVariant = 'info';
+        let bodyElement = null;
+
+        if (type === 'SABOTAGE') {
+            title = 'SABOTAGE REPORT';
+            bannerLabel = 'SYSTEM CORRUPTED';
+            bannerVariant = 'error';
+            bodyElement = (
+                <Text style={[v3Styles.text, { color: c3.textPrimary }]}>
+                    {`[LOG] ${message || 'SABOTAGE SEQUENCE EXECUTED SUCCESSFULLY.'}`}
+                </Text>
+            );
+        } else if (type === 'REVELATION' || type === 'REVELATION_SUCCESS') {
+            title = 'DECRYPTED REVELATION';
+            bannerLabel = 'SEER INPUT';
+            bannerVariant = 'warning';
+            bodyElement = (
+                <Text style={[v3Styles.text, { color: c3.textPrimary }]}>
+                    {`[DATA] ${content || message || 'NO REVELATION DATA AVAILABLE.'}`}
+                </Text>
+            );
+        } else if (type === 'FLASH_MEMORY') {
+            title = 'RESTORED DATA';
+            bannerLabel = 'WITNESS MEMORY';
+            bannerVariant = 'info';
+            bodyElement = (
+                <View style={{ gap: spV3.s }}>
+                    <Text style={[v3Styles.text, { color: c3.textPrimary }]}>
+                        [LOG] SECURE MEMORY BLOCK RETRIEVED.
+                    </Text>
+                    <Text style={[v3Styles.text, { color: c3.textSub }]}>
+                        [KEYWORDS]
+                    </Text>
+                    <View style={v3Styles.keywordWrap}>
+                        {(keywords || []).map((kw, i) => (
+                            <View key={i} style={[v3Styles.keywordBadge, { borderColor: c3.borderBright }]}>
+                                <Text style={[v3Styles.keywordText, { color: c3.accentGreen }]}>{kw}</Text>
+                            </View>
+                        ))}
+                    </View>
+                </View>
+            );
+        } else {
+            // INVESTIGATE
+            title = 'DECRYPTED RECORD';
+            bannerLabel = 'INVESTIGATION REPORT';
+            bannerVariant = isCrime ? 'error' : 'success';
+            bodyElement = (
+                <View style={{ gap: spV3.s }}>
+                    <Text style={[v3Styles.text, { color: c3.textPrimary }]}>
+                        {`[SUBJECT] CLIENT ${targetName}`}
+                    </Text>
+                    <Text style={[v3Styles.text, { color: c3.textPrimary }]}>
+                        {`[AFFILIATION] ${result}`}
+                    </Text>
+                    
+                    <View style={[v3Styles.verdictBox, { borderColor: isCrime ? c3.accentRed : c3.accentGreen }]}>
+                        <Text style={[v3Styles.verdictText, { color: isCrime ? c3.accentRed : c3.accentGreen }]}>
+                            {isCrime ? '▲ CRITICAL: THREAT DETECTED' : '▼ SECURE: NO CRIME LINK'}
+                        </Text>
+                    </View>
+
+                    {isSabotaged && (
+                        <View style={[v3Styles.warningBox, { borderColor: c3.accentYellow }]}>
+                            <Text style={[v3Styles.warningText, { color: c3.accentYellow }]}>
+                                ⚠️ [WARNING] FORGED METADATA DETECTED
+                            </Text>
+                        </View>
+                    )}
+                </View>
+            );
+        }
+
+        return (
+            <Modal visible={visible} transparent animationType="none">
+                <Animated.View style={[v3Styles.overlay, { opacity: fadeAnim }]}>
+                    <Animated.View style={[v3Styles.container, { transform: [{ translateY: slideAnim }] }]}>
+                        <TerminalCard title={`> ${title}`} tone={bannerVariant === 'error' ? 'danger' : bannerVariant === 'success' ? 'success' : 'warning'}>
+                            <View style={{ gap: spV3.m, paddingVertical: spV3.s }}>
+                                <TerminalBanner variant={bannerVariant} label={bannerLabel}>
+                                    {`FILE ID: #${Math.floor(Math.random() * 9000) + 1000}`}
+                                </TerminalBanner>
+                                
+                                {bodyElement}
+
+                                <TerminalButton
+                                    title="[ DISMISS UPLINK ]"
+                                    onPress={onDismiss}
+                                    style={{ marginTop: spV3.s }}
+                                />
+                            </View>
+                        </TerminalCard>
+                    </Animated.View>
+                </Animated.View>
+            </Modal>
+        );
+    }
 
     return (
         <Modal visible={visible} transparent animationType="none">
@@ -324,3 +435,65 @@ const styles = StyleSheet.create({
         letterSpacing: 2,
     },
 });
+
+const v3Styles = StyleSheet.create({
+    overlay: {
+        flex: 1,
+        backgroundColor: 'rgba(3,7,18,0.94)',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: 24,
+    },
+    container: {
+        maxWidth: 440,
+        width: '100%',
+    },
+    text: {
+        fontFamily: fontFamilyV3.mono,
+        fontSize: fontSizeV3.body,
+        lineHeight: fontSizeV3.body * 1.5,
+        textAlign: 'left',
+    },
+    keywordWrap: {
+        flexDirection: 'row',
+        flexWrap: 'wrap',
+        gap: 8,
+        marginTop: 4,
+    },
+    keywordBadge: {
+        borderWidth: 1,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        backgroundColor: 'rgba(0,255,0,0.05)',
+    },
+    keywordText: {
+        fontFamily: fontFamilyV3.mono,
+        fontSize: fontSizeV3.small,
+        fontWeight: 'bold',
+    },
+    verdictBox: {
+        borderWidth: 1.5,
+        padding: 12,
+        alignItems: 'center',
+        justifyContent: 'center',
+        marginTop: 8,
+        backgroundColor: 'rgba(0,0,0,0.2)',
+    },
+    verdictText: {
+        fontFamily: fontFamilyV3.mono,
+        fontSize: fontSizeV3.medium,
+        fontWeight: 'bold',
+    },
+    warningBox: {
+        borderWidth: 1,
+        padding: 10,
+        backgroundColor: 'rgba(255,255,0,0.05)',
+        marginTop: 4,
+    },
+    warningText: {
+        fontFamily: fontFamilyV3.mono,
+        fontSize: fontSizeV3.small,
+        textAlign: 'center',
+    },
+});
+

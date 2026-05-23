@@ -19,6 +19,7 @@ import ErrorBoundary from './src/components/ErrorBoundary';
 import NotificationToast from './src/components/NotificationToast';
 import { initSounds } from './src/utils/soundManager';
 import ReconnectBanner from './src/design-v2/components/ReconnectBanner';
+import TerminalReconnectOverlay from './src/design-v3/components/TerminalReconnectOverlay';
 
 // Force RTL (Native early enforcement)
 if (Platform.OS !== 'web') {
@@ -72,7 +73,7 @@ const AppContent = () => {
 
     return (
         <SocketProvider navigationRef={navigationRef}>
-            <ReconnectBanner />
+            {designVersion === 'v3' ? <TerminalReconnectOverlay /> : <ReconnectBanner />}
             <NavigationContainer ref={navigationRef}>
                 <ActiveNavigator />
             </NavigationContainer>
