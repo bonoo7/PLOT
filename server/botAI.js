@@ -104,45 +104,55 @@ const ENDINGS = [
 
 // ==================== توليد الإجابات ====================
 
-/**
- * توليد إجابة ذكية للبوت بناءً على دوره والسيناريو
- * يستخدم DeepSeek AI أولاً، ثم يعود للقوالب في حالة الفشل
- */
 async function generateBotAnswer(role, scenario, otherAnswers = [], gameMode = 'CLASSIC') {
   const roleInfo = getRoleInfo(role);
   
   if (!roleInfo) {
-    logger.error(`⚠️ دور غير معروف: ${role}`);
+    logger.error("Unknown role: " + role);
     return generateFallbackAnswer(role, scenario);
   }
 
-  // ⚡ Blitz Mode: جرّب GitHub AI أولاً، ثم الـ fallback المحلي
+  // Culprit bot: always submits the true story/blanks directly as they know the case perfectly
+  if (role === ROLE_TYPES.CULPRIT) {
+      if (gameMode === 'BLITZ' && scenario.template && scenario.blanks) {
+          let filled = scenario.template;
+          scenario.blanks.forEach(blank => {
+              filled = filled.replace('_____', blank);
+          });
+          return filled;
+      } else {
+          const realStory = scenario.fullStory || scenario.story;
+          return Array.isArray(realStory) ? realStory.join('\n') : (realStory || '');
+      }
+  }
+
+  // Blitz Mode: try GitHub AI first, then local fallback
   if (gameMode === 'BLITZ') {
     try {
       const aiAnswer = await generateAIAnswer(role, roleInfo, scenario);
       if (aiAnswer) {
-        logger.info(`✅ AI Answer (BLITZ) for ${roleInfo.nameAr}`);
+        logger.info("AI Answer (BLITZ) for " + roleInfo.nameAr);
         return aiAnswer;
       }
     } catch (error) {
-      logger.warn(`⚠️ فشل AI في Blitz لـ ${roleInfo.nameAr}, استخدام Fallback`);
+      logger.warn("AI failed in Blitz for " + roleInfo.nameAr + ", using Fallback");
     }
     return generateBotBlankFill(role, scenario);
   }
 
-  // محاولة استخدام GitHub Models AI لملء الفراغات
+  // Classic Mode: try GitHub AI first
   try {
     const aiAnswer = await generateAIAnswer(role, roleInfo, scenario);
     
     if (aiAnswer) {
-      logger.info(`✅ AI Answer for ${roleInfo.nameAr}: ${aiAnswer.substring(0, 60)}...`);
+      logger.info("AI Answer for " + roleInfo.nameAr + ": " + aiAnswer.substring(0, 60) + "...");
       return aiAnswer;
     }
   } catch (error) {
-    logger.warn(`⚠️ فشل AI لـ ${roleInfo.nameAr}, استخدام Fallback`);
+    logger.warn("AI failed in Classic for " + roleInfo.nameAr + ", using Fallback");
   }
   
-  // Fallback: ملء الفراغات من القالب باستخدام الكلمات المفتاحية
+  // Fallback: fill blanks from template using keywords
   if (scenario.template) {
     return generateBotBlankFill(role, scenario);
   }
@@ -410,6 +420,39 @@ function analyzeSuspicion(answer, scenario, role) {
   // الإجابات الدفاعية (+15)
   if (answer.includes('بريء') || answer.includes('لا علاقة لي')) {
     suspicionScore += 15;
+  }
+
+  // 4. Compare with Scenario Hint (Organic suspicion evaluation)
+  const hintText = scenario.hint || scenario.simpleHint;
+  if (hintText) {
+      const hintWords = hintText.split(/[\s,،.؟!]+/).filter(w => w.length > 3);
+      if (hintWords.length > 0) {
+          const matchingWords = hintWords.filter(w => answer.includes(w));
+          const matchRatio = matchingWords.length / hintWords.length;
+          
+          if (matchRatio === 0) {
+              suspicionScore += 25; // Answer completely ignores the hint details
+          } else if (matchRatio > 0.4) {
+              suspicionScore -= 15; // Answer aligns well with hint details
+          }
+      }
+  }
+
+  // 5. Blitz mode: verify correct blank filling alignment
+  if (scenario.template && scenario.blanks) {
+      let realAnswer = scenario.template;
+      scenario.blanks.forEach(b => {
+          realAnswer = realAnswer.replace('_____', b);
+      });
+
+      if (answer === realAnswer) {
+          suspicionScore -= 20; // Perfect correct blank fill (highly aligned/innocent)
+      } else {
+          const matchedBlanks = scenario.blanks.filter(b => answer.includes(b));
+          if (matchedBlanks.length === 0) {
+              suspicionScore += 30; // Didn't use any correct blank clues
+          }
+      }
   }
   
   // التأكد من عدم تجاوز الحدود

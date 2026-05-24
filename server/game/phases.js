@@ -236,8 +236,8 @@ async function simulateBotDrafting(roomCode, bot) {
     const room = rooms[roomCode];
     if (!room || room.state !== 'DRAFTING') return;
     try {
-        // ⚡ العراف: يرسل القصة الحقيقية مباشرة (قدرة الوحي)
-        if (bot.role === ROLE_TYPES.SEER) {
+        // ⚡ العراف: يرسل القصة الحقيقية مباشرة (قدرة الوحي) بنسبة 90%
+        if (bot.role === ROLE_TYPES.SEER && Math.random() < 0.9) {
             let answerText;
             if (room.gameMode === 'BLITZ' && room.currentScenario.template && room.currentScenario.blanks) {
                 // في وضع الفراغات: يملأ الفراغات بالإجابات الصحيحة
