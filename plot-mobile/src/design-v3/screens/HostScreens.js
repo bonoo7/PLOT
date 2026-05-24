@@ -92,20 +92,7 @@ export const HostLobbyScreen = () => {
           <Text style={[styles.roomCode, { color: c.accentGreen }]}>{`▶ ${roomCode || '----'} ◀`}</Text>
         </TerminalCard>
 
-        <View style={styles.modeRow}>
-          {[
-            { key: 'BLITZ', label: '> BLITZ / إكمال الفراغ' },
-            { key: 'CLASSIC', label: '> CLASSIC / كتابة كاملة' },
-          ].map((mode) => (
-            <TouchableOpacity
-              key={mode.key}
-              style={[styles.modeButton, { borderColor: gameMode === mode.key ? c.borderBright : c.border, backgroundColor: gameMode === mode.key ? 'rgba(0,255,65,0.08)' : c.bgAlt }]}
-              onPress={() => socket?.emit('updateGameSettings', { roomCode, settings: { gameMode: mode.key } })}
-            >
-              <Text style={[styles.modeText, { color: gameMode === mode.key ? c.accentGreen : c.textMuted }]}>{mode.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+
 
         <TerminalBanner variant={canStart ? 'success' : 'warning'} label="الحالة">
           {canStart ? 'عدد اللاعبين مناسب. يمكنك بدء الجولة الآن.' : `بانتظار ${needsMore} لاعبين إضافيين على الأقل.`}

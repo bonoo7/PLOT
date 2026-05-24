@@ -345,21 +345,10 @@ export const DraftingScreen = () => {
 
           <ProgressBar value={timeLeft} max={90} label="> TIMER" showTime timeText={formatTime(timeLeft)} />
 
-          {isBlitzWaiting ? (
+          {!template ? (
             <TerminalBanner variant="warning" label="SYNC">⏳ جاري تحميل نموذج الجولة...</TerminalBanner>
-          ) : isBlitzActive ? (
-            renderBlitzBlanks()
           ) : (
-            <TerminalInput
-              label="الإجابة"
-              value={answer}
-              onChangeText={setAnswer}
-              placeholder={isCulprit ? "سيتم كتابة القصة تلقائياً..." : "اكتب السيناريو هنا..."}
-              multiline
-              numberOfLines={8}
-              editable={!isSubmitted && !isCulprit}
-              style={styles.inputWrap}
-            />
+            renderBlitzBlanks()
           )}
 
           {showAbilityControls && (

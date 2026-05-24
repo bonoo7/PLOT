@@ -397,22 +397,9 @@ export const DraftingScreen = () => {
                     </MinimalCard>
 
                     <MinimalCard flex style={styles.inputCard}>
-                        {gameMode === 'BLITZ' ? (
-                            template
-                                ? renderBlitzInput()
-                                : <Text style={styles.blitzWaiting}>⏳ جاري تحميل النموذج...</Text>
-                        ) : (
-                            <MinimalInput
-                                value={answer}
-                                onChangeText={setAnswer}
-                                placeholder={roleData?.role === 'SEER' ? 'اكتب تقريرك بنفسك أو استخدم زر الوحي...' : 'اكتب تبريرك هنا...'}
-                                multiline
-                                maxLength={500}
-                                editable={!isSubmitted}
-                                style={{ flex: 1, marginVertical: 0 }}
-                                inputStyle={styles.textArea}
-                            />
-                        )}
+                        {template
+                            ? renderBlitzInput()
+                            : <Text style={styles.blitzWaiting}>⏳ جاري تحميل النموذج...</Text>}
                     </MinimalCard>
                 </View>
 

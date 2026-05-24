@@ -35,7 +35,7 @@ function registerAdminRoutes(app) {
             humans: room.players.filter(p => !p.isBot).length,
             round: room.currentRound,
             totalRounds: room.totalRounds,
-            gameMode: room.gameMode || 'CLASSIC',
+            gameMode: room.gameMode || 'BLITZ',
             isTutorial: !!room.isTutorial
         }));
 

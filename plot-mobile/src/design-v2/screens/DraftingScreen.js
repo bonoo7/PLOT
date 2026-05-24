@@ -376,23 +376,7 @@ export const DraftingScreen = () => {
           { borderColor: c.cardBorder, backgroundColor: c.cardBg },
           isLandscape && styles.scenarioBlockLandscape,
         ]}>
-          {gameMode === 'BLITZ' ? renderBlitzInput() : (
-            <>
-              <Text style={[styles.scenarioLabel, { color: c.textMuted }]}>تقريرك</Text>
-              <RNTextInput
-                style={[styles.textArea, { color: c.text, borderColor: isSubmitted ? c.success : c.gold }]}
-                value={answer}
-                onChangeText={setAnswer}
-                multiline
-                maxLength={500}
-                editable={!isSubmitted}
-                placeholder={roleData?.role === 'SEER' ? 'استخدم الوحي أو اكتب...' : 'اكتب تبريرك هنا…'}
-                placeholderTextColor={c.textMuted}
-                textAlignVertical="top"
-                textAlign="right"
-              />
-            </>
-          )}
+          {renderBlitzInput()}
         </View>
 
         {/* Ability target chips */}

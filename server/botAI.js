@@ -104,7 +104,7 @@ const ENDINGS = [
 
 // ==================== توليد الإجابات ====================
 
-async function generateBotAnswer(role, scenario, otherAnswers = [], gameMode = 'CLASSIC') {
+async function generateBotAnswer(role, scenario, otherAnswers = []) {
   const roleInfo = getRoleInfo(role);
   
   if (!roleInfo) {
@@ -114,7 +114,7 @@ async function generateBotAnswer(role, scenario, otherAnswers = [], gameMode = '
 
   // Culprit bot: always submits the true story/blanks directly as they know the case perfectly
   if (role === ROLE_TYPES.CULPRIT) {
-      if (gameMode === 'BLITZ' && scenario.template && scenario.blanks) {
+      if (scenario.template && scenario.blanks) {
           let filled = scenario.template;
           scenario.blanks.forEach(blank => {
               filled = filled.replace('_____', blank);
@@ -126,37 +126,17 @@ async function generateBotAnswer(role, scenario, otherAnswers = [], gameMode = '
       }
   }
 
-  // Blitz Mode: try GitHub AI first, then local fallback
-  if (gameMode === 'BLITZ') {
-    try {
-      const aiAnswer = await generateAIAnswer(role, roleInfo, scenario);
-      if (aiAnswer) {
-        logger.info("AI Answer (BLITZ) for " + roleInfo.nameAr);
-        return aiAnswer;
-      }
-    } catch (error) {
-      logger.warn("AI failed in Blitz for " + roleInfo.nameAr + ", using Fallback");
-    }
-    return generateBotBlankFill(role, scenario);
-  }
-
-  // Classic Mode: try GitHub AI first
+  // try GitHub AI first, then local fallback
   try {
     const aiAnswer = await generateAIAnswer(role, roleInfo, scenario);
-    
     if (aiAnswer) {
-      logger.info("AI Answer for " + roleInfo.nameAr + ": " + aiAnswer.substring(0, 60) + "...");
+      logger.info("AI Answer (BLITZ) for " + roleInfo.nameAr);
       return aiAnswer;
     }
   } catch (error) {
-    logger.warn("AI failed in Classic for " + roleInfo.nameAr + ", using Fallback");
+    logger.warn("AI failed in Blitz for " + roleInfo.nameAr + ", using Fallback");
   }
-  
-  // Fallback: fill blanks from template using keywords
-  if (scenario.template) {
-    return generateBotBlankFill(role, scenario);
-  }
-  return generateFallbackAnswer(role, scenario);
+  return generateBotBlankFill(role, scenario);
 }
 
 /**

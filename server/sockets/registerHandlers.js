@@ -189,9 +189,7 @@ function registerHandlers(io) {
         socket.on('updateGameSettings', ({ roomCode, settings }) => {
             const room = rooms[roomCode];
             if (room && room.hostId === socket.id) {
-                if (settings.gameMode) {
-                    room.gameMode = settings.gameMode;
-                }
+                room.gameMode = 'BLITZ'; // Forced to BLITZ mode always
                 if (settings.totalRounds) {
                     room.totalRounds = settings.totalRounds;
                 }
@@ -872,79 +870,47 @@ function registerHandlers(io) {
             // Let's allow it in Round 1 too, to make it more interactive from start.
 
             if (player.role === ROLE_TYPES.SEER && abilityType === 'REVELATION') {
-                // 🔮 Seer Ability: Auto-submit Real Story (Silent)
+                // Seer Ability: Auto-submit Real Story (Silent)
 
-                let answerText = "";
+                const template = room.currentScenario.template;
+                const blanks = room.currentScenario.blanks || [];
+                const parts = template.split('_____');
 
-                if (room.gameMode === 'BLITZ') {
-                    // Blitz Mode: نسب متناقصة لكل فراغ (70% للأول، 50% للثاني، 30% للثالث...)
-                    const template = room.currentScenario.template;
-                    const blanks = room.currentScenario.blanks || [];
-                    const parts = template.split('_____');
-
-                    const revealedBlanks = [];
-                    // نسبة الدقة: تبدأ من 70% وتنقص 20% لكل فراغ (بحد أدنى 10%)
-                    for (let i = 0; i < parts.length - 1; i++) {
-                        const accuracy = Math.max(0.1, 0.7 - (i * 0.2));
-                        if (Math.random() < accuracy) {
-                            revealedBlanks.push(blanks[i] || '_____');
-                        } else {
-                            revealedBlanks.push('???'); // فراغ لم يُكشف
-                        }
+                const revealedBlanks = [];
+                // Accuracy starts from 70% and decreases by 20% for each blank (min 10%)
+                for (let i = 0; i < parts.length - 1; i++) {
+                    const accuracy = Math.max(0.1, 0.7 - (i * 0.2));
+                    if (Math.random() < accuracy) {
+                        revealedBlanks.push(blanks[i] || '_____');
+                    } else {
+                        revealedBlanks.push('???'); // Unrevealed blank
                     }
-
-                    // بناء النص الكامل من القالب + الفراغات المكشوفة
-                    let finalAnswer = '';
-                    parts.forEach((part, idx) => {
-                        finalAnswer += part;
-                        if (idx < parts.length - 1) {
-                            finalAnswer += revealedBlanks[idx];
-                        }
-                    });
-
-                    // ✅ إرسال فوري - لا يمكن للعراف التعديل
-                    room.answers[socket.id] = finalAnswer;
-                    if (!room.submissionTimes) room.submissionTimes = {};
-                    room.submissionTimes[socket.id] = Date.now();
-                    player.abilityUsed = true;
-
-                    // إبلاغ العراف بالفراغات المكشوفة ثم قفل التقرير فوراً
-                    socket.emit('fillBlitzBlanks', { blanks: revealedBlanks });
-                    socket.emit('abilityResult', {
-                        type: 'REVELATION_SUCCESS',
-                        message: `🔮 تم إرسال تقريرك تلقائياً بعد الوحي!(الفراغ الأول: 70 %، الثاني: 50 %، وهكذا...)`
-                    });
-
-                    io.to(room.hostId).emit('playerSubmitted', { playerId: player.id, playerName: player.name });
-                    phases.checkDraftingComplete(roomCode);
-
-                } else {
-                    // Classic Mode: Full Story - إرسال فوري ومباشر
-                    const realStory = room.currentScenario.fullStory || room.currentScenario.story;
-                    answerText = Array.isArray(realStory) ? realStory.join('\n') : realStory;
-
-                    // 1. Submit as Answer
-                    room.answers[socket.id] = answerText;
-
-                    // 2. Track submission time
-                    if (!room.submissionTimes) room.submissionTimes = {};
-                    room.submissionTimes[socket.id] = Date.now();
-
-                    // 3. Mark ability used
-                    player.abilityUsed = true;
-
-                    // 4. Notify Host
-                    io.to(room.hostId).emit('playerSubmitted', { playerId: player.id, playerName: player.name });
-
-                    // 5. Notify Seer (Success without content)
-                    socket.emit('abilityResult', {
-                        type: 'REVELATION_SUCCESS',
-                        message: 'تم نسخ القصة الحقيقية وإرسالها بنجاح! (لم تظهر لك لضمان السرية)'
-                    });
-
-                    // 6. Check if phase complete
-                    phases.checkDraftingComplete(roomCode);
                 }
+
+                // Construct full answer
+                let finalAnswer = '';
+                parts.forEach((part, idx) => {
+                    finalAnswer += part;
+                    if (idx < parts.length - 1) {
+                        finalAnswer += revealedBlanks[idx];
+                    }
+                });
+
+                // Auto-submit
+                room.answers[socket.id] = finalAnswer;
+                if (!room.submissionTimes) room.submissionTimes = {};
+                room.submissionTimes[socket.id] = Date.now();
+                player.abilityUsed = true;
+
+                // Send revealed blanks to Seer
+                socket.emit('fillBlitzBlanks', { blanks: revealedBlanks });
+                socket.emit('abilityResult', {
+                    type: 'REVELATION_SUCCESS',
+                    message: '\uD83D\uDD2E\u0020\u062A\u0645\u0020\u0625\u0631\u0633\u0627\u0644\u0020\u062A\u0642\u0631\u064A\u0631\u0643\u0020\u062A\u0644\u0642\u0627\u0626\u064A\u0627\u064B\u0020\u0628\u0639\u062F\u0020\u0627\u0644\u0648\u062D\u064A\u0021'
+                });
+
+                io.to(room.hostId).emit('playerSubmitted', { playerId: player.id, playerName: player.name });
+                phases.checkDraftingComplete(roomCode);
 
             } else if (player.role === ROLE_TYPES.DETECTIVE && abilityType === 'INVESTIGATE') {
                 // 🕵️ Detective Ability
@@ -963,25 +929,21 @@ function registerHandlers(io) {
                 });
 
             } else if (player.role === ROLE_TYPES.WITNESS && abilityType === 'FLASH_MEMORY') {
-                // 👁️ Witness Ability
+                // Witness Ability
                 let flashKeywords = room.currentScenario.keywords || [];
 
-                if (room.gameMode === 'BLITZ') {
-                    const blanks = room.currentScenario.blanks || [];
-                    const template = room.currentScenario.template || '';
+                const blanks = room.currentScenario.blanks || [];
+                const template = room.currentScenario.template || '';
 
-                    // ✅ تحسين: نُبقي الكلمات التي تعطي السياق وتُحذف كلمات أدوات الفراغ الحرفية
-                    const filtered = flashKeywords.filter(kw => {
-                        // لا تُظهر كلمة إذا كانت هي نفسها الإجابة الصحيحة للفراغ
-                        const isBlankAnswer = blanks.some(b => b === kw || b.includes(kw));
-                        // لا تُظهر كلمة قصيرة جداً (أقل من 3 أحرف)
-                        const isTooShort = kw.length < 3;
-                        return !isBlankAnswer && !isTooShort;
-                    });
+                // Filter keywords that are not answers to blanks
+                const filtered = flashKeywords.filter(kw => {
+                    const isBlankAnswer = blanks.some(b => b === kw || b.includes(kw));
+                    const isTooShort = kw.length < 3;
+                    return !isBlankAnswer && !isTooShort;
+                });
 
-                    // إذا بقي شيء بعد التصفية استخدمه، وإلا أرسل الكلمات الأصلية
-                    flashKeywords = filtered.length >= 2 ? filtered : (room.currentScenario.keywords || ['ركز', 'السياق', 'القضية']);
-                }
+                // Default keywords if everything was filtered
+                flashKeywords = filtered.length >= 2 ? filtered : (room.currentScenario.keywords || ['\u0631\u0643\u0632', '\u0625\u0644\u0649', '\u0627\u0644\u0633\u064a\u0627\u0642']);
 
                 socket.emit('abilityResult', {
                     type: 'FLASH_MEMORY',

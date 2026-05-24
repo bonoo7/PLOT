@@ -67,16 +67,13 @@ function executeBotAbilities(roomCode) {
 
         // 3. العراف (Seer)
         else if (bot.role === ROLE_TYPES.SEER && abilityType === 'REVELATION') {
-            let answerText;
-            if (room.gameMode === 'BLITZ' && room.currentScenario.template && room.currentScenario.blanks) {
+            let answerText = '';
+            if (room.currentScenario.template && room.currentScenario.blanks) {
                 let filled = room.currentScenario.template;
                 room.currentScenario.blanks.forEach(blank => {
                     filled = filled.replace('_____', blank);
                 });
                 answerText = filled;
-            } else {
-                const realStory = room.currentScenario.fullStory || room.currentScenario.story;
-                answerText = Array.isArray(realStory) ? realStory.join('\n') : (realStory || '');
             }
 
             room.answers[bot.id] = answerText;
@@ -125,7 +122,7 @@ function startDraftingPhase(roomCode) {
         duration,
         waitingFor,
         caseTitle: room.currentScenario.title, // Add case title for UI
-        template: room.gameMode === 'BLITZ' ? room.currentScenario.template : null
+        template: room.currentScenario.template
     });
 
     // 📺 Host Hint: Show simple hint on Host Screen
@@ -150,17 +147,15 @@ function startDraftingPhase(roomCode) {
     witness.forEach(w => {
         let flashKeywords = room.currentScenario.keywords;
 
-        if (room.gameMode === 'BLITZ') {
-            // In Blitz, filter out keywords that are actually the answers (blanks)
-            const blanks = room.currentScenario.blanks || [];
-            // Filter keywords that are NOT contained in any blank
-            flashKeywords = flashKeywords.filter(k =>
-                !blanks.some(b => b.includes(k) || k.includes(b))
-            );
+        // Filter out keywords that are actually the answers (blanks)
+        const blanks = room.currentScenario.blanks || [];
+        // Filter keywords that are NOT contained in any blank
+        flashKeywords = flashKeywords.filter(k =>
+            !blanks.some(b => b.includes(k) || k.includes(b))
+        );
 
-            if (flashKeywords.length === 0) {
-                flashKeywords = room.currentScenario.keywords.slice(0, 3);
-            }
+        if (flashKeywords.length === 0) {
+            flashKeywords = room.currentScenario.keywords.slice(0, 3);
         }
 
         ioInstance.to(w.id).emit('witnessFlash', {
@@ -173,17 +168,13 @@ function startDraftingPhase(roomCode) {
     culprits.forEach(culprit => {
         let culpritAnswer = '';
 
-        if (room.gameMode === 'BLITZ' && room.currentScenario.template && room.currentScenario.blanks) {
-            // في وضع Blitz: يملأ الفراغات بالإجابات الصحيحة تلقائياً
+        if (room.currentScenario.template && room.currentScenario.blanks) {
+            // يملأ الفراغات بالإجابات الصحيحة تلقائياً
             let filled = room.currentScenario.template;
             room.currentScenario.blanks.forEach(blank => {
                 filled = filled.replace('_____', blank);
             });
             culpritAnswer = filled;
-        } else {
-            // في وضع Classic: يُرسل القصة الكاملة
-            const realStory = room.currentScenario.fullStory || room.currentScenario.story;
-            culpritAnswer = Array.isArray(realStory) ? realStory.join('\n') : (realStory || '');
         }
 
         // تسجيل الإجابة تلقائياً
@@ -238,17 +229,14 @@ async function simulateBotDrafting(roomCode, bot) {
     try {
         // ⚡ العراف: يرسل القصة الحقيقية مباشرة (قدرة الوحي) بنسبة 90%
         if (bot.role === ROLE_TYPES.SEER && Math.random() < 0.9) {
-            let answerText;
-            if (room.gameMode === 'BLITZ' && room.currentScenario.template && room.currentScenario.blanks) {
-                // في وضع الفراغات: يملأ الفراغات بالإجابات الصحيحة
+            let answerText = '';
+            if (room.currentScenario.template && room.currentScenario.blanks) {
+                // يملأ الفراغات بالإجابات الصحيحة
                 let filled = room.currentScenario.template;
                 room.currentScenario.blanks.forEach(blank => {
                     filled = filled.replace('_____', blank);
                 });
                 answerText = filled;
-            } else {
-                const realStory = room.currentScenario.fullStory || room.currentScenario.story;
-                answerText = Array.isArray(realStory) ? realStory.join('\n') : (realStory || '');
             }
             setTimeout(() => {
                 if (!rooms[roomCode] || rooms[roomCode].state !== 'DRAFTING') return;
@@ -266,7 +254,7 @@ async function simulateBotDrafting(roomCode, bot) {
             _prevAnswers: prevAnswers.slice(-3).join(' | ') // آخر 3 إجابات كسياق
         };
 
-        const targetText = await generateBotAnswer(bot.role, scenarioWithContext, prevAnswers, room.gameMode);
+        const targetText = await generateBotAnswer(bot.role, scenarioWithContext, prevAnswers);
 
         if (!rooms[roomCode] || rooms[roomCode].state !== 'DRAFTING') return;
 
@@ -330,7 +318,7 @@ function startQualityVoting(roomCode) {
     const anonymousScenarios = room.players.map((p, index) => ({
         index: index,
         answer: room.answers[p.id] || "لم يكتب شيئاً...",
-        template: room.gameMode === 'BLITZ' ? (room.currentScenario?.template || null) : null
+        template: room.currentScenario?.template || null
         // ❌ بدون name
     }));
 
@@ -460,7 +448,7 @@ function startDramaticReveal(roomCode) {
                 data: {
                     index: scenario.index,
                     text: scenario.answer,
-                    template: room.gameMode === 'BLITZ' ? (room.currentScenario?.template || null) : null,
+                    template: room.currentScenario?.template || null,
                     position: idx + 1,
                     total: scenariosWithVotes.length
                 }
@@ -604,7 +592,7 @@ function startCulpritVoting(roomCode) {
             playerId: p.id,
             playerName: p.name,
             answer: room.answers[p.id] || "لم يكتب شيئاً...",
-            template: room.gameMode === 'BLITZ' ? (room.currentScenario?.template || null) : null
+            template: room.currentScenario?.template || null
         }));
 
     ioInstance.to(roomCode).emit('culpritVotingStarted', {

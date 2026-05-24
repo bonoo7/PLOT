@@ -156,30 +156,7 @@ export const HostLobbyScreen = () => {
           </View>
         </View>
 
-        <MinimalCard style={styles.settingsCard}>
-          <View style={styles.settingsHeader}>
-            <Text style={styles.sectionTitle}>نمط اللعب:</Text>
-            <Text style={styles.modeDescription}>
-              {gameMode === 'BLITZ' ? 'إكمال الفراغات بكلمات (Default)' : 'كتابة سيناريو كامل'}
-            </Text>
-          </View>
-          <View style={styles.togglesRow}>
-            <MinimalButton
-              title="إكمال الفراغ 🧩"
-              onPress={() => handleUpdateSettings({ gameMode: 'BLITZ' })}
-              variant={gameMode === 'BLITZ' ? 'primary' : 'outline'}
-              size="small"
-              style={styles.modeBtn}
-            />
-            <MinimalButton
-              title="كتابة كاملة ✍️"
-              onPress={() => handleUpdateSettings({ gameMode: 'CLASSIC' })}
-              variant={gameMode === 'CLASSIC' ? 'primary' : 'outline'}
-              size="small"
-              style={styles.modeBtn}
-            />
-          </View>
-        </MinimalCard>
+
 
         <MinimalCard flex style={styles.playersCard}>
           <View style={styles.cardHeader}>

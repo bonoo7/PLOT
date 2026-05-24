@@ -131,30 +131,7 @@ export const HostLobbyScreen = () => {
     >
       <View style={styles.lobbyContent}>
 
-        {/* Mode selector — always at the top regardless of orientation */}
-        <View style={styles.modeBar}>
-          <Text style={[styles.modeLabel, { color: c.textMuted }]}>نمط اللعبة</Text>
-          <View style={[styles.modeSegment, { backgroundColor: c.surfaceAlt, borderColor: c.border }]}>
-            <TouchableOpacity
-              style={[styles.modeSeg, gameMode === 'BLITZ' && { backgroundColor: c.red }]}
-              onPress={() => handleMode('BLITZ')}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.modeSegText, { color: gameMode === 'BLITZ' ? '#FFF' : c.textSub }]}>
-                🧩 إكمال الفراغ
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.modeSeg, gameMode === 'CLASSIC' && { backgroundColor: c.red }]}
-              onPress={() => handleMode('CLASSIC')}
-              activeOpacity={0.8}
-            >
-              <Text style={[styles.modeSegText, { color: gameMode === 'CLASSIC' ? '#FFF' : c.textSub }]}>
-                ✍️ كتابة كاملة
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+
 
         {/* Players grid — takes remaining space */}
         <View style={[styles.playersSection, { flex: 1, borderColor: c.border }]}>
