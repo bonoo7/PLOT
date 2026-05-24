@@ -822,7 +822,16 @@ function decideBotAbilityTarget(bot, room) {
             .sort((a, b) => b.suspicion - a.suspicion);
 
         if (suspects.length > 0) {
-            return { abilityType: 'INVESTIGATE', targetId: suspects[0].id };
+            let chosenIndex = 0;
+            const rand = Math.random();
+            if (rand < 0.7) {
+                chosenIndex = 0;
+            } else if (rand < 0.9 && suspects.length > 1) {
+                chosenIndex = 1;
+            } else {
+                chosenIndex = Math.floor(Math.random() * suspects.length);
+            }
+            return { abilityType: 'INVESTIGATE', targetId: suspects[chosenIndex].id };
         }
     }
 
@@ -840,7 +849,16 @@ function decideBotAbilityTarget(bot, room) {
 
         if (candidates.length > 0) {
             // يستهدف الأكثر شكاً ليخرب تقرير المحقق المتوقع
-            return { abilityType: 'SABOTAGE', targetId: candidates[0].id };
+            let chosenIndex = 0;
+            const rand = Math.random();
+            if (rand < 0.6) {
+                chosenIndex = 0;
+            } else if (rand < 0.85 && candidates.length > 1) {
+                chosenIndex = 1;
+            } else {
+                chosenIndex = Math.floor(Math.random() * candidates.length);
+            }
+            return { abilityType: 'SABOTAGE', targetId: candidates[chosenIndex].id };
         }
     }
 
@@ -875,7 +893,7 @@ function generateBotOffer(bot, room) {
     if (!isBeneficiary && !isMinister) return null;
 
     // احتمال إرسال عرض 30% فقط لكل دورة فحص لمنع الإغراق
-    if (Math.random() > 0.3) return null;
+    if (Math.random() > 0.85) return null;
 
     // استبعاد أنفسنا والمستبعدين
     const candidates = room.players.filter(p => p.id !== bot.id && !p.eliminated);

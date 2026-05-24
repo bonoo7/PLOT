@@ -29,18 +29,11 @@ const generateRandomBotAvatar = () => {
 
 // Helper to sequentially rename and re-index bots in a room
 const reindexBots = (room) => {
-    const ROLE_NAMES_AR = {
-        CULPRIT: 'الجاني', WITNESS: 'الشاهد', DETECTIVE: 'المحقق',
-        SABOTEUR: 'المخرب', BENEFICIARY: 'المستفيد', MINISTER: 'الوزير',
-        SEER: 'العراف', MASTERMIND: 'العقل المدبر'
-    };
     let botCount = 0;
     room.players.forEach(p => {
         if (p.isBot || (p.id && p.id.startsWith('bot_'))) {
             botCount++;
-            const botRoleName = ROLE_NAMES_AR[p.role] || p.role || '';
-            const roleSuffix = botRoleName ? ` (${botRoleName})` : '';
-            p.name = `Bot ${botCount} 🤖${roleSuffix}`;
+            p.name = `Bot ${botCount} 🤖`;
         }
     });
 };
