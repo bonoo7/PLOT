@@ -793,6 +793,164 @@ function generateSmartQualityVote(botKnowledge, playersPublic, answers, scenario
   return scenarios[0].index;
 }
 
+/**
+ * 🎯 اتخاذ قرار البوت باستخدام قدرته الخاصة وتحديد الهدف
+ *
+ * @param {Object} bot - كائن البوت النشط
+ * @param {Object} room - كائن الغرفة ولعب الجولة
+ * @returns {Object|null} - { abilityType, targetId } أو null إذا لم يرغب بالاستخدام
+ */
+function decideBotAbilityTarget(bot, room) {
+    if (!bot || !room) return null;
+    const roleInfo = getRoleInfo(bot.role);
+    if (!roleInfo || !roleInfo.ability) return null;
+
+    // البوت لا يستخدم قدرته إذا كان قد قبل رشوة (عرض سري) في هذه الجولة
+    if (bot.acceptedOffer) {
+        logger.info(`🤖 Bot ${bot.name} ability disabled this round due to bribery.`);
+        return null;
+    }
+
+    // 🕵️‍♂️ المحقق (Detective): يستهدف اللاعب/البوت الأكثر شكاً بناءً على السيناريو
+    if (bot.role === ROLE_TYPES.DETECTIVE) {
+        const suspects = room.players
+            .filter(p => p.id !== bot.id && !p.eliminated)
+            .map(p => {
+                const text = room.answers[p.id] || "";
+                return { id: p.id, suspicion: analyzeSuspicion(text, room.currentScenario, p.role) };
+            })
+            .sort((a, b) => b.suspicion - a.suspicion);
+
+        if (suspects.length > 0) {
+            return { abilityType: 'INVESTIGATE', targetId: suspects[0].id };
+        }
+    }
+
+    // 🧨 المخرب (Saboteur): يحاول التنبؤ بمن سيستهدفه المحقق لقلب التحقيق
+    if (bot.role === ROLE_TYPES.SABOTEUR) {
+        // المخرب يتجنب تخريب أعضاء فريق الجريمة (إذا عرفهم كونه بشري، لكن كون البوت المخرب لا يعرف شركاءه)
+        // يبحث المخرب عن لاعبين حقيقيين أو بوتات نشطة يظن أن المحقق الحقيقي سيفحصهم (مثل الأكثر شكاً)
+        const candidates = room.players
+            .filter(p => p.id !== bot.id && !p.eliminated)
+            .map(p => {
+                const text = room.answers[p.id] || "";
+                return { id: p.id, suspicion: analyzeSuspicion(text, room.currentScenario, p.role) };
+            })
+            .sort((a, b) => b.suspicion - a.suspicion);
+
+        if (candidates.length > 0) {
+            // يستهدف الأكثر شكاً ليخرب تقرير المحقق المتوقع
+            return { abilityType: 'SABOTAGE', targetId: candidates[0].id };
+        }
+    }
+
+    // 🔮 العراف (Seer): ينسخ القصة الحقيقية (Revelation)
+    if (bot.role === ROLE_TYPES.SEER) {
+        // العراف يستخدم قدرته دائماً لتأكيد وجود الحقيقة في النقاش
+        return { abilityType: 'REVELATION', targetId: null };
+    }
+
+    // 👁️ الشاهد (Witness): يسترجع الكلمات المفتاحية
+    if (bot.role === ROLE_TYPES.WITNESS) {
+        return { abilityType: 'FLASH_MEMORY', targetId: null };
+    }
+
+    return null;
+}
+
+/**
+ * 💰 اتخاذ قرار البوت بإرسال عرض مالي (المستفيد والوزير فقط)
+ *
+ * @param {Object} bot - كائن البوت النشط
+ * @param {Object} room - كائن الغرفة
+ * @returns {Object|null} - { targetId, amount, isViaMastermind } أو null
+ */
+function generateBotOffer(bot, room) {
+    if (!bot || !room || bot.score < 200) return null;
+
+    // البوت المستفيد (Beneficiary) أو الوزير (Minister)
+    const isBeneficiary = bot.role === ROLE_TYPES.BENEFICIARY;
+    const isMinister = bot.role === ROLE_TYPES.MINISTER;
+
+    if (!isBeneficiary && !isMinister) return null;
+
+    // احتمال إرسال عرض 30% فقط لكل دورة فحص لمنع الإغراق
+    if (Math.random() > 0.3) return null;
+
+    // استبعاد أنفسنا والمستبعدين
+    const candidates = room.players.filter(p => p.id !== bot.id && !p.eliminated);
+    if (candidates.length === 0) return null;
+
+    // تحديد المبلغ (بين 25% إلى 50% من رصيد البوت الحالي)
+    const amount = Math.floor(bot.score * (0.25 + Math.random() * 0.25));
+    if (amount <= 0) return null;
+
+    if (isBeneficiary) {
+        // المستفيد: يريد شراء صمت فريق العدالة (المحقق أو الشاهد)
+        // يبحث عن المحقق المحتمل أو الشاهد.
+        // فخ الوزير: يجب على المستفيد تجنب إرسال الرشوة للاعب يشتبه في أنه الوزير.
+        // الوزير لا يكتب عادة سيناريوهات مريبة جداً، فالبوت المستفيد يتجنب كتاب القصص الفائقة الرسمية
+        // ويستهدف اللاعبين ذوي إجابات الشك المتوسطة (تجنب فخ الوزير الذكي)
+        const targetList = candidates.filter(p => p.role !== ROLE_TYPES.MINISTER);
+        if (targetList.length > 0) {
+            const chosen = targetList[Math.floor(Math.random() * targetList.length)];
+            
+            // العقل المدبر (Mastermind Proxy): إذا كان موجوداً في الغرفة
+            const mastermind = room.players.find(p => p.role === ROLE_TYPES.MASTERMIND && !p.eliminated);
+            const useProxy = mastermind && Math.random() < 0.6; // 60% استخدام الوسيط لإخفاء الهوية
+
+            return { targetId: chosen.id, amount, isViaMastermind: useProxy };
+        }
+    }
+
+    if (isMinister) {
+        // الوزير: يريد دعم فريقه أو شراء ولاء الأبرياء. يمنع برمجياً إرسال عرض للمستفيد.
+        const targetList = candidates.filter(p => p.role !== ROLE_TYPES.BENEFICIARY);
+        if (targetList.length > 0) {
+            const chosen = targetList[Math.floor(Math.random() * targetList.length)];
+            return { targetId: chosen.id, amount, isViaMastermind: false };
+        }
+    }
+
+    return null;
+}
+
+/**
+ * 💰 اتخاذ قرار البوت بقبول أو رفض الرشوة المستلمة
+ *
+ * @param {Object} bot - كائن البوت النشط
+ * @param {Object} offer - العرض المستلم
+ * @param {Object} room - كائن الغرفة
+ * @returns {boolean} - true للقبول، false للرفض
+ */
+function decideOnOffer(bot, offer, room) {
+    if (!bot || !offer || !room) return false;
+
+    // 1. فخ المستفيد: إذا كان البوت هو "الوزير" وتلقى عرضاً من "المستفيد"
+    // (الوزير سيكشف المستفيد تلقائياً برمجياً، لكن البوت يقبل العرض للاستفادة من المال وكشف الجريمة)
+    if (bot.role === ROLE_TYPES.MINISTER && offer.type === 'DIRECT') {
+        const sender = room.players.find(p => p.id === offer.senderId);
+        if (sender && sender.role === ROLE_TYPES.BENEFICIARY) {
+            logger.info(`🤖 Bot Minister ${bot.name} caught Beneficiary ${sender.name} in a trap!`);
+            return true; // يقبل الرشوة مجاناً لأن الكشف حتمي ولصالحه!
+        }
+    }
+
+    // 2. معايير القبول العادية للبوتات
+    // الأدوار الفائقة الأهمية (المحقق، العراف) تتردد في قبول الرشاوى لأنها تشل قدراتها الهامة
+    const isCriticalRole = [ROLE_TYPES.DETECTIVE, ROLE_TYPES.SEER].includes(bot.role);
+    const amount = offer.amount;
+
+    if (isCriticalRole) {
+        // يقبل فقط إذا كان المبلغ ضخماً جداً (مثلاً أكثر من 60% من نقاط الصدارة أو > 600 نقطة)
+        return amount >= 600;
+    }
+
+    // الأدوار العادية (الشاهد، المخرب، العقل المدبر)
+    // تقبل الرشاوى بسهولة أكبر لتكديس النقاط الفردية
+    return amount >= 250 || Math.random() < 0.5;
+}
+
 module.exports = {
   generateBotAnswer,
   analyzeSuspicion,
@@ -800,7 +958,10 @@ module.exports = {
   generateBotVote,
   generateQualityVote,
   generateSmartCulpritVote,
-  generateSmartQualityVote, // 🆕
+  generateSmartQualityVote,
   shouldUseAbility,
-  addNaturalMistakes
+  addNaturalMistakes,
+  decideBotAbilityTarget,
+  generateBotOffer,
+  decideOnOffer
 };

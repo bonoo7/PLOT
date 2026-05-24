@@ -1,4 +1,6 @@
 const { ROLE_TYPES, TEAMS, getRoleInfo } = require('../roles');
+const logger = require('../utils/logger');
+const { decideOnOffer } = require('../botAI');
 
 // Store active offers and timers
 // structure: { offerId: { senderId, targetId, amount, timer, status, type } }
@@ -43,6 +45,24 @@ function handleSendOffer(io, room, sender, { targetId, amount, isViaMastermind, 
             originalSenderId: sender.id,
             feeEarned: fee
         });
+
+        if (mastermind.isBot) {
+            // Bot Mastermind automatically forwards proxy offer after 2-5 seconds
+            setTimeout(() => {
+                const crimeTeamIds = (mastermind.specialInfo && mastermind.specialInfo.crimeTeam) ? mastermind.specialInfo.crimeTeam.map(p => p.id) : [mastermind.id];
+                const candidates = room.players.filter(p => !p.eliminated && !crimeTeamIds.includes(p.id));
+                if (candidates.length > 0) {
+                    const chosenTarget = candidates[Math.floor(Math.random() * candidates.length)];
+                    logger.info(`🤖 Bot Mastermind ${mastermind.name} automatically forwarding proxy offer of ${actualOffer} to ${chosenTarget.name}`);
+                    handleMastermindForward(io, room, mastermind, { targetId: chosenTarget.id, amount: actualOffer });
+                } else {
+                    // Refund if no valid targets
+                    sender.score += amount;
+                    mastermind.score -= fee;
+                    logger.info(`🤖 Bot Mastermind found no targets to forward. Refunded Beneficiary.`);
+                }
+            }, 2000 + Math.random() * 3000);
+        }
 
         return { success: true, message: 'تم إرسال الطلب للعقل المدبر. (تم خصم ' + amount + '، وحصل العقل المدبر على ' + fee + ')' };
     }
@@ -127,6 +147,18 @@ function createOffer(io, room, sender, target, amount, type, originalSenderId = 
         }
     }, 10000);
     offer._timer = expireTimer;
+
+    // If target is a bot, auto-decide after 2-5 seconds
+    if (target.isBot) {
+        const botDelay = 2000 + Math.random() * 3000;
+        setTimeout(() => {
+            if (room.offers && room.offers[offerId]) {
+                const accepted = decideOnOffer(target, offer, room);
+                logger.info(`🤖 Bot ${target.name} (${target.role}) decided to ${accepted ? 'ACCEPT' : 'REJECT'} the offer of ${amount} points.`);
+                handleOfferResponse(io, room, target, { offerId, accepted });
+            }
+        }, botDelay);
+    }
 }
 
 function handleOfferResponse(io, room, player, { offerId, accepted }) {

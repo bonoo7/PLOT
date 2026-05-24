@@ -5,7 +5,19 @@ const scenarios = require('../scenarios');
 const { TEAMS, ROLE_TYPES, ROLES, getRoleInfo, getRolesForPlayerCount, getTeamMembers } = require('../roles');
 const { getRoleName, getRoleDescription, getRoleGoal, getRoleTeam, generateRoomCode, buildBotKnowledge } = require('../utils/serverUtils');
 const { calculateScores } = require('../logic/scoring');
-const { generateBotAnswer, analyzeSuspicion, generateBotVote, generateQualityVote, generateSmartCulpritVote, generateSmartQualityVote, shouldUseAbility } = require('../botAI');
+const { handleSendOffer } = require('../logic/offers');
+const { 
+    generateBotAnswer, 
+    analyzeSuspicion, 
+    generateBotVote, 
+    generateQualityVote, 
+    generateSmartCulpritVote, 
+    generateSmartQualityVote, 
+    shouldUseAbility,
+    decideBotAbilityTarget,
+    generateBotOffer,
+    decideOnOffer
+} = require('../botAI');
 
 let ioInstance;
 function initPhases(io) { ioInstance = io; }
@@ -15,16 +27,20 @@ function executeBotAbilities(roomCode) {
     if (!room) return;
 
     const bots = room.players.filter(p => p.isBot && !p.eliminated);
-    const validTargets = room.players.filter(p => !p.eliminated);
 
     bots.forEach(bot => {
-        // 1. المحقق: يفحص لاعباً عشوائياً (لا يعرف من هو الجاني)
-        if (bot.role === 'DETECTIVE' && !bot.abilityUsed) {
-            const targets = validTargets.filter(p => p.id !== bot.id);
-            if (targets.length > 0) {
-                const target = targets[Math.floor(Math.random() * targets.length)];
-                const targetTeam = getRoleInfo(target.role)?.team;
+        const decision = decideBotAbilityTarget(bot, room);
+        if (!decision) return;
 
+        const { abilityType, targetId } = decision;
+
+        // 1. المحقق (Detective)
+        if (bot.role === ROLE_TYPES.DETECTIVE && abilityType === 'INVESTIGATE') {
+            const target = room.players.find(p => p.id === targetId);
+            if (target) {
+                const targetTeam = getRoleInfo(target.role)?.team;
+                
+                // تطبيق فحص المحقق الذكي
                 bot.investigationResult = {
                     targetId: target.id,
                     targetName: target.name,
@@ -35,29 +51,37 @@ function executeBotAbilities(roomCode) {
             }
         }
 
-        // 2. المخرب: يخرب بشكل عشوائي أو يستهدف المحقق إذا عرفه (نادر)
-        else if (bot.role === 'SABOTEUR' && !bot.abilityUsed) {
-            const targets = validTargets.filter(p => p.id !== bot.id && getRoleInfo(p.role)?.team !== 'CRIME');
-            if (targets.length > 0) {
-                const target = targets[Math.floor(Math.random() * targets.length)];
-
-                // تطبيق التخريب الفعلي — ينعكس على نتيجة تحقيق المحقق
+        // 2. المخرب (Saboteur)
+        else if (bot.role === ROLE_TYPES.SABOTEUR && abilityType === 'SABOTAGE') {
+            const target = room.players.find(p => p.id === targetId);
+            if (target) {
+                // تطبيق التخريب: يقلب فريقه في التحقيق إذا اختاره المحقق أيضاً
                 target.sabotagedBy = bot.id;
                 target.sabotageType = 'INVESTIGATION_FLIP';
+                bot.sabotageTarget = target.id;
 
                 bot.abilityUsed = true;
-                logger.info(`🤖 [BOT] Saboteur ${bot.name} sabotaged ${target.name}`);
+                logger.info(`🤖 [BOT] Saboteur ${bot.name} set sabotage trap on ${target.name}`);
             }
         }
 
-        // 3. العراف: يكشف القصة الحقيقية (بنسبة 50% لعدم كشف نفسه فوراً)
-        else if (bot.role === 'SEER' && !bot.abilityUsed) {
-            if (Math.random() > 0.5) {
-                // استبدال إجابة العراف بالقصة الحقيقية
-                room.answers[bot.id] = `(وحي العراف): ${room.currentScenario.solution}`;
-                bot.abilityUsed = true;
-                logger.info(`🤖 [BOT] Seer ${bot.name} used revelation`);
+        // 3. العراف (Seer)
+        else if (bot.role === ROLE_TYPES.SEER && abilityType === 'REVELATION') {
+            let answerText;
+            if (room.gameMode === 'BLITZ' && room.currentScenario.template && room.currentScenario.blanks) {
+                let filled = room.currentScenario.template;
+                room.currentScenario.blanks.forEach(blank => {
+                    filled = filled.replace('_____', blank);
+                });
+                answerText = filled;
+            } else {
+                const realStory = room.currentScenario.fullStory || room.currentScenario.story;
+                answerText = Array.isArray(realStory) ? realStory.join('\n') : (realStory || '');
             }
+
+            room.answers[bot.id] = answerText;
+            bot.abilityUsed = true;
+            logger.info(`🤖 [BOT] Seer ${bot.name} used revelation`);
         }
     });
 }
@@ -186,6 +210,24 @@ function startDraftingPhase(roomCode) {
             setTimeout(() => {
                 simulateBotDrafting(roomCode, p);
             }, index * 2000); // 0s, 2s, 4s, 6s, etc.
+        }
+    });
+
+    // 💰 V4 Smart Bot Offers: Schedule Beneficiary and Minister bots to send offers during drafting
+    room.players.forEach((p) => {
+        if (p.isBot && !p.eliminated && (p.role === ROLE_TYPES.BENEFICIARY || p.role === ROLE_TYPES.MINISTER)) {
+            // Send offer randomly between 5 to 15 seconds after drafting starts
+            const offerDelay = 5000 + Math.random() * 10000;
+            setTimeout(() => {
+                if (!rooms[roomCode] || rooms[roomCode].state !== 'DRAFTING') return;
+
+                const botOffer = generateBotOffer(p, room);
+                if (botOffer) {
+                    const { targetId, amount, isViaMastermind } = botOffer;
+                    logger.info(`🤖 Bot ${p.name} (${p.role}) decided to send offer of ${amount} to ${targetId} (via Mastermind: ${isViaMastermind})`);
+                    handleSendOffer(ioInstance, room, p, { targetId, amount, isViaMastermind });
+                }
+            }, offerDelay);
         }
     });
 }
